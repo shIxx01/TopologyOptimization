@@ -379,10 +379,8 @@ try:
            "der Status ist gefuellt (%s)" % panel2.lauf_status.text())
     pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit laeuft mit (%s)"
            % panel2.lauf_zeit.text())
-    pruefe(panel2.lauf_zeit.parent() is panel2.form,
-           "die Laufzeit steht ganz oben in der Kopfzeile")
-    pruefe(not panel2.rollen[2].widget().isAncestorOf(panel2.lauf_zeit),
-           "die Laufzeit liegt ausserhalb des Rollbereichs (immer sichtbar)")
+    pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),
+           "die Laufzeit steht in derselben Zeile wie der Start-Knopf")
     # Abspielgeschwindigkeit wie im Prototyp
     pruefe(panel2.cmb_takt.count() == 4,
            "vier Abspielgeschwindigkeiten stehen zur Wahl (%d)" % panel2.cmb_takt.count())

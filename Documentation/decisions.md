@@ -403,9 +403,10 @@ height and scrolls inside itself, otherwise a model with many element sets would
 * The four result buttons form a **2x2 grid**:
   `Ergebnisnetz laden | Diagramme anzeigen` over `Vollständiges Log | Arbeitsverzeichnis öffnen`.
   "Iterationen anzeigen" moved into the row with the slider.
-* The running time moved **into the top line** (right of the step bar) - it belongs to the
-  frame, not to the group, and is visible in every step.  (First it was next to the start
-  button, which the user corrected with a screenshot.)
+* The running time sits **right next to the start button** in the "Berechnen" group.  An
+  attempt to put it into the panel's top line (next to the step bar) was wrong - the user:
+  "warum ist die zeit wieder irgendwo wo sie nicht dazugehört".  The time belongs to the run, not
+  to the frame of the panel.
 * The **slider got its own row** with the full width (measured 640 px in a 640 px panel).
 * The **play speed** sits in the row of the control buttons (the user wanted it one row higher):
   combo box 0.5 s / 1 s / 2 s / 3 s as in the prototype (`_takt_geaendert` sets the timer

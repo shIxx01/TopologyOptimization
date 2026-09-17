@@ -197,18 +197,10 @@ class AssistantPanel:
         # Wie im Prototyp: die Schrittleiste steht oben und bleibt stehen, nur der
         # Inhalt rollt in einem eigenen Bereich (der Rollbalken sitzt damit innen,
         # nicht am ganzen Task-Panel), unten sind Zurueck und Weiter.
-        kopf_zeile = QtWidgets.QHBoxLayout()
         self.schritt_label = QtWidgets.QLabel("")
         self.schritt_label.setTextFormat(QtCore.Qt.RichText)
         self.schritt_label.setWordWrap(True)
-        kopf_zeile.addWidget(self.schritt_label, 1)
-        # die Laufzeit steht ganz oben rechts und ist damit in jedem Schritt zu sehen
-        self.lauf_zeit = QtWidgets.QLabel("")
-        self.lauf_zeit.setToolTip(uebersetze("How long the solver has been running"))
-        self.lauf_zeit.setStyleSheet("color: gray;")
-        self.lauf_zeit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
-        kopf_zeile.addWidget(self.lauf_zeit)
-        aussen.addLayout(kopf_zeile)
+        aussen.addWidget(self.schritt_label)
 
         # Jede Seite bekommt ihre eigene Rollflaeche: ein gemeinsamer Rollbereich
         # waere immer so hoch wie die laengste Seite und zeigte deshalb auch in den
@@ -684,6 +676,11 @@ class AssistantPanel:
         self.knopf_lauf.clicked.connect(self._lauf_knopf)
         zeile.addWidget(self.knopf_lauf)
         zeile.addStretch(1)
+        # die Laufzeit steht rechts neben dem Knopf - sie gehoert zum Lauf, nicht ins Panel
+        self.lauf_zeit = QtWidgets.QLabel("")
+        self.lauf_zeit.setToolTip(uebersetze("How long the solver has been running"))
+        self.lauf_zeit.setStyleSheet("color: gray;")
+        zeile.addWidget(self.lauf_zeit)
         lauf.addLayout(zeile)
 
         # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
