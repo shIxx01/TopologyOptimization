@@ -204,7 +204,7 @@ pruefe(obj4.IterationsLimit == "auto", "Iterationen starten mit 'auto'")
 pruefe(abs(obj4.Tolerance - 1e-3) < 1e-12, "Toleranz startet mit 1e-3 (beso-Standard)")
 pruefe(obj4.CpuCores == 0, "Kerne starten bei 0 (alle)")
 pruefe(obj4.MassChange == "normal", "Massenänderung startet mit 'normal'")
-pruefe(obj4.SaveIterations == 1, "jede Iteration wird gespeichert (beso-Standard)")
+pruefe(obj4.SaveIterations == 10, "jede 10. Iteration wird gespeichert (spart Platz)")
 pruefe(obj4.ResultFormat == "inp vtk", "Ergebnisformat startet mit 'inp vtk'")
 
 obj4.MassGoalRatio = 0.3

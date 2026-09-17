@@ -127,6 +127,14 @@ try:
     # Schritt 2: Parameter
     panel._zeige_schritt(2)
     pruefe(panel.seiten.currentIndex() == 1, "Schritt 2 zeigt die Parameter-Seite")
+    breite = panel.form.minimumSizeHint().width()
+    log("Mindestbreite des Panels: %d px" % breite)
+    pruefe(breite <= 360, "Panel laesst sich schmal ziehen (%d px)" % breite)
+    pruefe(panel.feld_kerne.value() == 0
+           and panel.feld_kerne.specialValueText() in ("all", "alle"),
+           "Kerne zeigen '%s' statt der 0" % panel.feld_kerne.specialValueText())
+    pruefe(panel.feld_speichern.value() == 10,
+           "Speicher-Intervall startet bei 10 (%d)" % panel.feld_speichern.value())
     pruefe(panel.feld_masse.value() == 40, "Zielmasse zeigt 40 %% (%d)" % panel.feld_masse.value())
     pruefe(panel.combo_basis.currentData() == "stiffness",
            "Optimierungsziel steht auf stiffness (%s)" % panel.combo_basis.currentData())

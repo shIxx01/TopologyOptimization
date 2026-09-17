@@ -54,6 +54,14 @@ DEUTSCH = {
         "Analysefall vorbereiten: CalculiX-Eingabedatei und Element-Sets",
     "CalculiX input file (basis of the optimization)":
         "CalculiX-Eingabedatei (Grundlage der Optimierung)",
+    "CalculiX input file (.inp)":
+        "CalculiX-Eingabedatei (.inp)",
+    "Domains - roles of the elements":
+        "Domains - Rollen der Elemente",
+    "all":
+        "alle",
+    "Cores for the solver; 'all' uses every core of the computer.":
+        "Kerne f\u00fcr den Solver; \u201ealle\u201c nutzt jeden Kern des Rechners.",
     "Domains - which elements are optimized?":
         "Domains - welche Elemente werden optimiert?",
     "The optimizer writes its iteration files next to this file.":

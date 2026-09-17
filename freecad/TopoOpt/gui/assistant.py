@@ -29,6 +29,20 @@ SCHRITT_TIPPS = {
 MASSE_MIN = 5
 MASSE_MAX = 95
 
+
+def _combo_schmal(combo, zeichen=6):
+    """A combo box may be narrow - the popup shows the full text anyway."""
+    combo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+    combo.setMinimumContentsLength(zeichen)
+    return combo
+
+
+def _label_wrap(text):
+    """A label that wraps instead of forcing the panel wide."""
+    label = QtWidgets.QLabel(text)
+    label.setWordWrap(True)
+    return label
+
 # labels of the choices - the stored values are the strings beso knows
 BASIS_LABELS = {
     "stiffness": "Stiffness - the part becomes as stiff as possible (usual)",
@@ -113,6 +127,7 @@ class AssistantPanel:
 
         self.kopf = QtWidgets.QLabel("")
         self.kopf.setTextFormat(QtCore.Qt.RichText)
+        self.kopf.setWordWrap(True)
         aussen.addWidget(self.kopf)
 
         aussen.addWidget(self._schrittleiste())
@@ -160,7 +175,7 @@ class AssistantPanel:
     def _seite_platzhalter(self):
         seite = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(seite)
-        label = QtWidgets.QLabel(uebersetze("This step is not built yet."))
+        label = _label_wrap(uebersetze("This step is not built yet."))
         layout.addWidget(label)
         layout.addStretch(1)
         return seite
@@ -184,6 +199,7 @@ class AssistantPanel:
         form = QtWidgets.QGridLayout(rahmen)
         self.slider_masse = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.slider_masse.setRange(MASSE_MIN, MASSE_MAX)
+        self.slider_masse.setMinimumWidth(80)
         self.slider_masse.setToolTip(uebersetze(TIP_MASSE))
         self.feld_masse = QtWidgets.QSpinBox()
         self.feld_masse.setRange(MASSE_MIN, MASSE_MAX)
@@ -199,15 +215,15 @@ class AssistantPanel:
         rahmen = QtWidgets.QGroupBox(uebersetze("Optimization"))
         form = QtWidgets.QGridLayout(rahmen)
         zeile = 0
-        form.addWidget(QtWidgets.QLabel(uebersetze("What is optimized")), zeile, 0)
-        self.combo_basis = QtWidgets.QComboBox()
+        form.addWidget(_label_wrap(uebersetze("What is optimized")), zeile, 0)
+        self.combo_basis = _combo_schmal(QtWidgets.QComboBox())
         for wert in BASES:
             self.combo_basis.addItem(uebersetze(BASIS_LABELS.get(wert, wert)), wert)
         self.combo_basis.currentIndexChanged.connect(self._parameter_geaendert)
         form.addWidget(self.combo_basis, zeile, 1)
 
         zeile += 1
-        form.addWidget(QtWidgets.QLabel(uebersetze("Maximum iterations")), zeile, 0)
+        form.addWidget(_label_wrap(uebersetze("Maximum iterations")), zeile, 0)
         self.feld_iterationen = QtWidgets.QLineEdit()
         self.feld_iterationen.setToolTip(uebersetze("'auto' lets beso estimate the number of "
                                                     "iterations, a number stops after it."))
@@ -215,7 +231,7 @@ class AssistantPanel:
         form.addWidget(self.feld_iterationen, zeile, 1)
 
         zeile += 1
-        form.addWidget(QtWidgets.QLabel(uebersetze("Stop tolerance")), zeile, 0)
+        form.addWidget(_label_wrap(uebersetze("Stop tolerance")), zeile, 0)
         self.feld_toleranz = QtWidgets.QDoubleSpinBox()
         self.feld_toleranz.setDecimals(5)
         self.feld_toleranz.setRange(0.00001, 1.0)
@@ -227,8 +243,8 @@ class AssistantPanel:
         form.addWidget(self.feld_toleranz, zeile, 1)
 
         zeile += 1
-        form.addWidget(QtWidgets.QLabel(uebersetze("Material change per iteration")), zeile, 0)
-        self.combo_masse_aenderung = QtWidgets.QComboBox()
+        form.addWidget(_label_wrap(uebersetze("Material change per iteration")), zeile, 0)
+        self.combo_masse_aenderung = _combo_schmal(QtWidgets.QComboBox())
         for schluessel in MASS_CHANGE:
             self.combo_masse_aenderung.addItem(
                 uebersetze(MASS_CHANGE_LABELS.get(schluessel, schluessel)), schluessel)
@@ -238,10 +254,13 @@ class AssistantPanel:
         form.addWidget(self.combo_masse_aenderung, zeile, 1)
 
         zeile += 1
-        form.addWidget(QtWidgets.QLabel(uebersetze("Processor cores")), zeile, 0)
+        form.addWidget(_label_wrap(uebersetze("Processor cores")), zeile, 0)
         self.feld_kerne = QtWidgets.QSpinBox()
         self.feld_kerne.setRange(0, 128)
-        self.feld_kerne.setToolTip(uebersetze("Cores for the solver; 0 uses all of them."))
+        # 0 shows as "all" - setSpecialValueText() works because the minimum is 0
+        self.feld_kerne.setSpecialValueText(uebersetze("all"))
+        self.feld_kerne.setToolTip(uebersetze("Cores for the solver; 'all' uses every core "
+                                              "of the computer."))
         self.feld_kerne.valueChanged.connect(self._parameter_geaendert)
         form.addWidget(self.feld_kerne, zeile, 1)
         layout.addWidget(rahmen)
@@ -249,7 +268,7 @@ class AssistantPanel:
         # --- result files ------------------------------------------------
         rahmen = QtWidgets.QGroupBox(uebersetze("Result files"))
         form = QtWidgets.QGridLayout(rahmen)
-        form.addWidget(QtWidgets.QLabel(uebersetze("Save every n-th iteration")), 0, 0)
+        form.addWidget(_label_wrap(uebersetze("Save every n-th iteration")), 0, 0)
         self.feld_speichern = QtWidgets.QSpinBox()
         self.feld_speichern.setRange(0, 100)
         self.feld_speichern.setToolTip(uebersetze("0 saves only the final result. Every saved "
@@ -257,8 +276,8 @@ class AssistantPanel:
                                                   "can need 100 MB and more)."))
         self.feld_speichern.valueChanged.connect(self._parameter_geaendert)
         form.addWidget(self.feld_speichern, 0, 1)
-        form.addWidget(QtWidgets.QLabel(uebersetze("Format of the result meshes")), 1, 0)
-        self.combo_format = QtWidgets.QComboBox()
+        form.addWidget(_label_wrap(uebersetze("Format of the result meshes")), 1, 0)
+        self.combo_format = _combo_schmal(QtWidgets.QComboBox())
         for wert in FORMATS:
             self.combo_format.addItem(wert, wert)
         self.combo_format.currentIndexChanged.connect(self._parameter_geaendert)
@@ -268,12 +287,13 @@ class AssistantPanel:
         return seite
 
     def _inp_bereich(self):
-        rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (basis of the optimization)"))
+        rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (.inp)"))
         layout = QtWidgets.QGridLayout(rahmen)
 
         # row 0: the path and the button that opens the folder in the file manager
         self.pfad_feld = QtWidgets.QLineEdit()
         self.pfad_feld.setReadOnly(True)
+        self.pfad_feld.setMinimumWidth(100)
         self.pfad_feld.setToolTip(uebersetze("The optimizer writes its iteration files "
                                               "next to this file."))
         layout.addWidget(self.pfad_feld, 0, 0)
@@ -300,7 +320,7 @@ class AssistantPanel:
         return rahmen
 
     def _domain_tabelle(self):
-        rahmen = QtWidgets.QGroupBox(uebersetze("Domains - which elements are optimized?"))
+        rahmen = QtWidgets.QGroupBox(uebersetze("Domains - roles of the elements"))
         layout = QtWidgets.QVBoxLayout(rahmen)
         self.tabelle = QtWidgets.QTableWidget(0, 3)
         self.tabelle.setHorizontalHeaderLabels([uebersetze("Element set"), uebersetze("Role"),
@@ -409,7 +429,7 @@ class AssistantPanel:
             zeile = self.tabelle.rowCount()
             self.tabelle.insertRow(zeile)
             self.tabelle.setItem(zeile, 0, QtWidgets.QTableWidgetItem(name))
-            auswahl = QtWidgets.QComboBox()
+            auswahl = _combo_schmal(QtWidgets.QComboBox())
             reihenfolge = (dom.DESIGN, dom.NON_DESIGN, dom.IGNORE)
             for rolle in reihenfolge:
                 auswahl.addItem(uebersetze(dom.ROLE_LABELS[rolle]), rolle)

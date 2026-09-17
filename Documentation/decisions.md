@@ -136,6 +136,22 @@ The assistant keeps one page per step in a `QStackedWidget` and the buttons of t
 bar switch between them; steps that are not built yet keep a placeholder page and their
 button stays disabled.  So a half-built step is never reachable but also never hidden.
 
+## D14 - The panel must be narrowable
+
+Combo boxes adjust to a few characters (`AdjustToMinimumContentsLengthWithIcon`,
+`setMinimumContentsLength(6)` - the popup still shows the full text), labels wrap, and the
+long titles of the group boxes were shortened. Measured minimum width of the whole panel:
+**590 px before, 331 px after**.
+
+*Reason (user request):* the panel could not be made narrow without things disappearing.
+Combo boxes are the main culprit: by default a combo wants as much room as its longest
+entry.
+
+Two small user requests went in with it: the core count shows "all" instead of 0
+(`setSpecialValueText`, which only works while the minimum is 0), and the save interval
+starts at **10** instead of the beso default 1 (a saved iteration of a fine mesh can need
+100 MB and more; the final result is what counts).
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

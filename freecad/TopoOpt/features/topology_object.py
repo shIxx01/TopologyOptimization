@@ -76,7 +76,9 @@ def ensure_properties(obj):
         obj.addProperty("App::PropertyInteger", "SaveIterations", GROUP,
                         uebersetze("Save intermediate results every n-th iteration "
                                    "(0 = only the final result)"))
-        obj.SaveIterations = 1
+        # 10 and not the beso default of 1: every saved iteration of a fine mesh can
+        # need 100 MB and more, and the final result is what the user wants
+        obj.SaveIterations = 10
     if not hasattr(obj, "ResultFormat"):
         obj.addProperty("App::PropertyEnumeration", "ResultFormat", GROUP,
                         uebersetze("File format of the resulting meshes"))
