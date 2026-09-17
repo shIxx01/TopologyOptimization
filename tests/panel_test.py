@@ -149,8 +149,11 @@ try:
            "die Tabelle fuellt nicht den ganzen Schritt (%d px)" % panel.tabelle.height())
     pruefe(panel.schritt_label.parent() is panel.form,
            "Schrittleiste sitzt oben im Panel (ausserhalb des Rollbereichs)")
-    pruefe(panel.scroll.widget() is panel.seiten,
-           "nur der Inhalt rollt in einem eigenen Bereich")
+    pruefe(len(panel.rollen) == 3 and all(r.widget() is not None for r in panel.rollen),
+           "jede Seite hat ihre eigene Rollflaeche (%d)" % len(panel.rollen))
+    pruefe(panel.rollen[0].verticalScrollBar().maximum() == 0,
+           "im ersten Schritt ist kein Rollbalken noetig (max %d)"
+           % panel.rollen[0].verticalScrollBar().maximum())
 
     # zulaessige Spannung: leer = kein FI, Wert = FI (wie im Prototyp eine Spalte je Domain)
     pruefe(len(panel.felder_stress) == len(panel.elsets),
@@ -370,6 +373,10 @@ try:
     pruefe(panel2.spieler is not None,
            "das Ergebnis wurde nach dem Lauf automatisch geladen")
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
+    pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit steht neben dem Start-Knopf (%s)"
+           % panel2.lauf_zeit.text())
+    pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),
+           "Laufzeit und Start-Knopf sitzen in derselben Zeile")
 
     # Ergebnisse im selben Schritt ("Berechnung"): VTK-Iterationen anzeigen
     pruefe(panel2.schritt_label.text().count(" › ") == 2,

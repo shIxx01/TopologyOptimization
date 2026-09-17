@@ -202,17 +202,22 @@ class AssistantPanel:
         self.schritt_label.setWordWrap(True)
         aussen.addWidget(self.schritt_label)
 
+        # Jede Seite bekommt ihre eigene Rollflaeche: ein gemeinsamer Rollbereich
+        # waere immer so hoch wie die laengste Seite und zeigte deshalb auch in den
+        # kurzen Schritten einen Rollbalken (so war es zuerst).
         self.seiten = QtWidgets.QStackedWidget()
-        self.seiten.addWidget(self._seite_initialisieren())
-        self.seiten.addWidget(self._seite_parameter())
-        self.seiten.addWidget(self._seite_berechnung())
-        for _ in range(len(SCHRITTE) - 3):
-            self.seiten.addWidget(self._seite_platzhalter())
-        self.scroll = QtWidgets.QScrollArea()
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.scroll.setWidget(self.seiten)
-        aussen.addWidget(self.scroll, 1)
+        self.rollen = []
+        seiten = [self._seite_initialisieren(), self._seite_parameter(),
+                  self._seite_berechnung()]
+        seiten += [self._seite_platzhalter() for _ in range(len(SCHRITTE) - 3)]
+        for seite in seiten:
+            rolle = QtWidgets.QScrollArea()
+            rolle.setWidgetResizable(True)
+            rolle.setFrameShape(QtWidgets.QFrame.NoFrame)
+            rolle.setWidget(seite)
+            self.seiten.addWidget(rolle)
+            self.rollen.append(rolle)
+        aussen.addWidget(self.seiten, 1)
 
         nav = QtWidgets.QHBoxLayout()
         self.knopf_schritt_zurueck = QtWidgets.QPushButton(uebersetze("< Back"))
@@ -246,7 +251,7 @@ class AssistantPanel:
                 teile.append("<span style='color:gray'>%s</span>" % text)
         self.schritt_label.setText(" › ".join(teile))
         try:
-            self.scroll.verticalScrollBar().setValue(0)
+            self.rollen[nummer - 1].verticalScrollBar().setValue(0)
         except Exception:
             pass
         # An den Raendern verschwindet der jeweilige Knopf
@@ -671,6 +676,11 @@ class AssistantPanel:
         self.knopf_lauf.clicked.connect(self._lauf_knopf)
         zeile.addWidget(self.knopf_lauf)
         zeile.addStretch(1)
+        # die Laufzeit steht rechts neben dem Knopf - das spart eine Zeile
+        self.lauf_zeit = QtWidgets.QLabel("")
+        self.lauf_zeit.setToolTip(uebersetze("How long the solver has been running"))
+        self.lauf_zeit.setStyleSheet("color: gray;")
+        zeile.addWidget(self.lauf_zeit)
         lauf.addLayout(zeile)
 
         # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
@@ -708,21 +718,40 @@ class AssistantPanel:
         rahmen_erg = QtWidgets.QGroupBox(uebersetze("Results"))
         erg = QtWidgets.QVBoxLayout(rahmen_erg)
 
-        zeile = QtWidgets.QHBoxLayout()
-        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Show iterations"))
-        self.knopf_ergebnis.setToolTip(uebersetze("Reads resulting_states.vtk and shows the "
-                                                 "material that is left in the part "
-                                                 "(the film of the run)"))
-        self.knopf_ergebnis.clicked.connect(self._ergebnis_knopf)
-        zeile.addWidget(self.knopf_ergebnis)
+        # die vier Knoepfe bilden ein 2x2-Raster (der Nutzer wollte sie so angeordnet):
+        #   Ergebnisnetz laden | Diagramme anzeigen
+        #   Vollstaendiges Log | Arbeitsverzeichnis oeffnen
+        raster = QtWidgets.QGridLayout()
+        raster.setSpacing(6)
         self.knopf_netz = QtWidgets.QPushButton(uebersetze("Load result network"))
         self.knopf_netz.setToolTip(uebersetze("Loads the network of the last iteration "
                                              "(_state1.inp) as a real FEM mesh into the "
                                              "document - that is the result to work with"))
         self.knopf_netz.clicked.connect(self._ergebnisnetz_laden)
-        zeile.addWidget(self.knopf_netz)
-        zeile.addStretch(1)
-        erg.addLayout(zeile)
+        raster.addWidget(self.knopf_netz, 0, 0)
+        self.knopf_diagramme = QtWidgets.QPushButton(uebersetze("Show diagrams"))
+        self.knopf_diagramme.setToolTip(uebersetze("Opens the window with the four charts "
+                                                  "(mass, stress, overloaded elements, energy)"))
+        self.knopf_diagramme.clicked.connect(self._verlauf_anzeigen)
+        raster.addWidget(self.knopf_diagramme, 0, 1)
+        self.knopf_log = QtWidgets.QPushButton(uebersetze("Whole log"))
+        self.knopf_log.setToolTip(uebersetze("Opens the log file of the run"))
+        self.knopf_log.clicked.connect(self._log_oeffnen)
+        raster.addWidget(self.knopf_log, 1, 0)
+        self.knopf_ordner_erg = QtWidgets.QPushButton(uebersetze("Open working directory"))
+        self.knopf_ordner_erg.setToolTip(uebersetze("Opens the working directory with all files"))
+        self.knopf_ordner_erg.clicked.connect(self._ordner_oeffnen)
+        raster.addWidget(self.knopf_ordner_erg, 1, 1)
+        raster.setColumnStretch(0, 1)
+        raster.setColumnStretch(1, 1)
+        erg.addLayout(raster)
+
+        # "Iterationen anzeigen" (VTK-Player) gehoert zum Schieberegler darunter
+        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Show iterations"))
+        self.knopf_ergebnis.setToolTip(uebersetze("Reads resulting_states.vtk and shows the "
+                                                 "material that is left in the part "
+                                                 "(the film of the run)"))
+        self.knopf_ergebnis.clicked.connect(self._ergebnis_knopf)
 
         self.ergebnis_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.ergebnis_slider.setMinimum(1)
@@ -732,6 +761,7 @@ class AssistantPanel:
         self.ergebnis_slider.valueChanged.connect(self._ergebnis_zeigen)
 
         zeile = QtWidgets.QHBoxLayout()
+        zeile.addWidget(self.knopf_ergebnis)
         zeile.addWidget(self.ergebnis_slider, 1)
         self.knopf_zurueck = QtWidgets.QPushButton("\u25c0")
         self.knopf_zurueck.setToolTip(uebersetze("One iteration back"))
@@ -754,26 +784,7 @@ class AssistantPanel:
         self.ergebnis_info = _label_wrap("")
         erg.addWidget(self.ergebnis_info)
 
-        zeile = QtWidgets.QHBoxLayout()
-        self.knopf_diagramme = QtWidgets.QPushButton(uebersetze("Show diagrams"))
-        self.knopf_diagramme.setToolTip(uebersetze("Opens the window with the four charts "
-                                                  "(mass, stress, overloaded elements, energy)"))
-        self.knopf_diagramme.clicked.connect(self._verlauf_anzeigen)
-        zeile.addWidget(self.knopf_diagramme)
-        zeile.addStretch(1)
-        erg.addLayout(zeile)
 
-        zeile = QtWidgets.QHBoxLayout()
-        self.knopf_log = QtWidgets.QPushButton(uebersetze("Whole log"))
-        self.knopf_log.setToolTip(uebersetze("Opens the log file of the run"))
-        self.knopf_log.clicked.connect(self._log_oeffnen)
-        zeile.addWidget(self.knopf_log)
-        self.knopf_ordner_erg = QtWidgets.QPushButton(uebersetze("Open working directory"))
-        self.knopf_ordner_erg.setToolTip(uebersetze("Opens the working directory with all files"))
-        self.knopf_ordner_erg.clicked.connect(self._ordner_oeffnen)
-        zeile.addWidget(self.knopf_ordner_erg)
-        zeile.addStretch(1)
-        erg.addLayout(zeile)
         layout.addWidget(rahmen_erg)
         layout.addStretch(1)
 
@@ -994,6 +1005,7 @@ class AssistantPanel:
         self.verlauf.laeuft = True
         self.verlauf._start_zeit = self._lauf_beginn
         self.balken.setValue(0)
+        self.lauf_zeit.setText("0:00 min")
         self.spieler = None                    # ein neuer Lauf hat neue Ergebnisse
         self.ergebnis_slider.setRange(1, 1)
         self._ergebnisse_aktualisieren()
@@ -1045,9 +1057,11 @@ class AssistantPanel:
             teile.append(uebersetze("CalculiX is running ..."))
         if self._lauf_beginn:
             sekunden = int(time.time() - self._lauf_beginn)
-            teile.append("%d:%02d min" % (sekunden // 60, sekunden % 60))
+            self.lauf_zeit.setText("%d:%02d min" % (sekunden // 60, sekunden % 60))
         if teile:
             self.lauf_status.setText(" | ".join(teile))
+        # leere Statuszeile kostet nur Platz
+        self.lauf_status.setVisible(bool(teile))
 
         if self.detail.isVisible():
             text = logdatei.verlauf_lesen(self._lauf_log)["text"]

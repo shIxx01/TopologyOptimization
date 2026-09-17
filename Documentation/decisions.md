@@ -396,6 +396,18 @@ height and scrolls inside itself, otherwise a model with many element sets would
 * Measured in the panel test: `file001_state1.inp` is found and loaded, the document gets a new
   object.
 
+**Third round of the user's corrections:**
+
+* The running time (`lauf_zeit`, gray) sits **right next to the start button** instead of in its
+  own line; the status line below the progress bar hides itself while it has no text.
+* The four result buttons form a **2x2 grid**:
+  `Ergebnisnetz laden | Diagramme anzeigen` over `Vollständiges Log | Arbeitsverzeichnis öffnen`.
+  "Iterationen anzeigen" moved into the row with the slider.
+* **No scroll bar in the short steps**: one common `QScrollArea` around the `QStackedWidget` is
+  always as tall as the *longest* page, so every step showed a scroll bar.  Each page now has its
+  own scroll area (`self.rollen`); measured: the scroll bar range in step 1 is 0 (nothing to
+  scroll), in step 3 it scrolls.  The panel stays 234 px wide.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
