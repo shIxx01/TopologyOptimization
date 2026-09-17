@@ -448,6 +448,53 @@ try:
            % (vorher_objekte, nachher_objekte))
     panel2._zeige_schritt(1)
 
+    # Fehlerfaelle: der Lauf darf gar nicht erst starten
+    def _ohne_teil(entfernen):
+        """Neues Optimierungsobjekt, dann ein notwendiges Teil entfernen."""
+        objekt = create_topology_object(doc, analyse, "Szenario%s" % entfernen)
+        probanden = AssistantPanel(objekt)
+        probanden._zeige_schritt(3)
+        probanden.laden()
+        return objekt, probanden
+
+    analyse_objekt = [o for o in doc.Objects if o.TypeId == "Fem::FemAnalysis"][0]
+    netz_objekt = [o for o in doc.Objects
+                   if o.TypeId.startswith("Fem::FemMesh")][0]
+    solver_objekt = [o for o in doc.Objects
+                     if o.TypeId.startswith("Fem::FemSolver")][0]
+
+    analyse_objekt.removeObject(netz_objekt)
+    doc.recompute()
+    objekt, proband = _ohne_teil("OhneNetz")
+    proband._lauf_starten()
+    pruefe(proband._lauf_prozess is None and "Netz" in proband.lauf_status.text(),
+           "ohne Netz startet kein Lauf (%s)" % proband.lauf_status.text())
+    analyse_objekt.addObject(netz_objekt)
+    doc.recompute()
+
+    analyse_objekt.removeObject(solver_objekt)
+    doc.recompute()
+    objekt, proband = _ohne_teil("OhneSolver")
+    proband._lauf_starten()
+    pruefe(proband._lauf_prozess is None and "Solver" in proband.lauf_status.text(),
+           "ohne Solver startet kein Lauf (%s)" % proband.lauf_status.text())
+    analyse_objekt.addObject(solver_objekt)
+    doc.recompute()
+
+    objekt, proband = _ohne_teil("OhneInp")
+    objekt.InpFile = ""
+    proband._lauf_starten()
+    pruefe(proband._lauf_prozess is None and "Eingabedatei" in proband.lauf_status.text(),
+           "ohne Eingabedatei startet kein Lauf (%s)" % proband.lauf_status.text())
+
+    objekt, proband = _ohne_teil("OhneDesign")
+    for name in list(proband.domains):
+        proband.domains[name] = "ignore"
+    proband._speichere_domains()
+    proband._lauf_starten()
+    pruefe(proband._lauf_prozess is None and "Design" in proband.lauf_status.text(),
+           "ohne Design-Raum startet kein Lauf (%s)" % proband.lauf_status.text())
+
     panel2.reject()
     App.closeDocument(doc.Name)
     os.remove(kopie)

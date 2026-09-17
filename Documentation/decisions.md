@@ -446,6 +446,39 @@ missing.  He was right, and it was the dangerous kind of mistake:
 * Cost of the comparison: the 3D case with 84,395 volume elements needed **232 s** for one
   iteration (surface 12.8 MB `.inp`), the 2D case 6 s - a factor of about 39.
 
+## D24 - Szenario-Matrix: Fehlerfaelle, Filter, 2D/3D und der Vergleich mit Original-beso
+
+`tests/make_szenario_inp.py` erzeugt drei winzige Modelle (8 Hexaeder, 4 Dreiecke, dasselbe ohne
+`*SHELL SECTION`) mit echten Lasten; `tests/szenario_test.py` rechnet daraus 15 Szenarien - Filter
+(simple mit auto/robust/manuell, casting, alle sieben Morphologie-Filter), Zielmassen (60/30 %),
+2D-Schale und 3D-Volumen - **und dasselbe noch einmal mit dem originalen beso des Prototyps**
+(`vendor/beso`, ohne unsere Fixes).
+
+Ergebnis (gemessen):
+
+| Fall | gebuendeltes beso | originales beso |
+|---|---|---|
+| 3D simple robust / casting / Zielmasse 30 % | code 0, Massen 8000 -> 7000 | identisch |
+| 3D alle sieben Morphologie-Filter | code 0, Massen 8000 -> 7000 | identisch |
+| 2D Schale simple | code 0, Massen 1000 -> 750 | identisch |
+| 3D simple auto | **code 1**, "filter range is too small ..." | code 0 (rechnet still weiter) |
+| 3D simple manuell 1.0 (Radius < Elementabstand) | **code 1**, klare Meldung | code 0 (rechnet still weiter) |
+| 2D ohne Schalendicke | **code 1**, klare Meldung "domain_thickness is missing" | code 1 (IndexError) |
+| 2D casting mit "auto" | code 1, `NameError: filtered_dn` | code 1, derselbe Fehler |
+
+* **13 von 15 Szenarien liefern identische Massen** - die Fixes aendern die Rechnung also nicht,
+  sie machen nur Fehler sichtbar.
+* Die zwei Abweichungen sind genau die beabsichtigten Fixes: zu kleiner Filterradius und fehlende
+  Schalendicke fuehren beim gebuendelten beso zu einer **klaren Meldung**, beim Original zu einem
+  stillen Weiterrechnen (Division durch 0) bzw. zu einem IndexError.
+* **Neuer Fund (offen):** `filter_list = [["casting", "auto", vektor]]` bricht in beso mit
+  `NameError: name 'filtered_dn' is not defined` ab - `beso_main.py` setzt `filtered_dn` nur im
+  else-Zweig, benutzt es aber in `get_filter_range(...)`, wenn der Rahmen "auto" ist. Betrifft
+  beide beso-Versionen (auch upstream) - Kandidat fuer einen weiteren PR und fuer einen Schutz im
+  Addon (casting-Rahmen immer als Zahl schreiben).
+* Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
+  jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
