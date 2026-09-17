@@ -78,16 +78,38 @@ the community, `core/i18n.py` is the single place to replace by the `.ts`/`.qm` 
 
 ## D8 - Reuse an existing input file, never write it silently
 
-`fem.find_inp()` looks for the CalculiX `.inp` in three places (working directory of the
-solver, FreeCAD's `%TEMP%/fcfem_*` directories, the addon's own working directory) and
-copies a found file into the addon's working directory. Only if nothing is found does the
-user write it - with a button, not automatically.
+`fem.find_inp()` looks for the CalculiX `.inp` in three places (the FEM working directory
+of the solver, FreeCAD's `%TEMP%/fcfem_*` directories, the addon's own working directory
+of an older version) and copies a found file into the FEM working directory. Only if
+nothing is found does the user write it - with a button, not automatically.
 
 *Reason (user request):* a file that was already written by the solver panel must not be
 written a second time (redundant work). And writing it takes time - measured 2.3 s for
 41,666 C3D10 elements - while FreeCAD is blocked; doing that silently when a dialog opens
 looks like a freeze. The dialog now only looks around and says what is missing; the step is
 called "Initialize" because it prepares the analysis case (input file plus element sets).
+
+## D10 - The files live in the FEM working directory of the solver
+
+`fem.arbeitsordner()` asks FreeCAD (`femtools.femutils.get_pref_working_dir()`) where the
+solver would write, and uses that directory - so analysis, input file and the iteration
+files of the optimizer sit together, and the user setting (temporary / beside the document
+/ custom) is honoured. The directory is stored in the document object (`WorkingDir`) and
+reused, because `get_temp_dir()` builds a new directory on **every** call (measured - it
+does not cache anything).
+
+*Reason (user request):* the optimization object is a child of the FEM analysis, so its
+files belong where the FEM files are. Before, the addon used a directory of its own under
+`%TEMP%/TopoOpt`, which looked like a second, unrelated place.
+
+## D11 - Localized texts: English source, German dictionary
+
+See D7.  Additionally: the header line of the assistant lists the analysis case
+(`Analysis`, `Mesh`, `Solver`) and shows missing parts in red, while the status line is
+green as soon as everything is present, orange while the user has to act and red on errors.
+
+*Reason (user request):* a hint text that simply disappears hides the information; colours
+show the state at a glance.
 
 ## D9 - All tests use a self made test document
 

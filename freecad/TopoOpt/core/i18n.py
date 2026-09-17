@@ -84,6 +84,12 @@ DEUTSCH = {
         "Schliessen",
     "Working directory of the solver":
         "Arbeitsordner des Solvers",
+    "FEM working directory of the solver":
+        "FEM-Arbeitsordner des Solvers",
+    "another FEM working directory":
+        "ein anderer FEM-Arbeitsordner",
+    "own working directory (old version)":
+        "eigener Arbeitsordner (alte Fassung)",
     "FEM working directory of FreeCAD":
         "FEM-Arbeitsordner von FreeCAD",
     "Working directory of TopoOpt":

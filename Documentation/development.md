@@ -88,3 +88,22 @@ straight away.
   used - test the pure functions instead.
 * Deleting an analysis keeps its children (they are only removed from the group), so a
   test document can be cleaned up without losing the optimization object.
+
+## Two traps of the FreeCAD script interpreter (measured)
+
+1. **`App.openDocument()` in a start script makes FreeCAD run the whole script a second
+   time** (same process, milliseconds later, verified with timestamps written from the
+   script). A test that saves and reloads a document therefore runs twice - once with the
+   document, once without - and results that depend on leftovers become flaky. For a
+   persistence check, read the saved file instead (open it as a zip archive and look at
+   `Document.xml`).
+2. **`sys.exit()` output is lost when stdout is redirected** AND the script may be re-run:
+   `print(..., flush=True)` and `os._exit(code)` at the end are the safe way (see
+   `tests/headless_test.py`).
+
+## Test data must be unique per run
+
+`femutils.get_temp_dir()` creates a **new** directory on every call (it does not cache
+anything), and a FreeCAD start script may run twice. Test fixtures therefore use a unique
+name per run and an isolated directory (`tempfile.mkdtemp`), and they clean up after
+themselves.

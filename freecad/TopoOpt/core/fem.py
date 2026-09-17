@@ -39,10 +39,11 @@ def find_materials(doc):
 
 
 def run_dir(doc_name, base_name):
-    """Working directory of the optimization - without spaces, inside temp.
+    """Fallback working directory - without spaces, inside temp.
 
     CalculiX cuts the job name at the first space, so a directory with spaces
-    would silently produce a 0 byte .dat file.
+    would silently produce a 0 byte .dat file.  Normally the FEM working
+    directory of the solver is used (see arbeitsordner()).
     """
     root = os.path.join(tempfile.gettempdir(), "TopoOpt")
     sicher = re.sub(r"[^A-Za-z0-9_.-]", "_", "%s_%s" % (doc_name, base_name))
@@ -51,33 +52,68 @@ def run_dir(doc_name, base_name):
     return pfad
 
 
-def find_inp(solver, mesh, doc_name):
+def arbeitsordner(solver, doc_name="TopoOpt", mesh=None, gemerkt=""):
+    """The working directory the FEM workbench uses for this solver.
+
+    The optimization object is a child of the FEM analysis, so its files belong
+    next to the FEM files: FreeCAD's own function is used, which honours the user
+    setting (temporary / beside the document / custom).
+
+    `gemerkt` is the directory stored in the document object from an earlier run.
+    It is used when it still exists, because FreeCAD's get_temp_dir() builds a new
+    directory on every call (measured: it does not cache) - without this the files
+    would end up in a different directory each time the dialog is opened.
+    """
+    if gemerkt and os.path.isdir(gemerkt):
+        return gemerkt
+
+    from femtools import femutils
+
+    pfad = ""
+    try:
+        pfad = femutils.get_pref_working_dir(solver)
+    except Exception:
+        # e.g. MustSaveError when the user wants the directory beside an
+        # unsaved document
+        pfad = ""
+    if not pfad:
+        try:
+            pfad = femutils.get_temp_dir(solver)
+        except Exception:
+            pfad = ""
+    if not pfad:
+        pfad = run_dir(doc_name, mesh.Name if mesh else "modell")
+    os.makedirs(pfad, exist_ok=True)
+    return pfad
+
+
+def find_inp(solver, mesh, doc_name, gemerkt=""):
     """Look for an input file that already exists. Returns (path, source) or (None, "").
 
     If the user ran the analysis before (solver panel: "Write .inp file"), the
     file is already there and does not have to be written again:
 
-    1. working directory of the solver (where FreeCAD writes it),
-    2. FreeCAD's own FEM working directories (%TEMP%/fcfem_*), newest first,
-    3. a working directory this addon used in an earlier session.
+    1. the FEM working directory of the solver (where FreeCAD writes it),
+    2. FreeCAD's other FEM working directories (%TEMP%/fcfem_*), newest first,
+    3. a working directory this addon used in an earlier version.
     """
     if mesh is None:
         return None, ""
     dateiname = "%s.inp" % mesh.Name
 
-    arbeitsordner = getattr(solver, "WorkingDirectory", "") or ""
-    if arbeitsordner and os.path.isdir(arbeitsordner):
-        pfad = os.path.join(arbeitsordner, dateiname)
-        if os.path.isfile(pfad):
-            return pfad, "solver"
+    ordner = arbeitsordner(solver, doc_name, mesh, gemerkt)
+    pfad = os.path.join(ordner, dateiname)
+    if os.path.isfile(pfad):
+        return pfad, "fem"
 
     kandidaten = []
-    for ordner in glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*")):
-        pfad = os.path.join(ordner, dateiname)
-        if os.path.isfile(pfad):
+    for weiterer in glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*")):
+        pfad = os.path.join(weiterer, dateiname)
+        if os.path.isfile(pfad) and os.path.abspath(pfad) != os.path.abspath(
+                os.path.join(ordner, dateiname)):
             kandidaten.append(pfad)
     if kandidaten:
-        return max(kandidaten, key=os.path.getmtime), "freecad"
+        return max(kandidaten, key=os.path.getmtime), "other"
 
     pfad = os.path.join(run_dir(doc_name, mesh.Name), dateiname)
     if os.path.isfile(pfad):
@@ -85,14 +121,14 @@ def find_inp(solver, mesh, doc_name):
     return None, ""
 
 
-def uebernehme_inp(quelle, doc_name, mesh):
-    """Copy an existing input file into the working directory of the optimization.
+def uebernehme_inp(quelle, solver, doc_name, mesh, gemerkt=""):
+    """Copy an existing input file into the FEM working directory of the solver.
 
     The optimizer writes its iteration files next to the input file, so they
-    belong together in one directory - and FreeCAD's own directory stays
+    belong next to the FEM files - and the directory the file came from stays
     untouched.  Returns the path of the copy.
     """
-    ziel = os.path.join(run_dir(doc_name, mesh.Name), "%s.inp" % mesh.Name)
+    ziel = os.path.join(arbeitsordner(solver, doc_name, mesh, gemerkt), "%s.inp" % mesh.Name)
     if os.path.abspath(quelle) != os.path.abspath(ziel):
         shutil.copyfile(quelle, ziel)
     return ziel
@@ -124,9 +160,16 @@ def write_inp(analysis, solver, mesh, target_dir):
     return fem.inp_file_name
 
 
-def erzeuge_inp(analysis, solver, mesh, doc_name):
-    """Write a new input file into the working directory. Returns (path, seconds)."""
-    ziel = run_dir(doc_name, mesh.Name)
+def erzeuge_inp(analysis, solver, mesh, doc_name, gemerkt=""):
+    """Write a new input file into the FEM working directory. Returns (path, seconds).
+
+    FreeCAD creates the directory if it does not exist yet (it is the same
+    directory the solver would use), so the files of the optimization sit next to
+    the FEM files.
+    """
+    ziel = arbeitsordner(solver, doc_name, mesh, gemerkt)
+    if KEIN_LEERZEICHEN.search(os.path.abspath(ziel)):
+        raise ValueError("Der Arbeitsordner darf keine Leerzeichen enthalten: %s" % ziel)
     start = time.time()
     pfad = write_inp(analysis, solver, mesh, ziel)
     return pfad, time.time() - start

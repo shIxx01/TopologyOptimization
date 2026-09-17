@@ -17,11 +17,16 @@ SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
 
 # where a found input file came from (keys used by fem.find_inp)
 QUELLTEXTE = {
-    "solver": "Working directory of the solver",
-    "freecad": "FEM working directory of FreeCAD",
-    "own": "Working directory of TopoOpt",
+    "fem": "FEM working directory of the solver",
+    "other": "another FEM working directory",
+    "own": "own working directory (old version)",
     "written": "written",
 }
+
+# colours of the status line
+FARBE_FEHLER = "#b04040"      # something is wrong
+FARBE_AUFTRAG = "#b07000"     # the user has to do something
+FARBE_OK = "#2e7d32"          # everything is ready
 _aktive_panels = {}          # Panel-Instanzen am Leben halten (sonst raeumt der GC sie ab)
 
 
@@ -165,31 +170,33 @@ class AssistantPanel:
         if self.analyse is None:
             self._setze_status(uebersetze("No FEM analysis found. Please put the object into an "
                                            "analysis (active analysis) or restore the analysis."),
-                               fehler=True)
+                               "fehler")
             return
-        self.obj.WorkingDir = fem.run_dir(self.obj.Document.Name,
-                                          self.netz.Name if self.netz else "model")
         if self.netz is None or self.solver is None:
             self._setze_status(uebersetze("The analysis needs a mesh and a solver (FEM workbench: "
-                                           "create mesh and solver)."), fehler=True)
+                                           "create mesh and solver)."), "fehler")
             return
+        self.obj.WorkingDir = fem.arbeitsordner(self.solver, self.obj.Document.Name, self.netz,
+                                                gemerkt=self.obj.WorkingDir)
 
-        pfad, quelle = fem.find_inp(self.solver, self.netz, self.obj.Document.Name)
+        pfad, quelle = fem.find_inp(self.solver, self.netz, self.obj.Document.Name,
+                                    gemerkt=self.obj.WorkingDir)
         if not pfad:
             self._uebernehme_inp("", "")
             self._setze_status(uebersetze("There is no CalculiX input file for the analysis '%s' "
                                            "yet. Click 'Write input file' so that the element sets "
-                                           "can be read.") % self.analyse.Label)
+                                           "can be read.") % self.analyse.Label, "auftrag")
             return
 
-        kopie = fem.uebernehme_inp(pfad, self.obj.Document.Name, self.netz)
+        kopie = fem.uebernehme_inp(pfad, self.solver, self.obj.Document.Name, self.netz,
+                                   gemerkt=self.obj.WorkingDir)
         self._uebernehme_inp(kopie, quelle)
         typen = ", ".join(elset_reader.element_types(kopie)) or "?"
         self._setze_status(uebersetze("Input file used (source: %s). %d element set(s), element "
                                        "type %s. The design space is optimized, the non-design "
                                        "space is kept.")
                            % (uebersetze(QUELLTEXTE.get(quelle, quelle)),
-                              len(self.elsets), typen))
+                              len(self.elsets), typen), "ok")
 
     def _uebernehme_inp(self, pfad, quelle):
         """Set the input file in the object and fill the table from it."""
@@ -251,28 +258,30 @@ class AssistantPanel:
         """Write a new input file - only on an explicit click (can take seconds)."""
         if self.analyse is None or self.netz is None or self.solver is None:
             self._setze_status(uebersetze("Without analysis, mesh and solver no input file can "
-                                           "be written."), fehler=True)
+                                           "be written."), "fehler")
             return
         self.knopf_inp.setEnabled(False)
         self._setze_status(uebersetze("Writing the CalculiX input file from the FEM model ... "
-                                      "FreeCAD is blocked while it runs."))
+                                      "FreeCAD is blocked while it runs."), "info")
         try:
             pfad, dauer = fem.erzeuge_inp(self.analyse, self.solver, self.netz,
-                                          self.obj.Document.Name)
+                                          self.obj.Document.Name, gemerkt=self.obj.WorkingDir)
         except Exception as exc:
             self._setze_status(uebersetze("The input file could not be written: %s") % exc,
-                               fehler=True)
+                               "fehler")
             self.knopf_inp.setEnabled(True)
             return
         self._uebernehme_inp(pfad, "written")
         typen = ", ".join(elset_reader.element_types(pfad)) or "?"
         self._setze_status(uebersetze("Input file written in %.1f s. %d element set(s), "
-                                       "element type %s.") % (dauer, len(self.elsets), typen))
+                                       "element type %s.") % (dauer, len(self.elsets), typen), "ok")
         self.knopf_inp.setEnabled(True)
 
-    def _setze_status(self, text, fehler=False):
+    def _setze_status(self, text, art="info"):
+        """Status line: red for problems, orange while the user has to act, green when ready."""
         self.status.setText(text)
-        self.status.setStyleSheet("color: #b04040;" if fehler else "")
+        farbe = {"fehler": FARBE_FEHLER, "auftrag": FARBE_AUFTRAG, "ok": FARBE_OK}.get(art, "")
+        self.status.setStyleSheet("color: %s;" % farbe if farbe else "")
         QtWidgets.QApplication.processEvents()
 
     # ------------------------------------------------------ Task-Panel-API

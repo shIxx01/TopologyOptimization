@@ -26,9 +26,16 @@ def pruefe(bedingung, text):
 
 
 def beenden(code):
+    """Leave the process with a status code.
+
+    os._exit() and not sys.exit(): FreeCAD catches SystemExit from a script and
+    runs the script a second time (measured - the output appeared twice), which
+    makes a test unrepeatable.  The output buffers are flushed first because
+    os._exit() does not do that.
+    """
     sys.stdout.flush()
     sys.stderr.flush()
-    sys.exit(code)
+    os._exit(code)
 
 
 try:
@@ -58,25 +65,25 @@ analysis.removeObject(obj)
 pruefe(find_analysis(obj) is analysis, "find_analysis findet sie auch auszerhalb ueber den Namen")
 analysis.addObject(obj)
 
-# Persistenz: speichern, neu laden, Proxy und Eigenschaften pruefen
+# Persistenz: speichern und die gespeicherte Datei pruefen.
+# App.openDocument() wird hier bewusst NICHT benutzt: FreeCAD fuehrt ein
+# Startskript danach erneut aus (gleicher Prozess, gemessen) - das macht einen
+# Test unberechenbar.  Siehe Documentation/development.md.
 pfad = os.path.join(tempfile.gettempdir(), "topoopt_headless_test.FCStd")
 if os.path.exists(pfad):
     os.remove(pfad)
+obj.Domains = ["TestSet|design"]
 doc.saveAs(pfad)
 App.closeDocument(doc.Name)
 
-doc2 = App.openDocument(pfad)
-geladen = doc2.getObject("TopologieOptimierung")
-pruefe(geladen is not None, "Objekt ist nach dem Laden wieder da")
-if geladen is not None:
-    pruefe(type(geladen.Proxy).__name__ == "TopologyObject", "Proxy ist nach dem Laden gesetzt")
-    pruefe(geladen.AnalysisName == "Analysis", "AnalysisName ueberlebt das Speichern")
-    analyse_geladen = find_analysis(geladen)
-    pruefe(analyse_geladen is not None and analyse_geladen.Name == "Analysis",
-           "find_analysis findet die Analyse nach dem Laden")
-    pruefe(geladen.Name in [o.Name for o in analyse_geladen.Group],
-           "Objekt haengt nach dem Laden wieder in der Analyse")
-App.closeDocument(doc2.Name)
+import zipfile  # noqa: E402
+
+with zipfile.ZipFile(pfad) as archiv:
+    xml = archiv.read("Document.xml").decode("utf8", "ignore")
+pruefe('name="TopologieOptimierung"' in xml, "Objekt steht in der gespeicherten Datei")
+pruefe("AnalysisName" in xml and 'Analysis"' in xml, "Analyse-Name ist gespeichert")
+pruefe("Domains" in xml and "TestSet|design" in xml, "Rollen sind gespeichert")
+pruefe("TopologyObject" in xml, "Proxy-Klasse (TopologyObject) ist gespeichert")
 os.remove(pfad)
 
 # --- Element-Sets und Rollen (reine Logik, ohne Dokument) -------------------
@@ -111,42 +118,59 @@ zurueck = dom.parse_domains(gespeichert)
 pruefe(zurueck == {"A": dom.DESIGN, "B": dom.NON_DESIGN}, "Rollen werden wieder eingelesen")
 
 # --- Eingabedatei finden (Suchreihenfolge) ---------------------------------
+import shutil as _shutil  # noqa: E402
 import tempfile as _tempfile  # noqa: E402
+import uuid as _uuid  # noqa: E402
 from freecad.TopoOpt.core import fem as fem_core  # noqa: E402
 
 doc3 = App.newDocument("TopoOptSuchTest")
-dummy_mesh = doc3.addObject("App::FeaturePython", "SuchMesh")
+# a name per run: FreeCAD may run the script twice (see the note about
+# App.openDocument() in Documentation/development.md), so nothing may collide
+dummy_mesh = doc3.addObject("App::FeaturePython",
+                            "SuchMesh_%s" % _uuid.uuid4().hex[:8])
 dummy_solver = doc3.addObject("App::FeaturePython", "SuchSolver")
-
-pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(pfad is None, "ohne Datei wird nichts gefunden")
-
-# 1. Arbeitsordner des Solvers hat Vorrang
-ordner_solver = os.path.join(_tempfile.gettempdir(), "fcfem_topoopt_test")
-os.makedirs(ordner_solver, exist_ok=True)
 dummy_solver.addProperty("App::PropertyString", "WorkingDirectory", "Test", "test")
-dummy_solver.WorkingDirectory = ordner_solver
-with open(os.path.join(ordner_solver, "SuchMesh.inp"), "w") as fh:
-    fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
-pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "solver", "Solver-Arbeitsordner wird zuerst geprueft")
+dummy_solver.addProperty("App::PropertyString", "WorkingDir", "Test", "test")
+dateiname = "%s.inp" % dummy_mesh.Name
+ordner = _tempfile.mkdtemp(prefix="fcfem_topoopt_test_")
+ordner2 = _tempfile.mkdtemp(prefix="fcfem_topoopt_other_")
 
-# 2. ohne Solver-Arbeitsordner: FreeCADs FEM-Arbeitsordner (fcfem_*)
-dummy_solver.WorkingDirectory = ""
-pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "freecad", "FreeCAD-Arbeitsordner wird gefunden")
+pruefe(fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest", gemerkt=ordner)[0] is None,
+       "ohne Datei wird nichts gefunden")
 
-# 3. nur der eigene Arbeitsordner, und der wird kopiert
-os.remove(os.path.join(ordner_solver, "SuchMesh.inp"))
-eigener = fem_core.run_dir("TopoOptTest", "SuchMesh")
-with open(os.path.join(eigener, "SuchMesh.inp"), "w") as fh:
+# 1. der (gemerkte) FEM-Arbeitsordner wird verwendet
+pruefe(fem_core.arbeitsordner(dummy_solver, "TopoOptTest", dummy_mesh, gemerkt=ordner) == ordner,
+       "gemerkter FEM-Arbeitsordner wird verwendet")
+
+with open(os.path.join(ordner, dateiname), "w") as fh:
     fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
-pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "own", "eigener Arbeitsordner wird gefunden")
-pruefe(fem_core.datei_info(pfad).startswith("0.0 kB"), "Dateiinfo nennt Groesse (%s)"
-       % fem_core.datei_info(pfad))
-os.remove(os.path.join(eigener, "SuchMesh.inp"))
-os.rmdir(ordner_solver)
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest", gemerkt=ordner)
+pruefe(quelle == "fem", "Datei im FEM-Arbeitsordner wird gefunden")
+pruefe(os.path.dirname(pfad) == ordner, "der FEM-Arbeitsordner wird verwendet")
+
+# 2. Datei nur in einem anderen FEM-Arbeitsordner
+os.remove(os.path.join(ordner, dateiname))
+with open(os.path.join(ordner2, dateiname), "w") as fh:
+    fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest", gemerkt=ordner)
+pruefe(quelle == "other", "anderer FEM-Arbeitsordner wird gefunden")
+kopie = fem_core.uebernehme_inp(pfad, dummy_solver, "TopoOptTest", dummy_mesh, gemerkt=ordner)
+pruefe(os.path.dirname(kopie) == ordner and os.path.isfile(kopie),
+       "gefundene Datei wird in den FEM-Arbeitsordner kopiert")
+pruefe(fem_core.datei_info(kopie).startswith("0.0 kB"), "Dateiinfo nennt Groesse (%s)"
+       % fem_core.datei_info(kopie))
+
+# 3. nur der eigene (alte) Arbeitsordner
+os.remove(os.path.join(ordner, dateiname))
+os.remove(os.path.join(ordner2, dateiname))
+eigener = fem_core.run_dir("TopoOptTest", dummy_mesh.Name)
+with open(os.path.join(eigener, dateiname), "w") as fh:
+    fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest", gemerkt=ordner)
+pruefe(quelle == "own", "eigener Arbeitsordner wird als letztes gefunden")
+_shutil.rmtree(ordner, ignore_errors=True)
+_shutil.rmtree(ordner2, ignore_errors=True)
+_shutil.rmtree(eigener, ignore_errors=True)
 App.closeDocument(doc3.Name)
 
 # --- Uebersetzung (englische Quelle, deutsche Uebersetzung) -----------------
