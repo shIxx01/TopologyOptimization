@@ -124,6 +124,27 @@ try:
     pruefe(any(e.startswith(erster + "|") and "non_design" in e for e in obj.Domains),
            "Aenderung in der Tabelle landet sofort im Objekt")
 
+    # Schritt 2: Parameter
+    panel._zeige_schritt(2)
+    pruefe(panel.seiten.currentIndex() == 1, "Schritt 2 zeigt die Parameter-Seite")
+    pruefe(panel.feld_masse.value() == 40, "Zielmasse zeigt 40 %% (%d)" % panel.feld_masse.value())
+    pruefe(panel.combo_basis.currentData() == "stiffness",
+           "Optimierungsziel steht auf stiffness (%s)" % panel.combo_basis.currentData())
+    panel.slider_masse.setValue(30)
+    pruefe(panel.feld_masse.value() == 30, "Zahlenfeld folgt dem Schieberegler")
+    pruefe(abs(obj.MassGoalRatio - 0.30) < 1e-9,
+           "Schieberegler schreibt die Zielmasse ins Objekt (%.3f)" % obj.MassGoalRatio)
+    panel.feld_kerne.setValue(4)
+    pruefe(obj.CpuCores == 4, "Kerne landen im Objekt (%d)" % obj.CpuCores)
+    panel.feld_iterationen.setText("25")
+    panel._parameter_geaendert()
+    pruefe(obj.IterationsLimit == "25", "Iterationsgrenze landet im Objekt (%s)" % obj.IterationsLimit)
+    panel.feld_iterationen.setText("")
+    panel._parameter_geaendert()
+    pruefe(obj.IterationsLimit == "auto", "leeres Feld wird wieder 'auto'")
+    panel._zeige_schritt(1)
+    pruefe(panel.seiten.currentIndex() == 0, "zurueck zu Schritt 1")
+
     panel.reject()
     pruefe(assist.panel_for(obj.Name) is None, "Assistent wurde geschlossen (reject)")
 

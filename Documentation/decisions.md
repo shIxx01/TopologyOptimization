@@ -111,6 +111,31 @@ green as soon as everything is present, orange while the user has to act and red
 *Reason (user request):* a hint text that simply disappears hides the information; colours
 show the state at a glance.
 
+## D12 - The parameters are properties of the document object
+
+Every parameter of step 2 is a property of the optimization object (mass goal ratio,
+optimization base, iteration limit, tolerance, cores, speed of the mass change, filters,
+save interval, result format), so the settings travel inside the `.FCStd` file and are
+visible in the property editor. The default values are the ones beso ships in
+`beso_conf.py` (0.4 / stiffness / auto / 1e-3 / 0 / normal / [["simple", "auto"]] / 1 /
+"inp vtk") - nothing was invented.
+
+*Reason:* the assistant must hand the settings to beso later (step 3 writes the
+`beso_conf.py` for the run), and a user who stores a document expects the settings to be
+in it.  Choices are `App::PropertyEnumeration`, so FreeCAD offers them as a drop-down.
+
+The three speed settings map to the `mass_addition_ratio`/`mass_removal_ratio` pairs of the
+beso GUI slider (1 %/2 %, 1.5 %/3 %, 3 %/6 %).
+
+beso has **no symmetry option** - the closest thing is the "casting" filter with a
+direction vector (it keeps the part demouldable in one direction).
+
+## D13 - One page per step
+
+The assistant keeps one page per step in a `QStackedWidget` and the buttons of the step
+bar switch between them; steps that are not built yet keep a placeholder page and their
+button stays disabled.  So a half-built step is never reachable but also never hidden.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

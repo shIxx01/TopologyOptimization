@@ -102,6 +102,64 @@ DEUTSCH = {
         "Dauert bei feinen Netzen einige Sekunden, FreeCAD ist so lange blockiert.",
     "no file yet":
         "noch keine Datei",
+    "Target mass":
+        "Zielmasse",
+    "How much of the material stays: 40 % means the optimized part keeps about 40 % of its mass.":
+        "Wie viel vom Material \u00fcbrig bleibt: 40 % hei\u00dft, das optimierte Bauteil beh\u00e4lt "
+        "etwa 40 % seiner Masse.",
+    "Optimization":
+        "Optimierung",
+    "What is optimized":
+        "Was wird optimiert",
+    "Stiffness - the part becomes as stiff as possible (usual)":
+        "Steifigkeit - das Bauteil wird so steif wie m\u00f6glich (\u00fcblich)",
+    "Buckling - the part becomes resistant against buckling":
+        "Knickung - das Bauteil wird widerstandsf\u00e4hig gegen Knicken",
+    "Heat conduction - the heat flows as well as possible":
+        "W\u00e4rmeleitung - die W\u00e4rme flie\u00dft so gut wie m\u00f6glich",
+    "Failure index - stresses stay below a limit":
+        "Versagenskriterium - Spannungen bleiben unter einer Grenze",
+    "Maximum iterations":
+        "Maximale Iterationen",
+    "'auto' lets beso estimate the number of iterations, a number stops after it.":
+        "\u201eauto\u201c l\u00e4sst beso die Anzahl der Iterationen sch\u00e4tzen, eine Zahl stoppt "
+        "danach.",
+    "Stop tolerance":
+        "Abbruch-Toleranz",
+    "The optimization stops when the mean stress changes less than this value in the last 5 iterations (beso: 0.001).":
+        "Die Optimierung endet, wenn sich die mittlere Spannung in den letzten 5 Iterationen um "
+        "weniger als dieser Wert \u00e4ndert (beso: 0,001).",
+    "Material change per iteration":
+        "Material\u00e4nderung pro Iteration",
+    "gentle (1 % / 2 % per iteration)":
+        "sanft (1 % / 2 % pro Iteration)",
+    "normal (1.5 % / 3 % per iteration)":
+        "normal (1,5 % / 3 % pro Iteration)",
+    "fast (3 % / 6 % per iteration)":
+        "schnell (3 % / 6 % pro Iteration)",
+    "How much material beso adds or removes per iteration.":
+        "Wie viel Material beso pro Iteration zuf\u00fcgt oder wegnimmt.",
+    "Processor cores":
+        "Prozessorkerne",
+    "Cores for the solver; 0 uses all of them.":
+        "Kerne f\u00fcr den Solver; 0 nutzt alle.",
+    "Result files":
+        "Ergebnisdateien",
+    "Save every n-th iteration":
+        "Jede n-te Iteration speichern",
+    "0 saves only the final result. Every saved iteration needs disk space (a fine mesh can need 100 MB and more).":
+        "0 speichert nur das Endergebnis. Jede gespeicherte Iteration braucht Platz auf der "
+        "Festplatte (ein feines Netz kann 100 MB und mehr brauchen).",
+    "Format of the result meshes":
+        "Format der Ergebnis-Netze",
+    "Prepare the analysis case: CalculiX input file and element sets":
+        "Analysefall vorbereiten: CalculiX-Eingabedatei und Element-Sets",
+    "Set target mass, filters and iteration limits":
+        "Zielmasse, Filter und Iterationsgrenzen einstellen",
+    "Run the optimization with CalculiX":
+        "Die Optimierung mit CalculiX rechnen",
+    "Look at the result and compare it with the FEM result":
+        "Ergebnis ansehen und mit dem FEM-Ergebnis vergleichen",
     "Close":
         "Schliessen",
     "Working directory of the solver":

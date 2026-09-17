@@ -182,6 +182,48 @@ pruefe(i18n.uebersetze("Initialize") in ("Initialize", "Initialisieren"),
        "bekannter Text wird uebersetzt oder bleibt englisch: %r" % i18n.uebersetze("Initialize"))
 pruefe(i18n.sprache() in ("", "de", "en", "fr", "es", "it"), "Sprache erkannt: %r" % i18n.sprache())
 
+# --- Parameter (Schritt 2) --------------------------------------------------
+from freecad.TopoOpt.core import params as prm  # noqa: E402
+
+pruefe(prm.mass_ratios("gentle") == (0.01, 0.02), "Massenraten 'sanft' wie in der beso-GUI")
+pruefe(prm.mass_ratios("fast") == (0.03, 0.06), "Massenraten 'schnell' wie in der beso-GUI")
+pruefe(prm.mass_ratios("unbekannt") == (0.015, 0.03), "unbekannte Stufe faellt auf 'normal'")
+pruefe(prm.parse_filters(prm.format_filters([["casting", 2.0, "(0, 0, 1)"]]))
+       == [["casting", 2.0, "(0, 0, 1)"]], "Filter werden geschrieben und gelesen")
+pruefe(prm.parse_filters("kein Python") == [["simple", "auto"]],
+       "unbrauchbarer Filtertext faellt auf beso-Standard zurueck")
+pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "auto"]],
+       "unbekannter Filtertyp wird verworfen")
+
+doc4 = App.newDocument("TopoOptParameterTest")
+analyse4 = doc4.addObject("Fem::FemAnalysis", "Analyse")
+obj4 = create_topology_object(doc4, analyse4, "TopoOpt4")
+pruefe(abs(obj4.MassGoalRatio - 0.4) < 1e-9, "Zielmasse startet bei 0,4 (beso-Standard)")
+pruefe(obj4.OptimizationBase == "stiffness", "Optimierungsziel startet mit 'stiffness'")
+pruefe(obj4.IterationsLimit == "auto", "Iterationen starten mit 'auto'")
+pruefe(abs(obj4.Tolerance - 1e-3) < 1e-12, "Toleranz startet mit 1e-3 (beso-Standard)")
+pruefe(obj4.CpuCores == 0, "Kerne starten bei 0 (alle)")
+pruefe(obj4.MassChange == "normal", "Massenänderung startet mit 'normal'")
+pruefe(obj4.SaveIterations == 1, "jede Iteration wird gespeichert (beso-Standard)")
+pruefe(obj4.ResultFormat == "inp vtk", "Ergebnisformat startet mit 'inp vtk'")
+
+obj4.MassGoalRatio = 0.3
+obj4.OptimizationBase = "buckling"
+obj4.IterationsLimit = "25"
+obj4.CpuCores = 4
+obj4.Filters = prm.format_filters([["simple", 7.5], ["casting", 2.0, "(0, 0, 1)"]])
+pfad4 = os.path.join(tempfile.gettempdir(), "topoopt_params_test.FCStd")
+doc4.saveAs(pfad4)
+App.closeDocument(doc4.Name)
+import zipfile as _zipfile  # noqa: E402
+with _zipfile.ZipFile(pfad4) as _z:
+    _xml = _z.read("Document.xml").decode("utf8", "ignore")
+pruefe('name="MassGoalRatio"' in _xml and "0.3" in _xml, "Zielmasse ist gespeichert")
+pruefe("buckling" in _xml, "Optimierungsziel ist gespeichert")
+pruefe("casting" in _xml, "Filter sind gespeichert")
+pruefe('name="CpuCores"' in _xml, "Kerne sind gespeichert")
+os.remove(pfad4)
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

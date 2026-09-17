@@ -4,6 +4,8 @@
 import FreeCAD as App
 
 from ..core.i18n import uebersetze
+from ..core.params import (BASES, DEFAULT_FILTERS, FORMATS, MASS_CHANGE,
+                           format_filters)
 
 GROUP = "TopoOpt"
 
@@ -32,6 +34,54 @@ def ensure_properties(obj):
         obj.addProperty("App::PropertyString", "InpFile", GROUP,
                         uebersetze("CalculiX input file the optimization is based on"))
         obj.setEditorMode("InpFile", 1)
+
+    # --- parameters of the optimization (step 2) ---------------------------
+    # The default values are the ones beso itself ships in beso_conf.py, the
+    # values the text of every property explains.
+    if not hasattr(obj, "MassGoalRatio"):
+        obj.addProperty("App::PropertyFloat", "MassGoalRatio", GROUP,
+                        uebersetze("Target mass as a fraction of the full mass "
+                                   "(0.4 = 40 % of the material stays)"))
+        obj.MassGoalRatio = 0.4
+    if not hasattr(obj, "OptimizationBase"):
+        obj.addProperty("App::PropertyEnumeration", "OptimizationBase", GROUP,
+                        uebersetze("What is optimized: stiffness (usual), buckling, "
+                                   "heat or failure_index"))
+        obj.OptimizationBase = list(BASES)
+        obj.OptimizationBase = "stiffness"
+    if not hasattr(obj, "IterationsLimit"):
+        obj.addProperty("App::PropertyString", "IterationsLimit", GROUP,
+                        uebersetze("Maximum number of iterations or 'auto'"))
+        obj.IterationsLimit = "auto"
+    if not hasattr(obj, "Tolerance"):
+        obj.addProperty("App::PropertyFloat", "Tolerance", GROUP,
+                        uebersetze("Stop when the mean stress changes less than this "
+                                   "value in the last 5 iterations"))
+        obj.Tolerance = 1e-3
+    if not hasattr(obj, "CpuCores"):
+        obj.addProperty("App::PropertyInteger", "CpuCores", GROUP,
+                        uebersetze("Processor cores for the solver (0 = all)"))
+        obj.CpuCores = 0
+    if not hasattr(obj, "MassChange"):
+        obj.addProperty("App::PropertyEnumeration", "MassChange", GROUP,
+                        uebersetze("How much material is added or removed per iteration"))
+        obj.MassChange = list(MASS_CHANGE)
+        obj.MassChange = "normal"
+    if not hasattr(obj, "Filters"):
+        obj.addProperty("App::PropertyString", "Filters", GROUP,
+                        uebersetze("Sensitivity filters, Python list: "
+                                   "[[type, range, domain, ...], ...]"))
+        obj.Filters = format_filters(DEFAULT_FILTERS)
+    if not hasattr(obj, "SaveIterations"):
+        obj.addProperty("App::PropertyInteger", "SaveIterations", GROUP,
+                        uebersetze("Save intermediate results every n-th iteration "
+                                   "(0 = only the final result)"))
+        obj.SaveIterations = 1
+    if not hasattr(obj, "ResultFormat"):
+        obj.addProperty("App::PropertyEnumeration", "ResultFormat", GROUP,
+                        uebersetze("File format of the resulting meshes"))
+        obj.ResultFormat = list(FORMATS)
+        obj.ResultFormat = "inp vtk"
 
 
 def read_domains(obj):

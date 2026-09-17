@@ -11,9 +11,38 @@ from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
 from ..core.i18n import uebersetze
+from ..core.params import BASES, FORMATS, MASS_CHANGE
 from ..features.topology_object import find_analysis, ensure_properties
 
 SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
+
+# steps that are built (the others show a placeholder)
+GEBAUTE_SCHRITTE = (1, 2)
+SCHRITT_TIPPS = {
+    1: "Prepare the analysis case: CalculiX input file and element sets",
+    2: "Set target mass, filters and iteration limits",
+    3: "Run the optimization with CalculiX",
+    4: "Look at the result and compare it with the FEM result",
+}
+
+# range of the target-mass slider in percent (0 and 100 % make no sense)
+MASSE_MIN = 5
+MASSE_MAX = 95
+
+# labels of the choices - the stored values are the strings beso knows
+BASIS_LABELS = {
+    "stiffness": "Stiffness - the part becomes as stiff as possible (usual)",
+    "buckling": "Buckling - the part becomes resistant against buckling",
+    "heat": "Heat conduction - the heat flows as well as possible",
+    "failure_index": "Failure index - stresses stay below a limit",
+}
+MASS_CHANGE_LABELS = {
+    "gentle": "gentle (1 % / 2 % per iteration)",
+    "normal": "normal (1.5 % / 3 % per iteration)",
+    "fast": "fast (3 % / 6 % per iteration)",
+}
+TIP_MASSE = ("How much of the material stays: 40 % means the optimized part keeps about "
+             "40 % of its mass.")
 
 # where a found input file came from (keys used by fem.find_inp)
 QUELLTEXTE = {
@@ -74,6 +103,7 @@ class AssistantPanel:
         self.netz = None
         self.solver = None
         self._geschlossen = False
+        self._schritt = 1
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(uebersetze("Topology Optimization"))
@@ -87,8 +117,14 @@ class AssistantPanel:
 
         aussen.addWidget(self._schrittleiste())
 
-        aussen.addWidget(self._inp_bereich())
-        aussen.addWidget(self._domain_tabelle(), 1)
+        # one page per step; only the steps that are built can be chosen
+        self.seiten = QtWidgets.QStackedWidget()
+        self.seiten.addWidget(self._seite_initialisieren())
+        self.seiten.addWidget(self._seite_parameter())
+        for _ in range(len(SCHRITTE) - 2):
+            self.seiten.addWidget(self._seite_platzhalter())
+        aussen.addWidget(self.seiten, 1)
+        self._zeige_schritt(1)
 
         QtCore.QTimer.singleShot(50, self.laden)
 
@@ -102,14 +138,134 @@ class AssistantPanel:
             knopf = QtWidgets.QToolButton()
             knopf.setText("%d %s" % (nummer, uebersetze(name)))
             knopf.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-            knopf.setEnabled(nummer == 1)
-            knopf.setToolTip(uebersetze("Prepare the analysis case: CalculiX input file and "
-                                        "element sets") if nummer == 1
+            knopf.setCheckable(True)
+            gebaut = nummer in GEBAUTE_SCHRITTE
+            knopf.setEnabled(gebaut)
+            knopf.setToolTip(uebersetze(SCHRITT_TIPPS.get(nummer, "")) if gebaut
                              else uebersetze("This step is not built yet."))
+            if gebaut:
+                knopf.clicked.connect(lambda _checked=False, n=nummer: self._zeige_schritt(n))
             layout.addWidget(knopf)
             self.schritt_knoepfe.append(knopf)
         layout.addStretch(1)
         return leiste
+
+    def _zeige_schritt(self, nummer):
+        """Switch to a step (page of the stack) and mark its button."""
+        self._schritt = nummer
+        self.seiten.setCurrentIndex(nummer - 1)
+        for index, knopf in enumerate(self.schritt_knoepfe, start=1):
+            knopf.setChecked(index == nummer)
+
+    def _seite_platzhalter(self):
+        seite = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(seite)
+        label = QtWidgets.QLabel(uebersetze("This step is not built yet."))
+        layout.addWidget(label)
+        layout.addStretch(1)
+        return seite
+
+    def _seite_initialisieren(self):
+        seite = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(seite)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._inp_bereich())
+        layout.addWidget(self._domain_tabelle(), 1)
+        return seite
+
+    def _seite_parameter(self):
+        """Step 2: the parameters of the optimization (defaults from beso_conf.py)."""
+        seite = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(seite)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # --- target mass -------------------------------------------------
+        rahmen = QtWidgets.QGroupBox(uebersetze("Target mass"))
+        form = QtWidgets.QGridLayout(rahmen)
+        self.slider_masse = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider_masse.setRange(MASSE_MIN, MASSE_MAX)
+        self.slider_masse.setToolTip(uebersetze(TIP_MASSE))
+        self.feld_masse = QtWidgets.QSpinBox()
+        self.feld_masse.setRange(MASSE_MIN, MASSE_MAX)
+        self.feld_masse.setSuffix(" %")
+        self.feld_masse.setToolTip(uebersetze(TIP_MASSE))
+        self.slider_masse.valueChanged.connect(self._masse_geaendert)
+        self.feld_masse.valueChanged.connect(self._masse_geaendert)
+        form.addWidget(self.slider_masse, 0, 0)
+        form.addWidget(self.feld_masse, 0, 1)
+        layout.addWidget(rahmen)
+
+        # --- the optimization itself -------------------------------------
+        rahmen = QtWidgets.QGroupBox(uebersetze("Optimization"))
+        form = QtWidgets.QGridLayout(rahmen)
+        zeile = 0
+        form.addWidget(QtWidgets.QLabel(uebersetze("What is optimized")), zeile, 0)
+        self.combo_basis = QtWidgets.QComboBox()
+        for wert in BASES:
+            self.combo_basis.addItem(uebersetze(BASIS_LABELS.get(wert, wert)), wert)
+        self.combo_basis.currentIndexChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.combo_basis, zeile, 1)
+
+        zeile += 1
+        form.addWidget(QtWidgets.QLabel(uebersetze("Maximum iterations")), zeile, 0)
+        self.feld_iterationen = QtWidgets.QLineEdit()
+        self.feld_iterationen.setToolTip(uebersetze("'auto' lets beso estimate the number of "
+                                                    "iterations, a number stops after it."))
+        self.feld_iterationen.editingFinished.connect(self._parameter_geaendert)
+        form.addWidget(self.feld_iterationen, zeile, 1)
+
+        zeile += 1
+        form.addWidget(QtWidgets.QLabel(uebersetze("Stop tolerance")), zeile, 0)
+        self.feld_toleranz = QtWidgets.QDoubleSpinBox()
+        self.feld_toleranz.setDecimals(5)
+        self.feld_toleranz.setRange(0.00001, 1.0)
+        self.feld_toleranz.setSingleStep(0.0005)
+        self.feld_toleranz.setToolTip(uebersetze("The optimization stops when the mean stress "
+                                                 "changes less than this value in the last "
+                                                 "5 iterations (beso: 0.001)."))
+        self.feld_toleranz.valueChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.feld_toleranz, zeile, 1)
+
+        zeile += 1
+        form.addWidget(QtWidgets.QLabel(uebersetze("Material change per iteration")), zeile, 0)
+        self.combo_masse_aenderung = QtWidgets.QComboBox()
+        for schluessel in MASS_CHANGE:
+            self.combo_masse_aenderung.addItem(
+                uebersetze(MASS_CHANGE_LABELS.get(schluessel, schluessel)), schluessel)
+        self.combo_masse_aenderung.setToolTip(uebersetze("How much material beso adds or "
+                                                         "removes per iteration."))
+        self.combo_masse_aenderung.currentIndexChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.combo_masse_aenderung, zeile, 1)
+
+        zeile += 1
+        form.addWidget(QtWidgets.QLabel(uebersetze("Processor cores")), zeile, 0)
+        self.feld_kerne = QtWidgets.QSpinBox()
+        self.feld_kerne.setRange(0, 128)
+        self.feld_kerne.setToolTip(uebersetze("Cores for the solver; 0 uses all of them."))
+        self.feld_kerne.valueChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.feld_kerne, zeile, 1)
+        layout.addWidget(rahmen)
+
+        # --- result files ------------------------------------------------
+        rahmen = QtWidgets.QGroupBox(uebersetze("Result files"))
+        form = QtWidgets.QGridLayout(rahmen)
+        form.addWidget(QtWidgets.QLabel(uebersetze("Save every n-th iteration")), 0, 0)
+        self.feld_speichern = QtWidgets.QSpinBox()
+        self.feld_speichern.setRange(0, 100)
+        self.feld_speichern.setToolTip(uebersetze("0 saves only the final result. Every saved "
+                                                  "iteration needs disk space (a fine mesh "
+                                                  "can need 100 MB and more)."))
+        self.feld_speichern.valueChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.feld_speichern, 0, 1)
+        form.addWidget(QtWidgets.QLabel(uebersetze("Format of the result meshes")), 1, 0)
+        self.combo_format = QtWidgets.QComboBox()
+        for wert in FORMATS:
+            self.combo_format.addItem(wert, wert)
+        self.combo_format.currentIndexChanged.connect(self._parameter_geaendert)
+        form.addWidget(self.combo_format, 1, 1)
+        layout.addWidget(rahmen)
+        layout.addStretch(1)
+        return seite
 
     def _inp_bereich(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (basis of the optimization)"))
@@ -180,6 +336,7 @@ class AssistantPanel:
         self.netz = fem.find_mesh(self.analyse) if self.analyse is not None else None
         self.solver = fem.find_solver(self.analyse) if self.analyse is not None else None
         self._setze_kopf()
+        self._fuelle_parameter()
         if self.analyse is None or self.netz is None or self.solver is None:
             # what is missing is in the header line; this hint is about the file
             self._uebernehme_inp("", "")
@@ -314,6 +471,55 @@ class AssistantPanel:
             except Exception as exc:
                 self._setze_status(uebersetze("The directory could not be opened (%s): %s")
                                    % (exc, ordner), "fehler")
+
+    # ------------------------------------------------- Schritt 2: Parameter
+    def _masse_geaendert(self, wert):
+        """Slider and spin box show the same value, the object stores the fraction."""
+        for widget in (self.slider_masse, self.feld_masse):
+            if widget.value() != wert:
+                widget.blockSignals(True)
+                widget.setValue(wert)
+                widget.blockSignals(False)
+        self._parameter_geaendert()
+
+    def _parameter_geaendert(self):
+        """Every change goes straight into the object (like the domain roles)."""
+        self.obj.MassGoalRatio = round(self.feld_masse.value() / 100.0, 4)
+        self.obj.OptimizationBase = self.combo_basis.currentData()
+        text = self.feld_iterationen.text().strip()
+        self.obj.IterationsLimit = text if text else "auto"
+        self.obj.Tolerance = self.feld_toleranz.value()
+        self.obj.MassChange = self.combo_masse_aenderung.currentData()
+        self.obj.CpuCores = self.feld_kerne.value()
+        self.obj.SaveIterations = self.feld_speichern.value()
+        self.obj.ResultFormat = self.combo_format.currentData()
+
+    def _fuelle_parameter(self):
+        """Show the parameters of the object in the widgets (without writing back)."""
+        felder = (self.slider_masse, self.feld_masse, self.combo_basis, self.feld_iterationen,
+                  self.feld_toleranz, self.combo_masse_aenderung, self.feld_kerne,
+                  self.feld_speichern, self.combo_format)
+        for feld in felder:
+            feld.blockSignals(True)
+        try:
+            prozent = int(round(float(getattr(self.obj, "MassGoalRatio", 0.4)) * 100))
+            prozent = min(max(prozent, MASSE_MIN), MASSE_MAX)
+            self.slider_masse.setValue(prozent)
+            self.feld_masse.setValue(prozent)
+            self.combo_basis.setCurrentIndex(max(
+                0, self.combo_basis.findData(getattr(self.obj, "OptimizationBase", "stiffness"))))
+            self.feld_iterationen.setText(str(getattr(self.obj, "IterationsLimit", "auto")))
+            self.feld_toleranz.setValue(min(max(float(getattr(self.obj, "Tolerance", 1e-3)),
+                                                0.00001), 1.0))
+            self.combo_masse_aenderung.setCurrentIndex(max(
+                0, self.combo_masse_aenderung.findData(getattr(self.obj, "MassChange", "normal"))))
+            self.feld_kerne.setValue(int(getattr(self.obj, "CpuCores", 0)))
+            self.feld_speichern.setValue(int(getattr(self.obj, "SaveIterations", 1)))
+            self.combo_format.setCurrentIndex(max(
+                0, self.combo_format.findData(getattr(self.obj, "ResultFormat", "inp vtk"))))
+        finally:
+            for feld in felder:
+                feld.blockSignals(False)
 
     def _setze_status(self, text, art="info"):
         """Status line: red for problems, orange while the user has to act, green when ready."""
