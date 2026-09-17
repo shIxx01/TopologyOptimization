@@ -11,9 +11,10 @@ Steps are done one at a time, each one tested before the next starts.
 
 ## Next
 
-* **Step 2 - the assistant**: task panel on the optimization object (double click and
-  edit command), step 1 = design domain and non-design domain (from FEM element sets or
-  by material), step 2 = parameters (mass goal, optimization base, filter range, tolerance),
+* **Step 2 - the assistant**: step 1 (design/non-design domains) is built: the element
+  sets are read out of the CalculiX `.inp`, collector sets (`Eall`, `Evolumes`) are hidden,
+  the role per set is stored in the document object and applied immediately.
+  Still open: step 2 = parameters (mass goal, optimization base, filter range, tolerance),
   step 3 = run, step 4 = results. Reference behaviour exists in the author's experimental
   workbench; the analysis choice step is dropped (see `decisions.md`).
 * **Step 3 - running beso**: ship a copy of the reviewed beso fork, write `beso_conf.py`,

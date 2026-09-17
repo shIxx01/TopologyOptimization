@@ -10,4 +10,4 @@ venv/
 *.FCBak
 
 # test output
-tests/gui_test_ausgabe.txt
+tests/*_ausgabe.txt

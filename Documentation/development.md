@@ -54,6 +54,23 @@ The script checks:
 * `active_analysis()` returns `None` without an active analysis and the analysis with one,
 * `command.Activated()` creates the object and it appears in `analysis.Group`.
 
+## Test 3 - assistant with a real document (GUI)
+
+The table needs a document with a FEM analysis and a mesh, so this test takes the
+path of a document and works on a copy in the temp directory:
+
+```bash
+rm -f tests/panel_test_ausgabe.txt
+("<FreeCAD>/bin/freecad.exe" "C:/.../tests/panel_test.py" "C:/.../mein.FCStd" >/dev/null 2>&1 &)
+for i in $(seq 1 60); do sleep 3; [ -f tests/panel_test_ausgabe.txt ] && break; done
+cat tests/panel_test_ausgabe.txt
+```
+
+It checks that the `.inp` is written into the working directory, that the element
+sets are listed with their sizes (collector sets `Eall`/`Evolumes` hidden), that a
+design space is suggested and that a change in the table is stored in the object
+straight away.
+
 ## Debugging notes
 
 * `App.Console.PrintMessage/PrintError` in the addon code; `init_gui.py` catches all

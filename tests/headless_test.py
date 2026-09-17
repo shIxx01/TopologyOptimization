@@ -79,6 +79,37 @@ if geladen is not None:
 App.closeDocument(doc2.Name)
 os.remove(pfad)
 
+# --- Element-Sets und Rollen (reine Logik, ohne Dokument) -------------------
+from freecad.TopoOpt.core import domains as dom        # noqa: E402
+from freecad.TopoOpt.core import elsets as elset_reader  # noqa: E402
+
+beispiel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "beispiel.inp")
+gelesen = elset_reader.read_elsets(beispiel)
+pruefe(gelesen.get("MaterialSolidSolid") == 4, "Elemente aus *ELEMENT-ELSET gelesen (4)")
+pruefe(gelesen.get("NichtDesignSolid") == 2, "zweites Set gelesen (2)")
+pruefe(gelesen.get("Eall") == 6, "Sammelset Eall gelesen (6)")
+pruefe(gelesen.get("Reihe") == 6, "GENERATE-Set gelesen (10..20 Schritt 2 = 6)")
+pruefe(gelesen.get("VerweisSet") == 4, "Set-Verweis wird aufgeloest (VerweisSet -> 4)")
+pruefe(elset_reader.element_types(beispiel) == ["C3D4"], "Elementtyp erkannt (C3D4)")
+pruefe(elset_reader.gesamt_elemente(beispiel) == 6, "Gesamtzahl der Elemente (6)")
+
+sichtbar = dom.zeige_elsets(gelesen)
+pruefe("Eall" not in sichtbar, "Sammelset wird nicht angeboten")
+pruefe(len(sichtbar) == 4, "vier Sets werden angeboten")
+
+vorschlag = dom.vorschlag(gelesen)
+pruefe(vorschlag.get("Eall") is None, "Sammelset bekommt keine Rolle")
+pruefe(set(vorschlag.values()) == {dom.IGNORE}, "bei mehreren Sets ist nichts vorbelegt")
+
+vorschlag_eins = dom.vorschlag({"MaterialSolidSolid": 4, "Eall": 4})
+pruefe(vorschlag_eins.get("MaterialSolidSolid") == dom.DESIGN,
+       "bei genau einem Set wird der Design-Raum vorbelegt")
+
+gespeichert = dom.format_domains({"B": dom.NON_DESIGN, "A": dom.DESIGN})
+pruefe(gespeichert == ["A|design", "B|non_design"], "Rollen werden stabil formatiert")
+zurueck = dom.parse_domains(gespeichert)
+pruefe(zurueck == {"A": dom.DESIGN, "B": dom.NON_DESIGN}, "Rollen werden wieder eingelesen")
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

@@ -5,7 +5,7 @@ from ..resources import icon
 
 
 class TopologyViewProvider:
-    """Icon, tooltip and (later) the assistant dialog of the object."""
+    """Icon, tooltip and the assistant dialog of the object."""
 
     def __init__(self, vobj):
         vobj.Proxy = self
@@ -19,11 +19,14 @@ class TopologyViewProvider:
         return icon("TopoOpt.svg")
 
     def setEdit(self, vobj, mode):
-        # the assistant is added in the next step - for now: do not open an editor
-        return False
+        """Double click / edit opens the assistant."""
+        from ..gui.assistant import open_assistant
+        open_assistant(vobj.Object)
+        return True
 
     def doubleClicked(self, vobj):
-        return False
+        self.setEdit(vobj, None)
+        return True
 
     def claimChildren(self):
         return []

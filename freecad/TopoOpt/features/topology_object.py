@@ -18,6 +18,23 @@ def ensure_properties(obj):
         # ("The graph must be a DAG", "still touched after recompute")
         obj.addProperty("App::PropertyString", "AnalysisName", GROUP,
                         "Name of the FEM analysis this optimization belongs to")
+    if not hasattr(obj, "Domains"):
+        obj.addProperty("App::PropertyStringList", "Domains", GROUP,
+                        "Element sets and their role: <set>|<design|non_design|ignore>")
+    if not hasattr(obj, "WorkingDir"):
+        obj.addProperty("App::PropertyString", "WorkingDir", GROUP,
+                        "Working directory of the optimization (no spaces)")
+        obj.setEditorMode("WorkingDir", 1)          # read only in the property editor
+    if not hasattr(obj, "InpFile"):
+        obj.addProperty("App::PropertyString", "InpFile", GROUP,
+                        "CalculiX input file the optimization is based on")
+        obj.setEditorMode("InpFile", 1)
+
+
+def read_domains(obj):
+    """{"elset": role} as stored in the object."""
+    from ..core.domains import parse_domains
+    return parse_domains(getattr(obj, "Domains", []))
 
 
 class TopologyObject:
