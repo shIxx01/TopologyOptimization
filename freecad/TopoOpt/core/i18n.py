@@ -80,6 +80,10 @@ DEUTSCH = {
         "Eingabedatei (.inp) neu erzeugen",
     "Open working directory":
         "Arbeitsverzeichnis \u00f6ffnen",
+    "No .inp file yet.":
+        "Keine .inp vorhanden.",
+    "Possible as soon as the analysis has a mesh and a solver.":
+        "Erst m\u00f6glich, wenn die Analyse ein Netz und einen Solver hat.",
     "Show this directory in the file manager: %s":
         "Diesen Ordner im Dateimanager anzeigen: %s",
     "There is no working directory yet.":

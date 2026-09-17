@@ -23,6 +23,10 @@ QUELLTEXTE = {
     "written": "written",
 }
 
+# tooltip of the button that writes the input file
+TIP_INP = ("Write the .inp from the FEM model (mesh, material, boundary conditions).\n"
+           "Takes a few seconds for fine meshes, FreeCAD is blocked while it runs.")
+
 # colours of the status line
 FARBE_FEHLER = "#b04040"      # something is wrong
 FARBE_AUFTRAG = "#b07000"     # the user has to do something
@@ -129,9 +133,7 @@ class AssistantPanel:
 
         # row 2: button on the left, hint on the right
         self.knopf_inp = QtWidgets.QPushButton(uebersetze("Write input file (.inp)"))
-        self.knopf_inp.setToolTip(uebersetze("Write the .inp from the FEM model (mesh, material, "
-                                             "boundary conditions).\nTakes a few seconds for fine "
-                                             "meshes, FreeCAD is blocked while it runs."))
+        self.knopf_inp.setToolTip(uebersetze(TIP_INP))
         self.knopf_inp.clicked.connect(self._inp_erzeugen)
         layout.addWidget(self.knopf_inp, 2, 0)
 
@@ -178,14 +180,10 @@ class AssistantPanel:
         self.netz = fem.find_mesh(self.analyse) if self.analyse is not None else None
         self.solver = fem.find_solver(self.analyse) if self.analyse is not None else None
         self._setze_kopf()
-        if self.analyse is None:
-            self._setze_status(uebersetze("No FEM analysis found. Please put the object into an "
-                                           "analysis (active analysis) or restore the analysis."),
-                               "fehler")
-            return
-        if self.netz is None or self.solver is None:
-            self._setze_status(uebersetze("The analysis needs a mesh and a solver (FEM workbench: "
-                                           "create mesh and solver)."), "fehler")
+        if self.analyse is None or self.netz is None or self.solver is None:
+            # what is missing is in the header line; this hint is about the file
+            self._uebernehme_inp("", "")
+            self._setze_status(uebersetze("No .inp file yet."), "auftrag")
             return
         self.obj.WorkingDir = fem.arbeitsordner(self.solver, self.obj.Document.Name, self.netz,
                                                 gemerkt=self.obj.WorkingDir)
@@ -194,9 +192,7 @@ class AssistantPanel:
                                     gemerkt=self.obj.WorkingDir)
         if not pfad:
             self._uebernehme_inp("", "")
-            self._setze_status(uebersetze("There is no CalculiX input file yet. Click "
-                                           "'Write input file (.inp)' so that the element sets can "
-                                           "be read."), "auftrag")
+            self._setze_status(uebersetze("No .inp file yet."), "auftrag")
             return
 
         kopie = fem.uebernehme_inp(pfad, self.solver, self.obj.Document.Name, self.netz,
@@ -223,6 +219,14 @@ class AssistantPanel:
         self.knopf_ordner.setToolTip(uebersetze("Show this directory in the file manager: %s")
                                      % ordner if da
                                      else uebersetze("There is no working directory yet."))
+        # writing an input file needs the whole analysis case
+        bereit = self.analyse is not None and self.netz is not None and self.solver is not None
+        self.knopf_inp.setEnabled(bereit)
+        if bereit:
+            self.knopf_inp.setToolTip(TIP_INP)
+        else:
+            self.knopf_inp.setToolTip(uebersetze("Possible as soon as the analysis has a mesh "
+                                                 "and a solver."))
 
         if not pfad or not os.path.isfile(pfad):
             self.elsets = {}

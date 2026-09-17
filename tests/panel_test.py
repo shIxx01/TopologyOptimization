@@ -134,7 +134,12 @@ try:
     log("Kopf ohne Solver: %s" % panel2.kopf.text())
     pruefe("nicht vorhanden" in panel2.kopf.text() or "not available" in panel2.kopf.text(),
            "fehlender Solver wird im Kopf gemeldet")
-    pruefe(bool(panel2.status.text()), "Hinweistext erscheint, solange etwas fehlt")
+    pruefe("inp" in panel2.status.text().lower(),
+           "der Hinweis nennt die Datei, nicht die Objekte: %s" % panel2.status.text())
+    pruefe(not panel2.knopf_inp.isEnabled(),
+           "ohne Solver laesst sich keine Eingabedatei erzeugen")
+    pruefe("Solver" in panel2.knopf_inp.toolTip(),
+           "der Knopf erklaert im Tooltip, was fehlt: %s" % panel2.knopf_inp.toolTip())
     analyse.addObject(solver_objekt)
     panel2.laden()
     log("Kopf mit Solver : %s" % panel2.kopf.text())
