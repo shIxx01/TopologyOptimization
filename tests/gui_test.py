@@ -85,6 +85,17 @@ try:
         pruefe(obj.Name in [o.Name for o in analysis.Group], "Objekt liegt in der Analyse")
         pruefe(os.path.isfile(obj.ViewObject.Proxy.getIcon()), "Objektsymbol existiert")
 
+    # der Assistent soll sich automatisch geoeffnet haben (wie bei FEM-Befehlen)
+    from freecad.TopoOpt.gui import assistant as assist
+    panel = assist.panel_for(obj.Name) if obj is not None else None
+    pruefe(panel is not None, "Assistent oeffnet sich automatisch")
+    if panel is not None:
+        ecken = panel.getStandardButtons()
+        pruefe(bool(ecken & QtWidgets.QDialogButtonBox.Ok.value), "OK-Knopf vorhanden")
+        pruefe(bool(ecken & QtWidgets.QDialogButtonBox.Close.value), "Schliessen-Knopf vorhanden")
+        panel._schliessen()
+        pruefe(assist.panel_for(obj.Name) is None, "Assistent wurde geschlossen")
+
     App.closeDocument(doc.Name)
     log("ERGEBNIS: %s" % ("OK" if not fehler else "%d FEHLER" % len(fehler)))
 except Exception:

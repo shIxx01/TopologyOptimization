@@ -54,6 +54,9 @@ class CreateOptimizationCommand:
         doc.recompute()
         App.Console.PrintMessage(uebersetze("TopoOpt: '%s' was added to the analysis '%s'.\n")
                                  % (obj.Label, analysis.Label))
+        # like the FEM commands: show the task dialog right after creating the object
+        from ..gui.assistant import open_assistant
+        open_assistant(obj)
 
     def _hint_no_analysis(self):
         from PySide import QtWidgets

@@ -51,6 +51,7 @@ try:
     import FreeCAD as App
 
     from freecad.TopoOpt.features import create_topology_object
+    from freecad.TopoOpt.gui import assistant as assist
     from freecad.TopoOpt.gui.assistant import AssistantPanel
 
     kopie = os.path.join(tempfile.gettempdir(), "TopoOpt_PanelTest.FCStd")
@@ -113,6 +114,25 @@ try:
            "Aenderung in der Tabelle landet sofort im Objekt")
 
     panel.reject()
+    pruefe(assist.panel_for(obj.Name) is None, "Assistent wurde geschlossen (reject)")
+
+    # Kopfzeile: fehlende Teile muessen gemeldet werden
+    from freecad.TopoOpt.core import fem as fem_modul
+    solver_objekt = fem_modul.find_solver(analyse)
+    analyse.removeObject(solver_objekt)
+    panel2 = AssistantPanel(obj)
+    panel2.laden()
+    log("Kopf ohne Solver: %s" % panel2.kopf.text())
+    pruefe("nicht vorhanden" in panel2.kopf.text() or "not available" in panel2.kopf.text(),
+           "fehlender Solver wird im Kopf gemeldet")
+    pruefe(bool(panel2.status.text()), "Hinweistext erscheint, solange etwas fehlt")
+    analyse.addObject(solver_objekt)
+    panel2.laden()
+    log("Kopf mit Solver : %s" % panel2.kopf.text())
+    pruefe("nicht vorhanden" not in panel2.kopf.text()
+           and "not available" not in panel2.kopf.text(),
+           "mit vollstaendiger Analyse ist keine rote Meldung mehr da")
+    panel2.reject()
     App.closeDocument(doc.Name)
     os.remove(kopie)
     log("ERGEBNIS: %s" % ("OK" if not fehler else "%d FEHLER" % len(fehler)))

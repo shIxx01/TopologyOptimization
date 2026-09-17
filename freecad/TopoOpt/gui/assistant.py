@@ -63,6 +63,7 @@ class AssistantPanel:
         self.analyse = None
         self.netz = None
         self.solver = None
+        self._geschlossen = False
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(uebersetze("Topology Optimization"))
@@ -70,7 +71,8 @@ class AssistantPanel:
         aussen.setContentsMargins(8, 8, 8, 8)
         aussen.setSpacing(6)
 
-        self.kopf = QtWidgets.QLabel(uebersetze("Analysis: %s   |   Mesh: %s") % ("-", "-"))
+        self.kopf = QtWidgets.QLabel("")
+        self.kopf.setTextFormat(QtCore.Qt.RichText)
         aussen.addWidget(self.kopf)
 
         aussen.addWidget(self._schrittleiste())
@@ -140,21 +142,31 @@ class AssistantPanel:
         return rahmen
 
     # --------------------------------------------------------------- Daten
+    def _setze_kopf(self):
+        """Header line: every part of the analysis case, missing ones in red."""
+        teile = []
+        for titel, wert in (("Analysis", self.analyse), ("Mesh", self.netz), ("Solver", self.solver)):
+            if wert is None:
+                teile.append('<span style="color:#b04040">%s: %s</span>'
+                             % (uebersetze(titel), uebersetze("not available")))
+            else:
+                teile.append("%s: %s" % (uebersetze(titel), wert.Label))
+        self.kopf.setText(" &nbsp;|&nbsp; ".join(teile))
+
     def laden(self):
         """Look at analysis, mesh and an existing input file. Writes nothing."""
         QtWidgets.QApplication.processEvents()
         self._setze_status(uebersetze("Looking for the analysis, the mesh and an existing "
                                       "CalculiX input file ..."))
         self.analyse = find_analysis(self.obj)
+        self.netz = fem.find_mesh(self.analyse) if self.analyse is not None else None
+        self.solver = fem.find_solver(self.analyse) if self.analyse is not None else None
+        self._setze_kopf()
         if self.analyse is None:
             self._setze_status(uebersetze("No FEM analysis found. Please put the object into an "
                                            "analysis (active analysis) or restore the analysis."),
                                fehler=True)
             return
-        self.netz = fem.find_mesh(self.analyse)
-        self.solver = fem.find_solver(self.analyse)
-        self.kopf.setText(uebersetze("Analysis: %s   |   Mesh: %s")
-                          % (self.analyse.Label, self.netz.Label if self.netz else "-"))
         self.obj.WorkingDir = fem.run_dir(self.obj.Document.Name,
                                           self.netz.Name if self.netz else "model")
         if self.netz is None or self.solver is None:
@@ -265,10 +277,22 @@ class AssistantPanel:
 
     # ------------------------------------------------------ Task-Panel-API
     def getStandardButtons(self):
-        return QtWidgets.QDialogButtonBox.Close
+        # .value because an int is expected (PySide6: the enum cannot be cast with int())
+        return QtWidgets.QDialogButtonBox.Ok.value | QtWidgets.QDialogButtonBox.Close.value
+
+    def _schliessen(self):
+        """Close the task dialog (FreeCAD calls accept()/reject() but does not close)."""
+        if self._geschlossen:
+            return
+        self._geschlossen = True
+        _aktive_panels.pop(self.obj.Name, None)
+        try:
+            Gui.Control.closeDialog()
+        except Exception as exc:
+            App.Console.PrintWarning("TopoOpt: dialog could not be closed (%s)\n" % exc)
 
     def accept(self):
-        _aktive_panels.pop(self.obj.Name, None)
+        self._schliessen()
 
     def reject(self):
-        _aktive_panels.pop(self.obj.Name, None)
+        self._schliessen()

@@ -32,6 +32,14 @@ DEUTSCH = {
     # dialog
     "Analysis: %s   |   Mesh: %s":
         "Analyse: %s   |   Netz: %s",
+    "Analysis":
+        "Analyse",
+    "Mesh":
+        "Netz",
+    "Solver":
+        "Solver",
+    "not available":
+        "nicht vorhanden",
     "Initialize":
         "Initialisieren",
     "Parameters":
