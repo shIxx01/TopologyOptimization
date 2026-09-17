@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
+
+    <!-- Manifest read by the FreeCAD Addon Manager.
+         See https://freecad.github.io/Addon-Academy/Topics/Structuring/Manifest/ -->
+
+    <!--[ Info ]-->
+
+    <name>TopoOpt</name>
+    <description>Topology optimization with CalculiX (based on beso)</description>
+    <version>0.1.0</version>
+    <date>2026-09-17</date>
+
+    <!--[ Ecosystem Requirements ]-->
+
+    <freecadmin>1.0</freecadmin>
+
+    <!--[ Tags ]-->
+
+    <tag>FEM</tag>
+    <tag>topology</tag>
+    <tag>optimization</tag>
+    <tag>CalculiX</tag>
+
+    <!--[ Maintainers ]-->
+
+    <maintainer email="46193148+shIxx01@users.noreply.github.com">shIxx</maintainer>
+
+    <!--[ Authors ]-->
+
+    <author>shIxx</author>
+
+    <!--[ Licenses ]-->
+
+    <license file="LICENSE-Code">LGPL-3.0-or-later</license>
+    <license file="LICENSE-Assets">CC0-1.0</license>
+
+    <!--[ Icon ]-->
+
+    <icon>freecad/TopoOpt/resources/icons/TopoOpt.svg</icon>
+
+    <!--[ Urls ]-->
+
+    <url type="repository" branch="main">https://github.com/shIxx01/TopologyOptimization</url>
+    <url type="bugtracker">https://github.com/shIxx01/TopologyOptimization/issues/</url>
+    <url type="readme">https://github.com/shIxx01/TopologyOptimization/blob/main/README.md</url>
+
+    <!--[ Content ]-->
+
+    <content>
+        <workbench>
+            <name>TopoOpt</name>
+            <classname>TopoOptWorkbench</classname>
+            <description>Topology optimization of a FEM analysis with CalculiX</description>
+            <subdirectory>./</subdirectory>
+            <icon>freecad/TopoOpt/resources/icons/TopoOpt-wb.svg</icon>
+        </workbench>
+    </content>
+
+</package>
