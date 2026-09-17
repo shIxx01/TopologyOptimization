@@ -1159,6 +1159,11 @@ class AssistantPanel:
         kopf.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
         kopf.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
         layout.addWidget(self.tabelle)
+        # welche Domain welche Schalendicke bekommt (aus der .inp, nicht geraten)
+        self.hinweis_dicke = _label_wrap("")
+        self.hinweis_dicke.setStyleSheet("color: gray;")
+        self.hinweis_dicke.setVisible(False)
+        layout.addWidget(self.hinweis_dicke)
         return rahmen
 
     # --------------------------------------------------------------- Daten
@@ -1244,6 +1249,7 @@ class AssistantPanel:
             self.tabelle.setRowCount(0)
             return
         self.elsets = dom.zeige_elsets(elset_reader.read_elsets(pfad))
+        self.dicken = elset_reader.read_shell_thicknesses(pfad)
         gespeichert = dom.parse_domains(self.obj.Domains)
         self.stress = dom.parse_stress(getattr(self.obj, "StressLimits", []))
         self.stress_aus = dom.aus_stress(getattr(self.obj, "StressLimits", []))
@@ -1286,6 +1292,13 @@ class AssistantPanel:
 
     def _fuelle_tabelle(self):
         self.tabelle.setRowCount(0)
+        if hasattr(self, "hinweis_dicke"):
+            eintraege = ["%s = %g mm" % (name, wert)
+                         for name, wert in sorted(getattr(self, "dicken", {}).items())]
+            self.hinweis_dicke.setText(
+                uebersetze("Shell thickness from the input file: %s") % ", ".join(eintraege)
+                if eintraege else "")
+            self.hinweis_dicke.setVisible(bool(eintraege))
         self.felder_stress = {}
         self._fuelle_laeuft = True
         for name in sorted(self.elsets):

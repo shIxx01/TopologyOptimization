@@ -254,6 +254,8 @@ DEUTSCH = {
         "Eine Iteration vor",
     "Iteration to show":
         "Anzuzeigende Iteration",
+    "Shell thickness from the input file: %s":
+        "Schalendicke aus der Eingabedatei: %s",
     "Show one iteration after the other":
         "Die Iterationen nacheinander zeigen",
     "How long the solver has been running":

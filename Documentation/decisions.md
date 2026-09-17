@@ -419,6 +419,33 @@ height and scrolls inside itself, otherwise a model with many element sets would
   own scroll area (`self.rollen`); measured: the scroll bar range in step 1 is 0 (nothing to
   scroll), in step 3 it scrolls.  The panel stays 234 px wide.
 
+## D23 - Shell thickness comes from the input file, per element set
+
+The user compared a 2D shell case with a 3D volume case and suspected the shell thickness was
+missing.  He was right, and it was the dangerous kind of mistake:
+
+* beso's own template has `domain_thickness[elset_name] = [1.0, 1.0]`, and the addon copied that
+  example value for every domain.  **No error, no warning** - the 2D run finished and reported a
+  mass of **2000 instead of 20000** (measured, limit 1 iteration).
+* FreeCAD knows the value (`Fem::ElementGeometry2D`, here 10 mm) and writes it into the `.inp`
+  as its own card per element set:
+
+      *SHELL SECTION, ELSET=MaterialSolidElementGeometry2D, MATERIAL=MaterialSolid, OFFSET=0
+      10
+
+  So the assignment element set -> thickness is **in the file** and nothing has to be guessed
+  (with several thicknesses there are several cards).
+* `core/elsets.py: read_shell_thicknesses()` reads those cards, `conf_text()` writes
+  `domain_thickness[<set>] = [d, d]` for the sets of the model, and step 1 shows a gray line
+  "Shell thickness from the input file: <set> = <d> mm" so the user sees which set gets which
+  thickness.
+* **Proof with a real run** (2D analysis from the user's document, 4,614 shell elements):
+  before the fix `domain_thickness = [1.0, 1.0]`, mass 2000; with the fix
+  `domain_thickness = [10.0, 10.0]`, mass **20000 -> 19396**.  The 3D case gives **20000 -> 19399**
+  - the two models meet within 0.02 %, which confirms 10 mm is the right value.
+* Cost of the comparison: the 3D case with 84,395 volume elements needed **232 s** for one
+  iteration (surface 12.8 MB `.inp`), the 2D case 6 s - a factor of about 39.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

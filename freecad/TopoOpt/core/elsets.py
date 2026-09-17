@@ -109,6 +109,48 @@ def read_elsets(inp_path):
     return ergebnis
 
 
+def read_shell_thicknesses(inp_path):
+    """Schalendicken aus den ``*SHELL SECTION``-Karten: ``{elset: dicke_mm}``.
+
+    FreeCAD schreibt fuer jedes Flaechen-Elset eine eigene Karte::
+
+        *SHELL SECTION, ELSET=MaterialSolidElementGeometry2D, MATERIAL=MaterialSolid, OFFSET=0
+        10
+
+    Damit ist die Zuordnung Element-Set -> Dicke **eindeutig**, auch wenn ein Modell
+    mehrere Dicken hat (dann gibt es mehrere Karten) - es muss nichts geraten werden.
+    Ein Volumenmodell hat keine solche Karte; dann ist das Ergebnis leer.
+    """
+    dicken = {}
+    if not inp_path or not os.path.isfile(inp_path):
+        return dicken
+    aktuell = None
+    fehlt_noch = False
+    try:
+        with open(inp_path, "r", encoding="utf8", errors="ignore") as fh:
+            for zeile in fh:
+                zu = zeile.strip()
+                if zu.startswith("*"):
+                    attrs = _attribute(zu)
+                    if zu.upper().startswith("*SHELL SECTION") and attrs.get("ELSET"):
+                        aktuell = attrs["ELSET"]
+                        fehlt_noch = True
+                        continue
+                    aktuell, fehlt_noch = None, False
+                    continue
+                if not zu or not fehlt_noch or aktuell is None:
+                    continue
+                # die erste Zahl der Karte ist die Dicke
+                try:
+                    dicken[aktuell] = float(zu.split(",")[0].strip())
+                except ValueError:
+                    pass
+                fehlt_noch = False
+    except OSError:
+        return {}
+    return dicken
+
+
 def gesamt_elemente(inp_path):
     """Number of elements in the mesh (from the *ELEMENT cards)."""
     roh = _rohdaten(inp_path)

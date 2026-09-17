@@ -1,0 +1,29 @@
+*NODE
+1, 0.0, 0.0, 0.0
+2, 10.0, 0.0, 0.0
+3, 10.0, 10.0, 0.0
+4, 0.0, 10.0, 0.0
+5, 20.0, 0.0, 0.0
+6, 20.0, 10.0, 0.0
+*ELEMENT, TYPE=S3, ELSET=MaterialSolidElementGeometry2D
+1, 1, 2, 3
+2, 1, 3, 4
+*ELEMENT, TYPE=S3, ELSET=MaterialSolidElementGeometry2D001
+3, 2, 5, 6
+4, 2, 6, 3
+*ELSET, ELSET=Eall
+MaterialSolidElementGeometry2D, MaterialSolidElementGeometry2D001
+*SHELL SECTION, ELSET=MaterialSolidElementGeometry2D, MATERIAL=MaterialSolid, OFFSET=0
+10
+*SHELL SECTION, ELSET=MaterialSolidElementGeometry2D001, MATERIAL=MaterialSolid, OFFSET=0
+2.5
+*MATERIAL, NAME=MaterialSolid
+*ELASTIC
+210000, 0.3
+*BOUNDARY
+1, 1, 3, 0.0
+*STEP
+*STATIC
+*CLOAD
+3, 3, -1000.0
+*END STEP

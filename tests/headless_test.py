@@ -415,6 +415,36 @@ pruefe(daten_lauf["fertig"] is True, "das Ende des Laufs wird erkannt")
 pruefe(lauf_modul.verlauf_lesen("gibt-es-nicht.log")["iteration"] == 0,
        "ohne Logdatei kommt ein leeres Ergebnis")
 
+# --- Schalendicken aus der .inp (*SHELL SECTION) -------------------------------
+schale = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
+                      "schale_beispiel.inp")
+dicken = elset_reader.read_shell_thicknesses(schale)
+pruefe(dicken == {"MaterialSolidElementGeometry2D": 10.0,
+                  "MaterialSolidElementGeometry2D001": 2.5},
+       "die Schalendicken werden je Element-Set gelesen (%s)" % (dicken,))
+# ein Volumenmodell hat keine SHELL SECTION-Karte
+pruefe(elset_reader.read_shell_thicknesses(os.path.join(
+           os.path.dirname(os.path.abspath(__file__)), "data", "beispiel.inp")) == {},
+       "ohne SHELL SECTION bleibt die Dicke leer")
+
+# die Konfiguration uebernimmt genau die Dicken der vorhandenen Domains
+text_schale = conf_modul.conf_text(obj5, schale,
+                                   {"MaterialSolidElementGeometry2D": "design",
+                                    "MaterialSolidElementGeometry2D001": "non_design"},
+                                   os.path.join("C:", os.sep, "tmp"))
+pruefe("thickness = {'MaterialSolidElementGeometry2D': 10.0, "
+       "'MaterialSolidElementGeometry2D001': 2.5}" in text_schale,
+       "beide Dicken stehen in der Konfiguration")
+pruefe("domain_thickness[_name] = [_d, _d]" in text_schale,
+       "daraus wird besos domain_thickness je Domain")
+text_nur_eine = conf_modul.conf_text(obj5, schale,
+                                     {"MaterialSolidElementGeometry2D": "design"},
+                                     os.path.join("C:", os.sep, "tmp"))
+pruefe("thickness = {'MaterialSolidElementGeometry2D': 10.0}" in text_nur_eine,
+       "nur die Dicke der vorhandenen Domain wird uebernommen")
+pruefe("thickness = {}" in text,
+       "ein Volumenmodell bekommt keine Schalendicke in die Konfiguration")
+
 # --- zulaessige Spannung aus dem Material -------------------------------------
 from freecad.TopoOpt.core import material as material_modul  # noqa: E402
 

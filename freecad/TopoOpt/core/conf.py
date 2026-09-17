@@ -28,6 +28,7 @@ import time
 
 from . import beso as beso_modul
 from . import domains as dom
+from . import elsets as elset_reader
 
 UNTERORDNER = "topoopt_beso"
 VORLAGE = "beso_conf_vorlage.py"
@@ -68,6 +69,11 @@ def conf_text(obj, inp_pfad, domains, arbeit_ordner):
     mass_add, mass_remove = params_modul.mass_ratios(getattr(obj, "MassChange", "normal"))
     stress = {name: wert for name, wert in
               dom.parse_stress(getattr(obj, "StressLimits", [])).items() if name in domains}
+    # Schalendicken stehen in der .inp (*SHELL SECTION je Element-Set) - ohne sie
+    # rechnet beso mit seinem Beispielwert 1.0 mm und die Masse waere um den Faktor
+    # der Dicke falsch (gemessen: 10 mm Schale -> Masse 2000 statt 20000).
+    dicken = {name: d for name, d in
+              elset_reader.read_shell_thicknesses(inp_pfad).items() if name in domains}
     return "\n".join([
         "# written by TopoOpt: beso's own template first, then the values of the assistant",
         "import os as _os",
@@ -104,6 +110,11 @@ def conf_text(obj, inp_pfad, domains, arbeit_ordner):
         "            _d[_name] = _d['all_available']",
         "for _d in (domain_offset, domain_orientation, domain_FI, domain_same_state):",
         "    _d.clear()",
+        "",
+        "# Schalendicken aus der Eingabedatei (*SHELL SECTION) - je Element-Set eigener Wert",
+        "thickness = %r" % (dict(dicken),),
+        "for _name, _d in thickness.items():",
+        "    domain_thickness[_name] = [_d, _d]",
         "",
         "# Eine angegebene zulaessige Spannung (MPa) je Domain schaltet den Failure",
         "# Index ein - unabhaengig vom Optimierungsziel. Format wie in besos Beispiel:",
