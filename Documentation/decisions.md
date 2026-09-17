@@ -281,6 +281,16 @@ the `.dat` file beso stops with `CalculiX results not found, check CalculiX for 
 (`beso_main.py:434`).  The energy density chart has the same reason: our test document has no
 loads, so `ener_dens_mean` is 0.0 there.
 
+**The empty field is deliberate - the first prototype filled it silently.**  The prototype had
+`build_domain(..., stress_limit=450.0, ...)` (`bridge.py:133`) and showed the value in its table
+(`taskpanel.py:750`), so every run wrote `domain_FI = 450 MPa` - taken from beso's own example
+configuration (`beso_conf.py`: `[[("stress_von_Mises", 450.0e6)], …]`).  The user never typed it
+and did not know it was there; 450 MPa is far above the allowable stress of ordinary steel
+(S235: 157 MPa at a safety factor of 1.5), so overloads would have been reported too late.
+The user decided (September 2026): **leave the field empty** and fill it deliberately - from
+the material if the material carries a value, otherwise by typing it.  Do not "repair" this by
+adding a default value.
+
 ## D20 - The allowable stress is suggested from the material, if the material has one
 
 The user asked why he has to type the allowable stress at all and whether it can come from
