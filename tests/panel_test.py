@@ -448,52 +448,54 @@ try:
            % (vorher_objekte, nachher_objekte))
     panel2._zeige_schritt(1)
 
-    # Fehlerfaelle: der Lauf darf gar nicht erst starten
-    def _ohne_teil(entfernen):
-        """Neues Optimierungsobjekt, dann ein notwendiges Teil entfernen."""
-        objekt = create_topology_object(doc, analyse, "Szenario%s" % entfernen)
-        probanden = AssistantPanel(objekt)
-        probanden._zeige_schritt(3)
-        probanden.laden()
-        return objekt, probanden
+    # Fehlerfaelle: ohne Netz/Solver keine Eingabedatei, ohne .inp/Design kein Lauf
+    def _proband():
+        objekt = create_topology_object(doc, analyse, "Szenario%d" % int(time.time() * 1000 % 100000))
+        proband = AssistantPanel(objekt)
+        proband._zeige_schritt(3)
+        proband.laden()
+        return objekt, proband
 
-    analyse_objekt = [o for o in doc.Objects if o.TypeId == "Fem::FemAnalysis"][0]
-    netz_objekt = [o for o in doc.Objects
-                   if o.TypeId.startswith("Fem::FemMesh")][0]
-    solver_objekt = [o for o in doc.Objects
-                     if o.TypeId.startswith("Fem::FemSolver")][0]
-
-    analyse_objekt.removeObject(netz_objekt)
+    netz_objekt = fem_modul.find_mesh(analyse)
+    netz_war_im_dokument = [o for o in doc.Objects if o is netz_objekt] != []
+    if not netz_war_im_dokument:
+        analyse.addObject(netz_objekt)
+        doc.recompute()
+    # ohne Netz: keine Eingabedatei, Kopfzeile rot
+    analyse.removeObject(netz_objekt)
     doc.recompute()
-    objekt, proband = _ohne_teil("OhneNetz")
-    proband._lauf_starten()
-    pruefe(proband._lauf_prozess is None and "Netz" in proband.lauf_status.text(),
-           "ohne Netz startet kein Lauf (%s)" % proband.lauf_status.text())
-    analyse_objekt.addObject(netz_objekt)
+    objekt, proband = _proband()
+    pruefe(not proband.knopf_inp.isEnabled() and "nicht vorhanden" in proband.kopf.text(),
+           "ohne Netz laesst sich keine Eingabedatei erzeugen (%s)" % proband.kopf.text()[:60])
+    analyse.addObject(netz_objekt)
     doc.recompute()
 
-    analyse_objekt.removeObject(solver_objekt)
+    # ohne Solver: dasselbe
+    analyse.removeObject(solver_objekt)
     doc.recompute()
-    objekt, proband = _ohne_teil("OhneSolver")
-    proband._lauf_starten()
-    pruefe(proband._lauf_prozess is None and "Solver" in proband.lauf_status.text(),
-           "ohne Solver startet kein Lauf (%s)" % proband.lauf_status.text())
-    analyse_objekt.addObject(solver_objekt)
+    objekt, proband = _proband()
+    pruefe(not proband.knopf_inp.isEnabled() and "nicht vorhanden" in proband.kopf.text(),
+           "ohne Solver laesst sich keine Eingabedatei erzeugen (%s)" % proband.kopf.text()[:60])
+    analyse.addObject(solver_objekt)
     doc.recompute()
 
-    objekt, proband = _ohne_teil("OhneInp")
+    # ohne Eingabedatei: der Lauf startet nicht
+    objekt, proband = _proband()
     objekt.InpFile = ""
     proband._lauf_starten()
-    pruefe(proband._lauf_prozess is None and "Eingabedatei" in proband.lauf_status.text(),
-           "ohne Eingabedatei startet kein Lauf (%s)" % proband.lauf_status.text())
+    pruefe(proband._lauf_prozess is None
+           and ("input file" in proband.status.text().lower()
+                or "Eingabedatei" in proband.status.text()),
+           "ohne Eingabedatei startet kein Lauf (%s)" % proband.status.text())
 
-    objekt, proband = _ohne_teil("OhneDesign")
+    # ohne Design-Raum: der Lauf startet nicht
+    objekt, proband = _proband()
     for name in list(proband.domains):
         proband.domains[name] = "ignore"
     proband._speichere_domains()
     proband._lauf_starten()
-    pruefe(proband._lauf_prozess is None and "Design" in proband.lauf_status.text(),
-           "ohne Design-Raum startet kein Lauf (%s)" % proband.lauf_status.text())
+    pruefe(proband._lauf_prozess is None and "esign" in proband.status.text(),
+           "ohne Design-Raum startet kein Lauf (%s)" % proband.status.text())
 
     panel2.reject()
     App.closeDocument(doc.Name)
