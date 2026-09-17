@@ -199,16 +199,20 @@ class AssistantPanel:
                                    gemerkt=self.obj.WorkingDir)
         self._uebernehme_inp(kopie, quelle)
         typen = ", ".join(elset_reader.element_types(kopie)) or "?"
-        self._setze_status(uebersetze("Input file used (source: %s). %d element set(s), element "
-                                       "type %s.")
-                           % (uebersetze(QUELLTEXTE.get(quelle, quelle)),
-                              len(self.elsets), typen), "ok")
+        self._setze_status(uebersetze("%d element set(s), element type %s.")
+                           % (len(self.elsets), typen), "ok")
 
     def _uebernehme_inp(self, pfad, quelle):
         """Set the input file in the object and fill the table from it."""
         self.obj.InpFile = pfad
         self.pfad_feld.setText(pfad or "")
         self.pfad_feld.setCursorPosition(0)
+        # where the file came from is a side note - the hint stays short
+        tip = uebersetze("The optimizer writes its iteration files next to this file.")
+        if pfad and quelle:
+            tip = ("%s\n%s" % (uebersetze("Source: %s") % uebersetze(
+                QUELLTEXTE.get(quelle, quelle)), tip))
+        self.pfad_feld.setToolTip(tip)
         # size and date only - where the file came from is part of the hint
         self.info.setText(fem.datei_info(pfad) if pfad else uebersetze("no file yet"))
         self.knopf_inp.setText(uebersetze("Write input file (.inp)" if not pfad
@@ -290,8 +294,10 @@ class AssistantPanel:
             return
         self._uebernehme_inp(pfad, "written")
         typen = ", ".join(elset_reader.element_types(pfad)) or "?"
-        self._setze_status(uebersetze("Input file written in %.1f s. %d element set(s), "
-                                       "element type %s.") % (dauer, len(self.elsets), typen), "ok")
+        self._setze_status(uebersetze("%d element set(s), element type %s.")
+                           % (len(self.elsets), typen), "ok")
+        App.Console.PrintMessage("TopoOpt: %s\n" % uebersetze("input file written in %.1f s")
+                                 % dauer)
         self.knopf_inp.setEnabled(True)
 
     def _ordner_oeffnen(self):

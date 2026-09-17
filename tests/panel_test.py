@@ -92,6 +92,8 @@ try:
     pruefe(bool(panel.status.text()), "Statusmeldung vorhanden: %s" % panel.status.text()[:110])
     pruefe("(.inp)" in panel.knopf_inp.text(), "Knopf nennt die Dateiendung: %s"
            % panel.knopf_inp.text())
+    pruefe("Quelle" in panel.pfad_feld.toolTip() or "Source" in panel.pfad_feld.toolTip(),
+           "Pfad-Tooltip nennt die Quelle: %s" % panel.pfad_feld.toolTip().replace("\n", " | "))
     pruefe("|" not in panel.info.text() and obj.WorkingDir not in panel.info.text(),
            "Dateizeile nennt nur Groesse und Stand: %s" % panel.info.text())
     pruefe(panel.knopf_ordner.isEnabled(), "Ordner-Knopf ist aktiv, wenn es die Datei gibt")

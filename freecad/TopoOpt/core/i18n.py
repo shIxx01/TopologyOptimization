@@ -82,6 +82,12 @@ DEUTSCH = {
         "Arbeitsverzeichnis \u00f6ffnen",
     "No .inp file yet.":
         "Keine .inp vorhanden.",
+    "%d element set(s), element type %s.":
+        "%d Element-Set(s), Elementtyp %s.",
+    "Source: %s":
+        "Quelle: %s",
+    "input file written in %.1f s":
+        "Eingabedatei in %.1f s erzeugt",
     "Possible as soon as the analysis has a mesh and a solver.":
         "Erst m\u00f6glich, wenn die Analyse ein Netz und einen Solver hat.",
     "Show this directory in the file manager: %s":
