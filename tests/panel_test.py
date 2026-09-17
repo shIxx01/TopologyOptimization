@@ -90,6 +90,15 @@ try:
     log("Dateiinfo: %s" % panel.info.text())
     pruefe(panel.tabelle.rowCount() > 0, "Tabelle hat Zeilen (%d)" % panel.tabelle.rowCount())
     pruefe(bool(panel.status.text()), "Statusmeldung vorhanden: %s" % panel.status.text()[:110])
+    pruefe("(.inp)" in panel.knopf_inp.text(), "Knopf nennt die Dateiendung: %s"
+           % panel.knopf_inp.text())
+    pruefe("|" not in panel.info.text() and obj.WorkingDir not in panel.info.text(),
+           "Dateizeile nennt nur Groesse und Stand: %s" % panel.info.text())
+    pruefe(panel.knopf_ordner.isEnabled(), "Ordner-Knopf ist aktiv, wenn es die Datei gibt")
+    pruefe(obj.WorkingDir in panel.knopf_ordner.toolTip(),
+           "Ordner-Knopf nennt das Arbeitsverzeichnis im Tooltip")
+    pruefe("color" in panel.status.styleSheet(), "Hinweistext ist eingefaerbt (%s)"
+           % panel.status.styleSheet())
 
     rollen = {}
     for zeile in range(panel.tabelle.rowCount()):

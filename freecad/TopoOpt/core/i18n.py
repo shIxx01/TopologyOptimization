@@ -74,6 +74,18 @@ DEUTSCH = {
         "Eingabedatei erzeugen",
     "Rewrite input file":
         "Eingabedatei neu erzeugen",
+    "Write input file (.inp)":
+        "Eingabedatei (.inp) erzeugen",
+    "Rewrite input file (.inp)":
+        "Eingabedatei (.inp) neu erzeugen",
+    "Open working directory":
+        "Arbeitsverzeichnis \u00f6ffnen",
+    "Show this directory in the file manager: %s":
+        "Diesen Ordner im Dateimanager anzeigen: %s",
+    "There is no working directory yet.":
+        "Es gibt noch kein Arbeitsverzeichnis.",
+    "The directory could not be opened (%s): %s":
+        "Der Ordner konnte nicht ge\u00f6ffnet werden (%s): %s",
     "Write the .inp from the FEM model (mesh, material, boundary conditions).\n"
     "Takes a few seconds for fine meshes, FreeCAD is blocked while it runs.":
         "Schreibt die .inp aus dem FEM-Modell neu (Netz, Material, Randbedingungen).\n"

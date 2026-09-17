@@ -5,7 +5,7 @@ import os
 
 import FreeCAD as App
 import FreeCADGui as Gui
-from PySide import QtCore, QtWidgets
+from PySide import QtCore, QtGui, QtWidgets
 
 from ..core import domains as dom
 from ..core import elsets as elset_reader
@@ -27,6 +27,7 @@ QUELLTEXTE = {
 FARBE_FEHLER = "#b04040"      # something is wrong
 FARBE_AUFTRAG = "#b07000"     # the user has to do something
 FARBE_OK = "#2e7d32"          # everything is ready
+FARBE_GRAU = "#808080"        # side note (size and date of the file)
 _aktive_panels = {}          # Panel-Instanzen am Leben halten (sonst raeumt der GC sie ab)
 
 
@@ -82,10 +83,6 @@ class AssistantPanel:
 
         aussen.addWidget(self._schrittleiste())
 
-        self.status = QtWidgets.QLabel("")
-        self.status.setWordWrap(True)
-        aussen.addWidget(self.status)
-
         aussen.addWidget(self._inp_bereich())
         aussen.addWidget(self._domain_tabelle(), 1)
 
@@ -114,21 +111,34 @@ class AssistantPanel:
         rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (basis of the optimization)"))
         layout = QtWidgets.QGridLayout(rahmen)
 
+        # row 0: the path and the button that opens the folder in the file manager
         self.pfad_feld = QtWidgets.QLineEdit()
         self.pfad_feld.setReadOnly(True)
         self.pfad_feld.setToolTip(uebersetze("The optimizer writes its iteration files "
                                               "next to this file."))
-        layout.addWidget(self.pfad_feld, 0, 0, 1, 2)
+        layout.addWidget(self.pfad_feld, 0, 0)
+        self.knopf_ordner = QtWidgets.QPushButton(uebersetze("Open working directory"))
+        self.knopf_ordner.clicked.connect(self._ordner_oeffnen)
+        self.knopf_ordner.setEnabled(False)   # enabled as soon as the directory is known
+        layout.addWidget(self.knopf_ordner, 0, 1)
 
+        # row 1: size and date of the file (nothing else - what happened is in the hint)
         self.info = QtWidgets.QLabel("")
-        layout.addWidget(self.info, 1, 0)
+        self.info.setStyleSheet("color: %s;" % FARBE_GRAU)
+        layout.addWidget(self.info, 1, 0, 1, 2)
 
-        self.knopf_inp = QtWidgets.QPushButton(uebersetze("Write input file"))
+        # row 2: button on the left, hint on the right
+        self.knopf_inp = QtWidgets.QPushButton(uebersetze("Write input file (.inp)"))
         self.knopf_inp.setToolTip(uebersetze("Write the .inp from the FEM model (mesh, material, "
                                              "boundary conditions).\nTakes a few seconds for fine "
                                              "meshes, FreeCAD is blocked while it runs."))
         self.knopf_inp.clicked.connect(self._inp_erzeugen)
-        layout.addWidget(self.knopf_inp, 1, 1)
+        layout.addWidget(self.knopf_inp, 2, 0)
+
+        self.status = QtWidgets.QLabel("")
+        self.status.setWordWrap(True)
+        layout.addWidget(self.status, 2, 1)
+        layout.setColumnStretch(1, 1)
         return rahmen
 
     def _domain_tabelle(self):
@@ -148,14 +158,15 @@ class AssistantPanel:
 
     # --------------------------------------------------------------- Daten
     def _setze_kopf(self):
-        """Header line: every part of the analysis case, missing ones in red."""
+        """Header line: every part of the analysis case - present in green, missing in red."""
         teile = []
         for titel, wert in (("Analysis", self.analyse), ("Mesh", self.netz), ("Solver", self.solver)):
             if wert is None:
-                teile.append('<span style="color:#b04040">%s: %s</span>'
-                             % (uebersetze(titel), uebersetze("not available")))
+                teile.append('<span style="color:%s">%s: %s</span>'
+                             % (FARBE_FEHLER, uebersetze(titel), uebersetze("not available")))
             else:
-                teile.append("%s: %s" % (uebersetze(titel), wert.Label))
+                teile.append('<span style="color:%s">%s: %s</span>'
+                             % (FARBE_OK, uebersetze(titel), wert.Label))
         self.kopf.setText(" &nbsp;|&nbsp; ".join(teile))
 
     def laden(self):
@@ -183,9 +194,9 @@ class AssistantPanel:
                                     gemerkt=self.obj.WorkingDir)
         if not pfad:
             self._uebernehme_inp("", "")
-            self._setze_status(uebersetze("There is no CalculiX input file for the analysis '%s' "
-                                           "yet. Click 'Write input file' so that the element sets "
-                                           "can be read.") % self.analyse.Label, "auftrag")
+            self._setze_status(uebersetze("There is no CalculiX input file yet. Click "
+                                           "'Write input file (.inp)' so that the element sets can "
+                                           "be read."), "auftrag")
             return
 
         kopie = fem.uebernehme_inp(pfad, self.solver, self.obj.Document.Name, self.netz,
@@ -193,8 +204,7 @@ class AssistantPanel:
         self._uebernehme_inp(kopie, quelle)
         typen = ", ".join(elset_reader.element_types(kopie)) or "?"
         self._setze_status(uebersetze("Input file used (source: %s). %d element set(s), element "
-                                       "type %s. The design space is optimized, the non-design "
-                                       "space is kept.")
+                                       "type %s.")
                            % (uebersetze(QUELLTEXTE.get(quelle, quelle)),
                               len(self.elsets), typen), "ok")
 
@@ -203,13 +213,16 @@ class AssistantPanel:
         self.obj.InpFile = pfad
         self.pfad_feld.setText(pfad or "")
         self.pfad_feld.setCursorPosition(0)
-        info = fem.datei_info(pfad)
-        if pfad and quelle:
-            self.info.setText("%s - %s" % (uebersetze(QUELLTEXTE.get(quelle, quelle)), info))
-        else:
-            self.info.setText(uebersetze("no file yet") if not pfad else info)
-        self.knopf_inp.setText(uebersetze("Write input file" if not pfad
-                                           else "Rewrite input file"))
+        # size and date only - where the file came from is part of the hint
+        self.info.setText(fem.datei_info(pfad) if pfad else uebersetze("no file yet"))
+        self.knopf_inp.setText(uebersetze("Write input file (.inp)" if not pfad
+                                          else "Rewrite input file (.inp)"))
+        ordner = os.path.dirname(pfad) if pfad else self.obj.WorkingDir
+        da = bool(ordner) and os.path.isdir(ordner)
+        self.knopf_ordner.setEnabled(da)
+        self.knopf_ordner.setToolTip(uebersetze("Show this directory in the file manager: %s")
+                                     % ordner if da
+                                     else uebersetze("There is no working directory yet."))
 
         if not pfad or not os.path.isfile(pfad):
             self.elsets = {}
@@ -276,6 +289,21 @@ class AssistantPanel:
         self._setze_status(uebersetze("Input file written in %.1f s. %d element set(s), "
                                        "element type %s.") % (dauer, len(self.elsets), typen), "ok")
         self.knopf_inp.setEnabled(True)
+
+    def _ordner_oeffnen(self):
+        """Show the working directory in the file manager of the system."""
+        ordner = os.path.dirname(self.obj.InpFile) if self.obj.InpFile else self.obj.WorkingDir
+        if not ordner or not os.path.isdir(ordner):
+            self._setze_status(uebersetze("There is no working directory yet."), "fehler")
+            return
+        try:
+            os.startfile(ordner)                      # Windows
+        except Exception:
+            try:
+                QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(ordner))
+            except Exception as exc:
+                self._setze_status(uebersetze("The directory could not be opened (%s): %s")
+                                   % (exc, ordner), "fehler")
 
     def _setze_status(self, text, art="info"):
         """Status line: red for problems, orange while the user has to act, green when ready."""
