@@ -196,6 +196,33 @@ same grid beso uses, +-1 cell).  The result is identical - the test compares bot
 functions for several radii, and for the mesh above both give 0 elements without a
 neighbour.  The whole check therefore costs 3.75 s instead of 12.7 s.
 
+## D17 - A run gets its own small beso folder, the configuration builds on beso's template
+
+`core/conf.py` copies the beso files into `<working directory>/topoopt_beso/` for a run and
+writes `beso_conf.py` there, because **beso reads its configuration from the folder of
+`beso_main.py`**: `exec(open(os.path.join(beso_dir, "beso_conf.py")).read())`.  The addon
+folder itself is never written to, and several runs can sit next to each other.
+
+The written configuration first executes beso's own template (copied as
+`beso_conf_vorlage.py`) and then sets the values of the assistant - so every option we do
+not touch keeps beso's own default, and a new beso option cannot break us.  Three details
+that beso requires and a naive configuration would miss (all three were real errors while
+building this):
+
+* beso expects `domain_density`, `domain_material` and `domain_thickness` **per domain**
+  (`KeyError: 'MaterialSolidSolid'`), so the template's example values are taken over for
+  our domains.
+* The template's example data for failure indices points at a domain called
+  `all_available`, which our model does not have (`KeyError: 'all_available'`) - those
+  dictionaries are cleared.
+* `beso_main` calls `plt.show()` at the end; the configuration switches matplotlib to the
+  `Agg` backend, so the run ends by itself instead of waiting for a closed window.
+
+beso runs as its own process (`subprocess`), the output goes into `<input>_topoopt.log`
+next to the input file.  **Measured** on the test model (401 C3D4, limit 2 iterations):
+CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the log shows
+`mass = 19369.41` then `mass = 19110.75` after `mass = 20000` at the start.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

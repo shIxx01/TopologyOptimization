@@ -290,6 +290,48 @@ protokoll = os.path.splitext(beispiel)[0] + ".log"
 if os.path.isfile(protokoll):
     os.remove(protokoll)
 
+# --- Schritt 3: die Konfiguration fuer beso ---------------------------------
+from freecad.TopoOpt.core import conf as conf_modul  # noqa: E402
+
+pruefe(conf_modul.UNTERORDNER == "topoopt_beso",
+       "beso laeuft in einem Unterordner des Arbeitsordners (%s)" % conf_modul.UNTERORDNER)
+pruefe("ccx" in os.path.basename(conf_modul.calculix_pfad()).lower(),
+       "CalculiX wird gefunden (%s)" % conf_modul.calculix_pfad())
+pruefe("python" in os.path.basename(conf_modul.python_pfad()).lower(),
+       "ein Python fuer den Lauf wird gefunden (%s)" % conf_modul.python_pfad())
+
+doc5 = App.newDocument("TopoOptConfTest")
+analyse5 = doc5.addObject("Fem::FemAnalysis", "Analyse")
+obj5 = create_topology_object(doc5, analyse5, "TopoOpt5")
+obj5.MassGoalRatio = 0.6
+obj5.IterationsLimit = "auto"
+obj5.Filters = "[['simple', 'robust']]"
+obj5.RobusterRadius = 4.85
+domains4 = {"SetA": "design", "SetB": "non_design"}
+text = conf_modul.conf_text(obj5, os.path.join("C:", os.sep, "tmp", "Mesh.inp"), domains4,
+                            os.path.join("C:", os.sep, "tmp"))
+pruefe("path = " in text and "tmp" in text, "der Arbeitsordner steht in der Konfiguration")
+pruefe("file_name = 'Mesh.inp'" in text, "die Eingabedatei steht in der Konfiguration")
+pruefe("mass_goal_ratio = 0.6" in text, "die Zielmasse steht in der Konfiguration")
+pruefe("{'SetA': True, 'SetB': False}" in text,
+       "Design- und Nicht-Design-Raum stehen in der Konfiguration")
+pruefe("['simple', 4.85]" in text,
+       "der robuste Radius wird als Zahl geschrieben (kein 'robust' fuer beso)")
+pruefe("_mpl.use('Agg')" in text, "ohne Fenster am Ende (beso_main ruft plt.show)")
+pruefe("beso_conf_vorlage.py" in text, "die Vorlage von beso wird als Grundlage gelesen")
+
+ordner4 = _tempfile.mkdtemp(prefix="topoopt_conf_")
+ziel4, conf4 = conf_modul.schreibe_dateien(obj5, os.path.join(ordner4, "Mesh.inp"),
+                                           domains4, ordner4)
+pruefe(os.path.isfile(conf4), "beso_conf.py wird geschrieben")
+pruefe(os.path.isfile(os.path.join(ziel4, "beso_main.py")), "beso_main.py liegt im Unterordner")
+pruefe(os.path.isfile(os.path.join(ziel4, "beso_conf_vorlage.py")),
+       "die beso-Vorlage liegt unveraendert daneben")
+pruefe(os.path.isfile(os.path.join(ziel4, "beso_lib.py")), "beso_lib.py liegt im Unterordner")
+pruefe(conf_modul.log_pfad(os.path.join(ordner4, "Mesh.inp")).endswith("Mesh_topoopt.log"),
+       "die Logdatei liegt neben der Eingabedatei")
+_shutil.rmtree(ordner4, ignore_errors=True)
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))
