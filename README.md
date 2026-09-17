@@ -50,6 +50,19 @@ Copy this folder into the `Mod` directory of your FreeCAD user directory, so tha
 3. Switch to the *TopoOpt* workbench and click *Topologie-Optimierung*.
 4. The new object appears inside the active analysis and keeps a link to it.
 
+## Documentation
+
+* [`AGENTS.md`](AGENTS.md) - rules and workflows for AI coding agents (and humans)
+* [`Documentation/architecture.md`](Documentation/architecture.md) - how the addon is built
+  and how a run will work
+* [`Documentation/development.md`](Documentation/development.md) - install for testing, test
+  recipes (headless and GUI), debugging notes
+* [`Documentation/decisions.md`](Documentation/decisions.md) - why things are the way they are
+* [`Documentation/roadmap.md`](Documentation/roadmap.md) - what is done and what comes next
+
+Tests live in [`tests/`](tests/): `headless_test.py` (console interpreter) and
+`gui_test.py` (writes its result to a file, see development.md).
+
 ## License
 
 * Code: LGPL-3.0-or-later (`LICENSE-Code`)

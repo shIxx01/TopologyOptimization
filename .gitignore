@@ -8,3 +8,6 @@ venv/
 # FreeCAD working files
 *.FCStd1
 *.FCBak
+
+# test output
+tests/gui_test_ausgabe.txt
