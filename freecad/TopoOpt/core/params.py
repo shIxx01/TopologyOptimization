@@ -31,7 +31,25 @@ MASS_CHANGE = {
     "fast": (0.03, 0.06),
 }
 
-FILTER_TYPES = ("simple", "casting")
+# the filter types beso knows (beso_conf.py, section "filter types"): the morphology
+# filters work on the sensitivities ("... sensitivity") or on the element states
+# ("... state").  "over points" is documented in beso itself as "does not work
+# correctly, need a fix", "over nodes" is not offered (it needs a lot of memory for
+# 2nd order elements and is the slowest of all).
+FILTER_TYPES = (
+    "simple",               # averages the sensitivity over all elements in the radius
+    "erode sensitivity",    # minimum sensitivity number in the radius
+    "dilate sensitivity",   # maximum sensitivity number in the radius
+    "open sensitivity",     # erode then dilate - removes elements smaller than the radius
+    "close sensitivity",    # dilate then erode - closes holes smaller than the radius
+    "open-close sensitivity",
+    "close-open sensitivity",
+    "combine sensitivity",  # average of erode and dilate
+    "casting",              # demouldable in one direction
+)
+# the types that are not manufacturing filters (casting has a direction instead of a
+# plain radius)
+MORPHOLOGY_TYPES = FILTER_TYPES[1:8]
 
 FORMATS = ("inp vtk", "frd")
 

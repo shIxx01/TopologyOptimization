@@ -190,6 +190,14 @@ pruefe(prm.mass_ratios("fast") == (0.03, 0.06), "Massenraten 'schnell' wie in de
 pruefe(prm.mass_ratios("unbekannt") == (0.015, 0.03), "unbekannte Stufe faellt auf 'normal'")
 pruefe(prm.parse_filters(prm.format_filters([["casting", 2.0, "(0, 0, 1)"]]))
        == [["casting", 2.0, "(0, 0, 1)"]], "Filter werden geschrieben und gelesen")
+pruefe(prm.parse_filters(prm.format_filters([["erode sensitivity", "auto"],
+                                             ["simple", 3.0]]))
+       == [["erode sensitivity", "auto"], ["simple", 3.0]],
+       "Morphologie-Filter werden geschrieben und gelesen")
+pruefe(len(prm.FILTER_TYPES) == 9 and "combined" not in prm.FILTER_TYPES,
+       "beso kennt 9 Filtertypen (%s)" % (prm.FILTER_TYPES,))
+pruefe("open-close sensitivity" in prm.FILTER_TYPES and "casting" in prm.FILTER_TYPES,
+       "die beso-Typen sind vollstaendig")
 pruefe(prm.parse_filters("kein Python") == [["simple", "auto"]],
        "unbrauchbarer Filtertext faellt auf beso-Standard zurueck")
 pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "auto"]],
@@ -198,7 +206,7 @@ pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "a
 doc4 = App.newDocument("TopoOptParameterTest")
 analyse4 = doc4.addObject("Fem::FemAnalysis", "Analyse")
 obj4 = create_topology_object(doc4, analyse4, "TopoOpt4")
-pruefe(abs(obj4.MassGoalRatio - 0.4) < 1e-9, "Zielmasse startet bei 0,4 (beso-Standard)")
+pruefe(abs(obj4.MassGoalRatio - 0.6) < 1e-9, "Zielmasse startet bei 0,6 (60 % vom Nutzer)")
 pruefe(obj4.OptimizationBase == "stiffness", "Optimierungsziel startet mit 'stiffness'")
 pruefe(obj4.IterationsLimit == "auto", "Iterationen starten mit 'auto'")
 pruefe(abs(obj4.Tolerance - 1e-3) < 1e-12, "Toleranz startet mit 1e-3 (beso-Standard)")

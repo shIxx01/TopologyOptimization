@@ -41,8 +41,8 @@ def ensure_properties(obj):
     if not hasattr(obj, "MassGoalRatio"):
         obj.addProperty("App::PropertyFloat", "MassGoalRatio", GROUP,
                         uebersetze("Target mass as a fraction of the full mass "
-                                   "(0.4 = 40 % of the material stays)"))
-        obj.MassGoalRatio = 0.4
+                                   "(0.6 = 60 % of the material stays)"))
+        obj.MassGoalRatio = 0.6
     if not hasattr(obj, "OptimizationBase"):
         obj.addProperty("App::PropertyEnumeration", "OptimizationBase", GROUP,
                         uebersetze("What is optimized: stiffness (usual), buckling, "

@@ -141,34 +141,48 @@ try:
            "Schrittleiste sitzt oben im Panel")
 
     # Filter: Standard ist besos [["simple", "auto"]]
+    pruefe(len(panel.filter_zeilen) == 1,
+           "Standard: eine Filterzeile (%d)" % len(panel.filter_zeilen))
     pruefe(panel.filter_zeilen[0]["typ"].currentData() == "simple",
            "Filter 1 startet mit 'simple' (%s)" % panel.filter_zeilen[0]["typ"].currentData())
     pruefe(panel.filter_zeilen[0]["radius_modus"].currentData() == "auto",
            "Filter 1 startet mit automatischem Radius")
+    pruefe(panel.feld_toleranz.text() in ("0,001", "0.001"),
+           "Toleranz ohne Fuellnullen: %s" % panel.feld_toleranz.text())
+
+    panel.knopf_filter_plus.click()
+    pruefe(len(panel.filter_zeilen) == 2, "Knopf '+ Filter' fuegt eine Zeile hinzu")
     pruefe(panel.filter_zeilen[1]["typ"].currentData() == "none",
-           "Filter 2 ist zunaechst aus")
+           "die neue Zeile startet mit 'kein Filter'")
+    panel.filter_zeilen[1]["typ"].setCurrentIndex(panel.filter_zeilen[1]["typ"].findData("casting"))
+    pruefe("casting" in obj.Filters, "zweiter Filter (casting) landet im Objekt: %s" % obj.Filters)
+    pruefe(panel.filter_zeilen[1]["richtung"].isHidden() is False,
+           "Richtungsfeld ist bei casting eingeblendet")
+
+    panel.filter_zeilen[0]["typ"].setCurrentIndex(
+        panel.filter_zeilen[0]["typ"].findData("erode sensitivity"))
+    pruefe("erode sensitivity" in obj.Filters,
+           "Morphologie-Filter landet im Objekt: %s" % obj.Filters)
     panel.filter_zeilen[0]["radius_modus"].setCurrentIndex(
         panel.filter_zeilen[0]["radius_modus"].findData("manual"))
     panel.filter_zeilen[0]["radius_wert"].setValue(4.5)
     log("Filter im Objekt: %s" % obj.Filters)
     pruefe("4.5" in obj.Filters, "manueller Radius landet im Objekt: %s" % obj.Filters)
-    panel.filter_zeilen[1]["typ"].setCurrentIndex(panel.filter_zeilen[1]["typ"].findData("casting"))
-    pruefe("casting" in obj.Filters, "zweiter Filter (casting) landet im Objekt: %s" % obj.Filters)
-    pruefe(panel.filter_zeilen[1]["richtung"].isHidden() is False,
-           "Richtungsfeld ist bei casting eingeblendet")
-    panel.filter_zeilen[1]["typ"].setCurrentIndex(panel.filter_zeilen[1]["typ"].findData("none"))
-    pruefe("casting" not in obj.Filters, "ausgeschalteter Filter verschwindet: %s" % obj.Filters)
-    pruefe(panel.filter_zeilen[0]["richtung"].isHidden(),
-           "Richtungsfeld ist bei simple ausgeblendet")
     pruefe(panel.filter_zeilen[0]["radius_wert"].isHidden() is False,
            "mm-Feld ist bei manuellem Radius eingeblendet")
+
+    panel.filter_zeilen[1]["minus"].click()
+    pruefe(len(panel.filter_zeilen) == 1, "Knopf '-' entfernt die Zeile (%d)" % len(panel.filter_zeilen))
+    pruefe("casting" not in obj.Filters, "entfernter Filter verschwindet: %s" % obj.Filters)
+    pruefe(panel.filter_zeilen[0]["richtung"].isHidden(),
+           "Richtungsfeld ist bei erode ausgeblendet")
     panel.filter_zeilen[0]["radius_modus"].setCurrentIndex(
         panel.filter_zeilen[0]["radius_modus"].findData("auto"))
     pruefe(panel.filter_zeilen[0]["radius_wert"].isHidden(),
            "mm-Feld ist bei automatischem Radius ausgeblendet")
     breite2 = panel.form.minimumSizeHint().width()
     log("Mindestbreite nach Filteraenderung: %d px" % breite2)
-    pruefe(panel.feld_masse.value() == 40, "Zielmasse zeigt 40 %% (%d)" % panel.feld_masse.value())
+    pruefe(panel.feld_masse.value() == 60, "Zielmasse zeigt 60 %% (%d)" % panel.feld_masse.value())
     pruefe(panel.combo_basis.currentData() == "stiffness",
            "Optimierungsziel steht auf stiffness (%s)" % panel.combo_basis.currentData())
     panel.slider_masse.setValue(30)

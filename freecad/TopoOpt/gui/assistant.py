@@ -11,7 +11,8 @@ from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
 from ..core.i18n import uebersetze
-from ..core.params import BASES, FORMATS, MASS_CHANGE, format_filters, parse_filters
+from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_filters,
+                           parse_filters)
 from ..features.topology_object import find_analysis, ensure_properties
 
 SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
@@ -43,6 +44,17 @@ def _label_wrap(text):
     label.setWordWrap(True)
     return label
 
+
+class _ZahlFeld(QtWidgets.QDoubleSpinBox):
+    """A number field without trailing zeros: 0.001 and not 0.00100."""
+
+    def textFromValue(self, wert):
+        text = super(_ZahlFeld, self).textFromValue(wert)
+        trenner = "," if "," in text else "."
+        if trenner in text:
+            text = text.rstrip("0").rstrip(trenner)
+        return text
+
 # labels of the choices - the stored values are the strings beso knows
 BASIS_LABELS = {
     "stiffness": "Stiffness - the part becomes as stiff as possible (usual)",
@@ -55,16 +67,24 @@ MASS_CHANGE_LABELS = {
     "normal": "normal (1.5 % / 3 % per iteration)",
     "fast": "fast (3 % / 6 % per iteration)",
 }
-TIP_MASSE = ("How much of the material stays: 40 % means the optimized part keeps about "
-             "40 % of its mass.")
+TIP_MASSE = ("How much of the material stays: 60 % means the optimized part keeps about "
+             "60 % of its mass.")
 
-# the filter rows of step 2 (beso knows "simple" and "casting"; "no filter" means the
-# row is left out)
-FILTER_OPTIONEN = (
-    ("none", "no filter"),
-    ("simple", "simple - smooth, no direction"),
-    ("casting", "casting - demouldable in one direction"),
-)
+# the filter rows of step 2 (beso knows a list of filters; "no filter" means the row
+# is left out)
+FILTER_LABELS = {
+    "simple": "simple - smooths, keeps the part round",
+    "erode sensitivity": "erode - takes the smallest value in the radius",
+    "dilate sensitivity": "dilate - takes the largest value in the radius",
+    "open sensitivity": "open - removes small elements (erode, then dilate)",
+    "close sensitivity": "close - closes small holes (dilate, then erode)",
+    "open-close sensitivity": "open-close - open, then close",
+    "close-open sensitivity": "close-open - close, then open",
+    "combine sensitivity": "combine - mean of erode and dilate",
+    "casting": "casting - demouldable in one direction",
+}
+FILTER_OPTIONEN = tuple([("none", "no filter")]
+                        + [(typ, FILTER_LABELS.get(typ, typ)) for typ in FILTER_TYPES])
 RADIUS_MODI = (("auto", "automatic"), ("manual", "manual"))
 TIP_FILTER = ("The filter smooths the result. 'simple' averages over all elements in the "
               "radius, 'casting' also keeps the part demouldable in one direction.")
@@ -244,9 +264,9 @@ class AssistantPanel:
 
         zeile += 1
         form.addWidget(_label_wrap(uebersetze("Stop tolerance")), zeile, 0)
-        self.feld_toleranz = QtWidgets.QDoubleSpinBox()
-        self.feld_toleranz.setDecimals(5)
-        self.feld_toleranz.setRange(0.00001, 1.0)
+        self.feld_toleranz = _ZahlFeld()
+        self.feld_toleranz.setDecimals(6)
+        self.feld_toleranz.setRange(0.000001, 1.0)
         self.feld_toleranz.setSingleStep(0.0005)
         self.feld_toleranz.setToolTip(uebersetze("The optimization stops when the mean stress "
                                                  "changes less than this value in the last "
@@ -301,34 +321,86 @@ class AssistantPanel:
         return seite
 
     def _filter_bereich(self):
-        """Step 2: the sensitivity filter - up to three rows like the beso GUI."""
+        """Step 2: the sensitivity filters - as many rows as the user needs.
+
+        beso takes a list of filters and applies them one after the other
+        (e.g. first "casting", then "simple"), so the number of rows is free.
+        """
         rahmen = QtWidgets.QGroupBox(uebersetze("Sensitivity filter (smoothing)"))
-        form = QtWidgets.QGridLayout(rahmen)
+        aussen = QtWidgets.QVBoxLayout(rahmen)
+
+        self.filter_layout = QtWidgets.QVBoxLayout()
+        self.filter_layout.setSpacing(2)
+        aussen.addLayout(self.filter_layout)
         self.filter_zeilen = []
-        for nummer in (1, 2, 3):
-            zeile = self._filter_zeile(nummer)
-            form.addWidget(_label_wrap(uebersetze("Filter %d") % nummer), nummer - 1, 0)
-            form.addWidget(zeile["typ"], nummer - 1, 1)
-            form.addWidget(zeile["radius_modus"], nummer - 1, 2)
-            form.addWidget(zeile["radius_wert"], nummer - 1, 3)
-            form.addWidget(zeile["richtung"], nummer - 1, 4)
-            self.filter_zeilen.append(zeile)
-        layout_hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over "
-                                                "the elements inside the radius and keeps the "
-                                                "result smooth. 'automatic' uses beso's own "
-                                                "value (2 x mean element size)."))
-        layout_hinweis.setStyleSheet("color: %s;" % FARBE_GRAU)
-        form.addWidget(layout_hinweis, 3, 0, 1, 5)
+
+        knopf_zeile = QtWidgets.QHBoxLayout()
+        self.knopf_filter_plus = QtWidgets.QPushButton(uebersetze("Add filter"))
+        self.knopf_filter_plus.setToolTip(uebersetze("beso applies the filters one after the "
+                                                     "other, for example first 'casting', then "
+                                                     "'simple'."))
+        self.knopf_filter_plus.clicked.connect(lambda: self._filter_hinzufuegen())
+        knopf_zeile.addWidget(self.knopf_filter_plus)
+        knopf_zeile.addStretch(1)
+        aussen.addLayout(knopf_zeile)
+
+        hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over the "
+                                         "elements inside the radius and keeps the result "
+                                         "smooth. 'automatic' uses beso's own value "
+                                         "(2 x mean element size)."))
+        hinweis.setStyleSheet("color: %s;" % FARBE_GRAU)
+        aussen.addWidget(hinweis)
         return rahmen
 
-    def _filter_zeile(self, nummer):
-        """The widgets of one filter row."""
+    def _filter_hinzufuegen(self, typ="none", reichweite="auto", richtung="(0, 0, 1)"):
+        """Add a filter row (also used when the dialog shows the stored filters)."""
+        zeile = self._filter_zeile()
+        zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData(typ)))
+        if isinstance(reichweite, (int, float)):
+            zeile["radius_modus"].setCurrentIndex(
+                max(0, zeile["radius_modus"].findData("manual")))
+            zeile["radius_wert"].setValue(float(reichweite))
+        else:
+            zeile["radius_modus"].setCurrentIndex(max(0, zeile["radius_modus"].findData("auto")))
+        zeile["richtung"].setText(str(richtung))
+        self.filter_layout.addWidget(zeile["widget"])
+        self.filter_zeilen.append(zeile)
+        self._nummeriere_filter()
+        self._filter_geaendert()
+        return zeile
+
+    def _filter_entfernen(self, zeile):
+        """Remove one filter row (the "minus" button)."""
+        if zeile not in self.filter_zeilen:
+            return
+        self.filter_zeilen.remove(zeile)
+        self.filter_layout.removeWidget(zeile["widget"])
+        zeile["widget"].setParent(None)
+        zeile["widget"].deleteLater()
+        self._nummeriere_filter()
+        self._filter_geaendert()
+
+    def _nummeriere_filter(self):
+        for nummer, zeile in enumerate(self.filter_zeilen, start=1):
+            zeile["label"].setText(uebersetze("Filter %d") % nummer)
+
+    def _filter_zeile(self):
+        """The widgets of one filter row (not yet added to the layout)."""
         zeile = {}
+        zeile["widget"] = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(zeile["widget"])
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        zeile["label"] = _label_wrap("")
+        layout.addWidget(zeile["label"])
+
         zeile["typ"] = _combo_schmal(QtWidgets.QComboBox(), 5)
         for wert, text in FILTER_OPTIONEN:
             zeile["typ"].addItem(uebersetze(text), wert)
         zeile["typ"].setToolTip(uebersetze(TIP_FILTER))
         zeile["typ"].currentIndexChanged.connect(self._filter_geaendert)
+        layout.addWidget(zeile["typ"], 1)
 
         zeile["radius_modus"] = _combo_schmal(QtWidgets.QComboBox(), 5)
         for wert, text in RADIUS_MODI:
@@ -337,6 +409,7 @@ class AssistantPanel:
                                                     "from the element size, 'manual' uses the "
                                                     "value in millimetres."))
         zeile["radius_modus"].currentIndexChanged.connect(self._filter_geaendert)
+        layout.addWidget(zeile["radius_modus"])
 
         zeile["radius_wert"] = QtWidgets.QDoubleSpinBox()
         zeile["radius_wert"].setRange(0.001, 1000.0)
@@ -348,6 +421,7 @@ class AssistantPanel:
                                                    "details. The filter needs a radius in "
                                                    "which every element has a neighbour."))
         zeile["radius_wert"].valueChanged.connect(self._filter_geaendert)
+        layout.addWidget(zeile["radius_wert"])
 
         zeile["richtung"] = QtWidgets.QLineEdit("(0, 0, 1)")
         zeile["richtung"].setMinimumWidth(50)
@@ -355,6 +429,13 @@ class AssistantPanel:
         zeile["richtung"].setToolTip(uebersetze("Only for the casting filter: the direction in "
                                                 "which the part has to be demouldable."))
         zeile["richtung"].editingFinished.connect(self._filter_geaendert)
+        layout.addWidget(zeile["richtung"])
+
+        zeile["minus"] = QtWidgets.QToolButton()
+        zeile["minus"].setText("\u2212")        # minus sign
+        zeile["minus"].setToolTip(uebersetze("Remove this filter"))
+        zeile["minus"].clicked.connect(lambda _checked=False, z=zeile: self._filter_entfernen(z))
+        layout.addWidget(zeile["minus"])
         return zeile
 
     def _filter_geaendert(self):
@@ -386,31 +467,12 @@ class AssistantPanel:
         return liste
 
     def _fuelle_filter(self):
-        """Show the filters of the object in the three rows."""
-        filter_liste = parse_filters(getattr(self.obj, "Filters", ""))
-        for index, zeile in enumerate(self.filter_zeilen):
-            eintrag = filter_liste[index] if index < len(filter_liste) else None
-            felder = (zeile["typ"], zeile["radius_modus"], zeile["radius_wert"])
-            for feld in felder:
-                feld.blockSignals(True)
-            try:
-                if eintrag is None:
-                    zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData("none")))
-                else:
-                    zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData(eintrag[0])))
-                    reichweite = eintrag[1]
-                    if isinstance(reichweite, (int, float)):
-                        zeile["radius_modus"].setCurrentIndex(
-                            max(0, zeile["radius_modus"].findData("manual")))
-                        zeile["radius_wert"].setValue(float(reichweite))
-                    else:
-                        zeile["radius_modus"].setCurrentIndex(
-                            max(0, zeile["radius_modus"].findData("auto")))
-                    if eintrag[0] == "casting" and len(eintrag) > 2:
-                        zeile["richtung"].setText(str(eintrag[2]))
-            finally:
-                for feld in felder:
-                    feld.blockSignals(False)
+        """Rebuild the rows from the filters stored in the object."""
+        for zeile in list(self.filter_zeilen):
+            self._filter_entfernen(zeile)
+        for eintrag in parse_filters(getattr(self.obj, "Filters", "")):
+            richtung = str(eintrag[2]) if len(eintrag) > 2 else "(0, 0, 1)"
+            self._filter_hinzufuegen(eintrag[0], eintrag[1], richtung)
         self._filter_geaendert()
 
     def _inp_bereich(self):

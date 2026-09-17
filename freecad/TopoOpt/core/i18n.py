@@ -115,6 +115,32 @@ DEUTSCH = {
     "How much of the material stays: 40 % means the optimized part keeps about 40 % of its mass.":
         "Wie viel vom Material \u00fcbrig bleibt: 40 % hei\u00dft, das optimierte Bauteil beh\u00e4lt "
         "etwa 40 % seiner Masse.",
+    "How much of the material stays: 60 % means the optimized part keeps about 60 % of its mass.":
+        "Wie viel vom Material \u00fcbrig bleibt: 60 % hei\u00dft, das optimierte Bauteil beh\u00e4lt "
+        "etwa 60 % seiner Masse.",
+    "Add filter":
+        "Filter hinzuf\u00fcgen",
+    "Remove this filter":
+        "Diesen Filter entfernen",
+    "beso applies the filters one after the other, for example first 'casting', then 'simple'.":
+        "beso wendet die Filter nacheinander an, zum Beispiel erst \u201ecasting\u201c, dann "
+        "\u201esimple\u201c.",
+    "simple - smooths, keeps the part round":
+        "simple - gl\u00e4ttet, h\u00e4lt das Bauteil rund",
+    "erode - takes the smallest value in the radius":
+        "erode - nimmt den kleinsten Wert im Radius",
+    "dilate - takes the largest value in the radius":
+        "dilate - nimmt den gr\u00f6\u00dften Wert im Radius",
+    "open - removes small elements (erode, then dilate)":
+        "open - entfernt kleine Elemente (erst erode, dann dilate)",
+    "close - closes small holes (dilate, then erode)":
+        "close - schlie\u00dft kleine L\u00f6cher (erst dilate, dann erode)",
+    "open-close - open, then close":
+        "open-close - erst open, dann close",
+    "close-open - close, then open":
+        "close-open - erst close, dann open",
+    "combine - mean of erode and dilate":
+        "combine - Mittel aus erode und dilate",
     "Optimization":
         "Optimierung",
     "Sensitivity filter (smoothing)":
