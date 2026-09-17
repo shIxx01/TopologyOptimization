@@ -327,6 +327,42 @@ pruefe(os.path.isfile(conf4), "beso_conf.py wird geschrieben")
 pruefe(os.path.isfile(os.path.join(ziel4, "beso_main.py")), "beso_main.py liegt im Unterordner")
 pruefe(os.path.isfile(os.path.join(ziel4, "beso_conf_vorlage.py")),
        "die beso-Vorlage liegt unveraendert daneben")
+
+# --- zulaessige Spannung -> Failure Index -------------------------------------
+limits = dom.parse_stress(["SetA|235.0", "SetB|", "SetC|kaputt", "SetD|0"])
+pruefe(limits == {"SetA": 235.0},
+       "nur gueltige, positive Spannungen werden gelesen (%s)" % limits)
+pruefe(dom.format_stress({"SetA": 235.0}) == ["SetA|235.0"],
+       "die Spannungen werden als Liste gespeichert (%s)" % dom.format_stress({"SetA": 235.0}))
+
+pruefe("stress_limits = {}" in text,
+       "ohne Spannung schreibt die Konfiguration keine Failure-Index-Werte")
+
+obj5.StressLimits = ["SetA|235.0"]
+text2 = conf_modul.conf_text(obj5, os.path.join("C:", os.sep, "tmp", "Mesh.inp"), domains4,
+                             os.path.join("C:", os.sep, "tmp"))
+pruefe("stress_limits = {'SetA': 235.0}" in text2,
+       "die zulaessige Spannung steht in der Konfiguration")
+pruefe("domain_FI[_name] = [[('stress_von_Mises', _sigma * 1e6)]" in text2,
+       "daraus wird besos domain_FI (Stress in Pa plus zulaessiger Wert)")
+
+# der harte Beweis: die geschriebene Konfiguration laeuft durch und setzt domain_FI
+obj5.StressLimits = ["SetA|235.0", "SetB|100.0"]
+ziel5, conf5 = conf_modul.schreibe_dateien(obj5, os.path.join(ordner4, "Mesh.inp"),
+                                           domains4, ordner4)
+raum = {"__file__": conf5}          # die Konfiguration liest die Vorlage ueber __file__
+# beso_main definiert diese Namen, bevor es die Konfiguration liest (Zeile 25 ff.);
+# die Konfiguration baut darauf auf - ohne sie laeuft sie nicht
+for _name in ("domain_optimized", "domain_density", "domain_material", "domain_thickness",
+              "domain_offset", "domain_orientation", "domain_FI", "domain_same_state"):
+    raum[_name] = {}
+exec(open(conf5, encoding="utf8").read(), raum)
+fi = raum.get("domain_FI", {})
+pruefe(fi.get("SetA") == [[("stress_von_Mises", 235.0e6)], [("stress_von_Mises", 235.0)]],
+       "die Konfiguration setzt domain_FI fuer SetA (%s)" % (fi.get("SetA"),))
+pruefe(fi.get("SetB") == [[("stress_von_Mises", 100.0e6)], [("stress_von_Mises", 100.0)]],
+       "die Konfiguration setzt domain_FI fuer SetB (%s)" % (fi.get("SetB"),))
+pruefe("SetC" not in fi, "ohne Spannung bleibt die Domain ohne Failure Index")
 pruefe(os.path.isfile(os.path.join(ziel4, "beso_lib.py")), "beso_lib.py liegt im Unterordner")
 pruefe(conf_modul.log_pfad(os.path.join(ordner4, "Mesh.inp")).endswith("Mesh_topoopt.log"),
        "die Logdatei liegt neben der Eingabedatei")

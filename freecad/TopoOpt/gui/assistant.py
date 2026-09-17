@@ -171,6 +171,7 @@ class AssistantPanel:
     def __init__(self, obj):
         self.obj = obj
         self.domains = {}          # elset -> role (mirror of the document object)
+        self.stress = {}           # elset -> allowable stress in MPa (0/empty = no FI)
         self.elsets = {}           # elset -> number of elements
         self.analyse = None
         self.netz = None
@@ -856,15 +857,17 @@ class AssistantPanel:
     def _domain_tabelle(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("Domains - roles of the elements"))
         layout = QtWidgets.QVBoxLayout(rahmen)
-        self.tabelle = QtWidgets.QTableWidget(0, 3)
+        self.tabelle = QtWidgets.QTableWidget(0, 4)
         self.tabelle.setHorizontalHeaderLabels([uebersetze("Element set"), uebersetze("Role"),
-                                                uebersetze("Elements")])
+                                                uebersetze("Elements"),
+                                                uebersetze("σ (MPa)")])
         self.tabelle.verticalHeader().setVisible(False)
         self.tabelle.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         kopf = self.tabelle.horizontalHeader()
         kopf.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         kopf.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
         kopf.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+        kopf.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
         layout.addWidget(self.tabelle)
         return rahmen
 
@@ -952,6 +955,7 @@ class AssistantPanel:
             return
         self.elsets = dom.zeige_elsets(elset_reader.read_elsets(pfad))
         gespeichert = dom.parse_domains(self.obj.Domains)
+        self.stress = dom.parse_stress(getattr(self.obj, "StressLimits", []))
         if gespeichert:
             self.domains = {name: gespeichert.get(name, dom.IGNORE) for name in self.elsets}
         else:
@@ -962,6 +966,8 @@ class AssistantPanel:
 
     def _fuelle_tabelle(self):
         self.tabelle.setRowCount(0)
+        self.felder_stress = {}
+        self._fuelle_laeuft = True
         for name in sorted(self.elsets):
             zeile = self.tabelle.rowCount()
             self.tabelle.insertRow(zeile)
@@ -977,6 +983,44 @@ class AssistantPanel:
             anzahl = QtWidgets.QTableWidgetItem("{:,}".format(self.elsets[name]).replace(",", "."))
             anzahl.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
             self.tabelle.setItem(zeile, 2, anzahl)
+            # zulaessige Spannung (MPa) - leer lassen heisst: ohne Auslastungs-Index
+            sigma = QtWidgets.QLineEdit()
+            sigma.setValidator(QtGui.QDoubleValidator(0.0, 100000.0, 2, sigma))
+            sigma.setPlaceholderText("–")
+            sigma.setMaximumWidth(58)
+            sigma.setToolTip(uebersetze("Allowable stress (von Mises) in MPa - leave empty to "
+                                        "run without a failure index. The model needs real "
+                                        "loads for it."))
+            wert = self.stress.get(name)
+            if wert:
+                sigma.setText(("%g" % wert).replace(".", ","))
+            sigma.textChanged.connect(
+                lambda _text, feld=sigma, setname=name: self._stress_geaendert(setname, feld))
+            self.tabelle.setCellWidget(zeile, 3, sigma)
+            self.felder_stress[name] = sigma
+        self._fuelle_laeuft = False
+
+    def _stress_geaendert(self, elset, feld):
+        if self._fuelle_laeuft:
+            return
+        text = feld.text().strip().replace(",", ".")
+        try:
+            wert = float(text) if text else 0.0
+        except ValueError:
+            wert = 0.0
+        if wert > 0:
+            self.stress[elset] = wert
+        else:
+            self.stress.pop(elset, None)
+        self.obj.StressLimits = dom.format_stress(self.stress)
+        if wert > 0:
+            App.Console.PrintMessage(uebersetze("TopoOpt: allowable stress for '%s' is %s MPa - "
+                                                "the run reports a failure index.\\n")
+                                     % (elset, text))
+        else:
+            App.Console.PrintMessage(uebersetze("TopoOpt: no allowable stress for '%s' - "
+                                                "the run works without a failure index.\\n")
+                                     % elset)
 
     def _rolle_geaendert(self, elset, feld):
         rolle = feld.itemData(feld.currentIndex())

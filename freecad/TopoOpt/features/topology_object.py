@@ -26,6 +26,12 @@ def ensure_properties(obj):
         obj.addProperty("App::PropertyStringList", "Domains", GROUP,
                         uebersetze("Element sets and their role: "
                                    "<set>|<design|non_design|ignore>"))
+    if not hasattr(obj, "StressLimits"):
+        # einen Failure Index rechnet beso nur, wenn eine zulaessige Spannung da ist
+        # (domain_FI in beso_conf.py) - unabhaengig vom Optimierungsziel
+        obj.addProperty("App::PropertyStringList", "StressLimits", GROUP,
+                        uebersetze("Allowable stress per element set (MPa): "
+                                   "<set>|<value> - empty means no failure index"))
     if not hasattr(obj, "WorkingDir"):
         obj.addProperty("App::PropertyString", "WorkingDir", GROUP,
                         uebersetze("Working directory of the optimization (no spaces)"))

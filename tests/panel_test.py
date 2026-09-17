@@ -141,6 +141,21 @@ try:
     pruefe(panel.schritt_knoepfe[0].parent().parent() is panel.form,
            "Schrittleiste sitzt oben im Panel")
 
+    # zulaessige Spannung: leer = kein FI, Wert = FI (wie im Prototyp eine Spalte je Domain)
+    pruefe(len(panel.felder_stress) == len(panel.elsets),
+           "jede Domain hat ein Feld fuer die zulaessige Spannung (%d Felder)"
+           % len(panel.felder_stress))
+    erster = sorted(panel.elsets)[0]
+    pruefe(panel.felder_stress[erster].text() == "",
+           "das Feld ist am Anfang leer (kein Failure Index)")
+    panel.felder_stress[erster].setText("235")
+    pruefe(panel.obj.StressLimits == ["%s|235.0" % erster],
+           "der Wert landet im Objekt (%s)" % (panel.obj.StressLimits,))
+    pruefe(erster in panel.stress, "der Wert steht auch im Assistenten")
+    panel.felder_stress[erster].setText("")
+    pruefe(panel.obj.StressLimits == [],
+           "leeres Feld nimmt die Spannung wieder heraus (%s)" % (panel.obj.StressLimits,))
+
     # Filter: Standard ist besos [["simple", "auto"]]
     pruefe(len(panel.filter_zeilen) == 1,
            "Standard: eine Filterzeile (%d)" % len(panel.filter_zeilen))

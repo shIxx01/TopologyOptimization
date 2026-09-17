@@ -41,6 +41,28 @@ def format_domains(domains):
     return ["%s|%s" % (name, domains[name]) for name in sorted(domains)]
 
 
+def parse_stress(werte):
+    """["set|235.0", ...] -> {"set": 235.0} (allowable stress in MPa)."""
+    ergebnis = {}
+    for eintrag in werte or []:
+        if "|" not in eintrag:
+            continue
+        name, wert = eintrag.split("|", 1)
+        name = name.strip()
+        try:
+            zahl = float(wert.strip().replace(",", "."))
+        except ValueError:
+            continue
+        if name and zahl > 0:
+            ergebnis[name] = zahl
+    return ergebnis
+
+
+def format_stress(limits):
+    """{"set": 235.0} -> ["set|235.0", ...] (stabile Reihenfolge)."""
+    return ["%s|%r" % (name, limits[name]) for name in sorted(limits)]
+
+
 def vorschlag(elsets):
     """A first suggestion for the incoming sets.
 

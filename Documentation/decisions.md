@@ -252,6 +252,35 @@ CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the
   percentage: right after the start the mass is far above the target and "323 %" only looked
   like an error.
 
+## D19 - Allowable stress per element set is what switches the failure index on
+
+The user asked why the first prototype showed the failure index charts even with
+`optimization_base = "stiffness"`, and this addon did not.  The reason is not the
+optimization base:
+
+* beso computes a failure index when `domain_FI` is filled: `beso_main.py` sets
+  `domain_FI_filled = True` as soon as one domain has FI criteria (line 78-80), and with
+  `stiffness` it reads the stress values from the CalculiX `.dat` file (line 415-418).
+  So the FI charts work with every optimization base.
+* The first prototype had a column "zulässige Spannung" per domain and wrote
+  `domain_FI[elset] = [[('stress_von_Mises', σ*1e6)], [('stress_von_Mises', σ)]]`
+  (`bridge.py:235`).  A real run of it shows the values:
+  `0.0434 FI_mean`, `0.3568 FI_max`, `0.00134 ener_dens_mean`.
+* This addon had no such field, so `domain_FI` stayed empty and three of the four charts
+  had no values.  That was a missing function, not a bug.
+
+Therefore (as the user decided): **a column "σ (MPa)" next to every element set** in step 1,
+stored in the object as `StressLimits` (`"<set>|<MPa>"`).  Empty means: no failure index.
+The format is beso's own (inner tuples = separate indices, second list = second element
+state).  A written configuration is executed in the test and really sets
+
+    domain_FI = {"SetA": [[("stress_von_Mises", 235000000.0)], [("stress_von_Mises", 235.0)]]}
+
+**Prerequisite, and beso says so itself**: the model needs real loads.  Without results in
+the `.dat` file beso stops with `CalculiX results not found, check CalculiX for errors.`
+(`beso_main.py:434`).  The energy density chart has the same reason: our test document has no
+loads, so `ener_dens_mean` is 0.0 there.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

@@ -70,6 +70,16 @@ DEUTSCH = {
         "Element-Set",
     "Role":
         "Rolle",
+    "σ (MPa)":
+        "σ (MPa)",
+    "Allowable stress (von Mises) in MPa - leave empty to run without a failure index. The model needs real loads for it.":
+        "Zulässige Spannung (von Mises) in MPa – leer lassen heißt: ohne Auslastungs-Index. Das Modell braucht dafür echte Lasten.",
+    "TopoOpt: allowable stress for '%s' is %s MPa - the run reports a failure index.\n":
+        "TopoOpt: zulässige Spannung für '%s' ist %s MPa – der Lauf gibt einen Auslastungs-Index aus.\n",
+    "TopoOpt: no allowable stress for '%s' - the run works without a failure index.\n":
+        "TopoOpt: keine zulässige Spannung für '%s' – der Lauf arbeitet ohne Auslastungs-Index.\n",
+    "Allowable stress per element set (MPa): <set>|<value> - empty means no failure index":
+        "Zulässige Spannung je Element-Set (MPa): <Set>|<Wert> – leer heißt: kein Auslastungs-Index",
     "Elements":
         "Elemente",
     "Design space (optimized)":

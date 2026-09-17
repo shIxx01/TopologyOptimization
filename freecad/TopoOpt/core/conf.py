@@ -27,6 +27,7 @@ import sys
 import time
 
 from . import beso as beso_modul
+from . import domains as dom
 
 UNTERORDNER = "topoopt_beso"
 VORLAGE = "beso_conf_vorlage.py"
@@ -65,6 +66,8 @@ def conf_text(obj, inp_pfad, domains, arbeit_ordner):
     from . import params as params_modul
     design = [name for name, rolle in domains.items() if rolle == "design"]
     mass_add, mass_remove = params_modul.mass_ratios(getattr(obj, "MassChange", "normal"))
+    stress = {name: wert for name, wert in
+              dom.parse_stress(getattr(obj, "StressLimits", [])).items() if name in domains}
     return "\n".join([
         "# written by TopoOpt: beso's own template first, then the values of the assistant",
         "import os as _os",
@@ -101,6 +104,14 @@ def conf_text(obj, inp_pfad, domains, arbeit_ordner):
         "            _d[_name] = _d['all_available']",
         "for _d in (domain_offset, domain_orientation, domain_FI, domain_same_state):",
         "    _d.clear()",
+        "",
+        "# Eine angegebene zulaessige Spannung (MPa) je Domain schaltet den Failure",
+        "# Index ein - unabhaengig vom Optimierungsziel. Format wie in besos Beispiel:",
+        "# innere Tupel = getrennte FIs, zweite Liste = zweiter Elementzustand.",
+        "stress_limits = %r" % (dict(stress),),
+        "for _name, _sigma in stress_limits.items():",
+        "    domain_FI[_name] = [[('stress_von_Mises', _sigma * 1e6)],",
+        "                        [('stress_von_Mises', _sigma)]]",
         "",
         "# beso_main calls plt.show() at the end - without a window the run ends by itself",
         "import matplotlib as _mpl",
