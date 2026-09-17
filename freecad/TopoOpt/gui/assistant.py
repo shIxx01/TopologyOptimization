@@ -15,6 +15,7 @@ from ..core import elsets as elset_reader
 from ..core import fem
 from ..core import lauf as logdatei
 from ..core import material as material_modul
+from ..core import netz as netz_modul
 from ..core import radius as radius_modul
 from ..core.i18n import uebersetze
 from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_filters,
@@ -193,49 +194,70 @@ class AssistantPanel:
         aussen.setContentsMargins(8, 8, 8, 8)
         aussen.setSpacing(6)
 
-        # the step bar is always there, so it sits above everything else
-        aussen.addWidget(self._schrittleiste())
+        # Wie im Prototyp: die Schrittleiste steht oben und bleibt stehen, nur der
+        # Inhalt rollt in einem eigenen Bereich (der Rollbalken sitzt damit innen,
+        # nicht am ganzen Task-Panel), unten sind Zurueck und Weiter.
+        self.schritt_label = QtWidgets.QLabel("")
+        self.schritt_label.setTextFormat(QtCore.Qt.RichText)
+        self.schritt_label.setWordWrap(True)
+        aussen.addWidget(self.schritt_label)
 
-        # one page per step; only the steps that are built can be chosen
         self.seiten = QtWidgets.QStackedWidget()
         self.seiten.addWidget(self._seite_initialisieren())
         self.seiten.addWidget(self._seite_parameter())
         self.seiten.addWidget(self._seite_berechnung())
         for _ in range(len(SCHRITTE) - 3):
             self.seiten.addWidget(self._seite_platzhalter())
-        aussen.addWidget(self.seiten, 1)
+        self.scroll = QtWidgets.QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.scroll.setWidget(self.seiten)
+        aussen.addWidget(self.scroll, 1)
+
+        nav = QtWidgets.QHBoxLayout()
+        self.knopf_schritt_zurueck = QtWidgets.QPushButton(uebersetze("< Back"))
+        self.knopf_schritt_zurueck.clicked.connect(self._schritt_zurueck)
+        self.knopf_schritt_weiter = QtWidgets.QPushButton(uebersetze("Next >"))
+        self.knopf_schritt_weiter.clicked.connect(self._schritt_weiter)
+        nav.addWidget(self.knopf_schritt_zurueck)
+        nav.addStretch(1)
+        nav.addWidget(self.knopf_schritt_weiter)
+        aussen.addLayout(nav)
+
         self._zeige_schritt(1)
 
         QtCore.QTimer.singleShot(50, self.laden)
 
     # ------------------------------------------------------------------ UI
-    def _schrittleiste(self):
-        leiste = QtWidgets.QWidget()
-        layout = QtWidgets.QHBoxLayout(leiste)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.schritt_knoepfe = []
-        for nummer, name in enumerate(SCHRITTE, start=1):
-            knopf = QtWidgets.QToolButton()
-            knopf.setText("%d %s" % (nummer, uebersetze(name)))
-            knopf.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
-            knopf.setCheckable(True)
-            gebaut = nummer in GEBAUTE_SCHRITTE
-            knopf.setEnabled(gebaut)
-            knopf.setToolTip(uebersetze(SCHRITT_TIPPS.get(nummer, "")) if gebaut
-                             else uebersetze("This step is not built yet."))
-            if gebaut:
-                knopf.clicked.connect(lambda _checked=False, n=nummer: self._zeige_schritt(n))
-            layout.addWidget(knopf)
-            self.schritt_knoepfe.append(knopf)
-        layout.addStretch(1)
-        return leiste
-
     def _zeige_schritt(self, nummer):
-        """Switch to a step (page of the stack) and mark its button."""
+        """Zum Schritt wechseln: Text oben, Seite zeigen, Rollbalken nach oben.
+
+        Der aktuelle Schritt steht fett, die anderen grau - so sieht die Leiste
+        aus wie im Prototyp (und die Knopfleiste war dem Nutzer zu unruhig).
+        """
         self._schritt = nummer
         self.seiten.setCurrentIndex(nummer - 1)
-        for index, knopf in enumerate(self.schritt_knoepfe, start=1):
-            knopf.setChecked(index == nummer)
+        teile = []
+        for index, name in enumerate(SCHRITTE, start=1):
+            text = "%d %s" % (index, uebersetze(name))
+            if index == nummer:
+                teile.append("<b>%s</b>" % text)
+            else:
+                teile.append("<span style='color:gray'>%s</span>" % text)
+        self.schritt_label.setText(" › ".join(teile))
+        try:
+            self.scroll.verticalScrollBar().setValue(0)
+        except Exception:
+            pass
+        # An den Raendern verschwindet der jeweilige Knopf
+        self.knopf_schritt_zurueck.setVisible(nummer > 1)
+        self.knopf_schritt_weiter.setVisible(nummer < len(SCHRITTE))
+
+    def _schritt_zurueck(self):
+        self._zeige_schritt(max(1, self._schritt - 1))
+
+    def _schritt_weiter(self):
+        self._zeige_schritt(min(len(SCHRITTE), self._schritt + 1))
 
     def _seite_platzhalter(self):
         seite = QtWidgets.QWidget()
@@ -686,16 +708,18 @@ class AssistantPanel:
         erg = QtWidgets.QVBoxLayout(rahmen_erg)
 
         zeile = QtWidgets.QHBoxLayout()
-        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Load result"))
+        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Show iterations"))
         self.knopf_ergebnis.setToolTip(uebersetze("Reads resulting_states.vtk and shows the "
-                                                 "finished network (last iteration)"))
+                                                 "material that is left in the part "
+                                                 "(the film of the run)"))
         self.knopf_ergebnis.clicked.connect(self._ergebnis_knopf)
         zeile.addWidget(self.knopf_ergebnis)
-        self.knopf_diagramme = QtWidgets.QPushButton(uebersetze("Show diagrams"))
-        self.knopf_diagramme.setToolTip(uebersetze("Opens the window with the four charts "
-                                                  "(mass, stress, overloaded elements, energy)"))
-        self.knopf_diagramme.clicked.connect(self._verlauf_anzeigen)
-        zeile.addWidget(self.knopf_diagramme)
+        self.knopf_netz = QtWidgets.QPushButton(uebersetze("Load result network"))
+        self.knopf_netz.setToolTip(uebersetze("Loads the network of the last iteration "
+                                             "(_state1.inp) as a real FEM mesh into the "
+                                             "document - that is the result to work with"))
+        self.knopf_netz.clicked.connect(self._ergebnisnetz_laden)
+        zeile.addWidget(self.knopf_netz)
         zeile.addStretch(1)
         erg.addLayout(zeile)
 
@@ -728,6 +752,15 @@ class AssistantPanel:
 
         self.ergebnis_info = _label_wrap("")
         erg.addWidget(self.ergebnis_info)
+
+        zeile = QtWidgets.QHBoxLayout()
+        self.knopf_diagramme = QtWidgets.QPushButton(uebersetze("Show diagrams"))
+        self.knopf_diagramme.setToolTip(uebersetze("Opens the window with the four charts "
+                                                  "(mass, stress, overloaded elements, energy)"))
+        self.knopf_diagramme.clicked.connect(self._verlauf_anzeigen)
+        zeile.addWidget(self.knopf_diagramme)
+        zeile.addStretch(1)
+        erg.addLayout(zeile)
 
         zeile = QtWidgets.QHBoxLayout()
         self.knopf_log = QtWidgets.QPushButton(uebersetze("Whole log"))
@@ -781,6 +814,29 @@ class AssistantPanel:
         if self.spieler is None and not self.ergebnis_info.text():
             self.ergebnis_info.setText(uebersetze("resulting_states.vtk is there - "
                                                  "'Show iterations' reads it."))
+
+    def _ergebnisnetz_laden(self):
+        """Das echte Ergebnisnetz der letzten Iteration als FEM-Netz laden.
+
+        Das ist besos Zustandsdatei state1 (Elemente mit Material), importiert mit
+        FreeCADs eigenem FEM-Import - zum Weiterarbeiten, nicht nur zum Ansehen.
+        """
+        ordner = getattr(self.obj, "WorkingDir", "")
+        datei = netz_modul.neueste_state1(ordner)
+        if not datei:
+            self.ergebnis_info.setText(uebersetze("No state file (_state1.inp) in the working "
+                                                 "directory yet."))
+            return ""
+        try:
+            netz_modul.laden(datei, self.obj.Document)
+        except Exception as exc:
+            self.ergebnis_info.setText(uebersetze("The result network could not be loaded: %s")
+                                       % exc)
+            return ""
+        self.ergebnis_info.setText(uebersetze("Result network loaded: %s")
+                                   % os.path.basename(datei))
+        App.Console.PrintMessage(uebersetze("TopoOpt: result network loaded from %s") % datei)
+        return datei
 
     def _ergebnis_knopf(self):
         """Knopf 'Ergebnis laden': die Datei neu einlesen und das fertige Netz zeigen.

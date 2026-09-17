@@ -232,6 +232,22 @@ DEUTSCH = {
         "Vollständiges Log",
     "Folder":
         "Ordner",
+    "< Back":
+        "< Zurück",
+    "Next >":
+        "Weiter >",
+    "Load result network":
+        "Ergebnisnetz laden",
+    "Loads the network of the last iteration (_state1.inp) as a real FEM mesh into the document - that is the result to work with":
+        "Lädt das Netz der letzten Iteration (_state1.inp) als echtes FEM-Netz ins Dokument – das ist das Ergebnis zum Weiterarbeiten",
+    "No state file (_state1.inp) in the working directory yet.":
+        "Im Arbeitsordner liegt noch keine Zustandsdatei (_state1.inp).",
+    "The result network could not be loaded: %s":
+        "Das Ergebnisnetz konnte nicht geladen werden: %s",
+    "Result network loaded: %s":
+        "Ergebnisnetz geladen: %s",
+    "TopoOpt: result network loaded from %s":
+        "TopoOpt: Ergebnisnetz geladen aus %s",
     "One iteration back":
         "Eine Iteration zurück",
     "One iteration forward":

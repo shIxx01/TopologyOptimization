@@ -139,8 +139,10 @@ try:
            "Speicher-Intervall startet bei 10 (%d)" % panel.feld_speichern.value())
     pruefe(panel.kopf.parent() is not panel.form,
            "Kopfzeile steckt in Schritt 1, nicht ueber allen Schritten")
-    pruefe(panel.schritt_knoepfe[0].parent().parent() is panel.form,
-           "Schrittleiste sitzt oben im Panel")
+    pruefe(panel.schritt_label.parent() is panel.form,
+           "Schrittleiste sitzt oben im Panel (ausserhalb des Rollbereichs)")
+    pruefe(panel.scroll.widget() is panel.seiten,
+           "nur der Inhalt rollt in einem eigenen Bereich")
 
     # zulaessige Spannung: leer = kein FI, Wert = FI (wie im Prototyp eine Spalte je Domain)
     pruefe(len(panel.felder_stress) == len(panel.elsets),
@@ -347,8 +349,11 @@ try:
            "das Verlaufsfenster hat vier Diagramme (%d)" % len(panel2.verlauf._achsen))
     pruefe(panel2.knopf_diagramme.text() in ("Show diagrams", "Diagramme anzeigen"),
            "die Diagramme gehoeren zu den Ergebnissen (%s)" % panel2.knopf_diagramme.text())
-    pruefe(panel2.knopf_ergebnis.text() in ("Load result", "Ergebnis laden"),
-           "der Knopf heisst 'Ergebnis laden' (%s)" % panel2.knopf_ergebnis.text())
+    pruefe(panel2.knopf_ergebnis.text() in ("Show iterations", "Iterationen anzeigen"),
+           "der VTK-Knopf heisst 'Iterationen anzeigen' (%s)" % panel2.knopf_ergebnis.text())
+    pruefe(panel2.knopf_netz.text() in ("Load result network", "Ergebnisnetz laden"),
+           "der Knopf fuer das echte Netz heisst 'Ergebnisnetz laden' (%s)"
+           % panel2.knopf_netz.text())
     pruefe("Iteration" in panel2.lauf_status.text(),
            "die Statuszeile nennt die Iteration (%s)" % panel2.lauf_status.text())
     pruefe(panel2.knopf_lauf.text() in ("Start optimization", "Optimierung starten"),
@@ -359,10 +364,17 @@ try:
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
 
     # Ergebnisse im selben Schritt ("Berechnung"): VTK-Iterationen anzeigen
-    pruefe(len(panel2.schritt_knoepfe) == 3,
-           "die Schrittleiste hat drei Schritte (%d)" % len(panel2.schritt_knoepfe))
-    pruefe(panel2.schritt_knoepfe[-1].text().endswith(("Calculation", "Berechnung")),
-           "der dritte Schritt heisst 'Berechnung' (%s)" % panel2.schritt_knoepfe[-1].text())
+    pruefe(panel2.schritt_label.text().count(" › ") == 2,
+           "die Schrittleiste nennt drei Schritte (%s)" % panel2.schritt_label.text())
+    pruefe("Berechnung" in panel2.schritt_label.text()
+           or "Calculation" in panel2.schritt_label.text(),
+           "der dritte Schritt heisst 'Berechnung' (%s)" % panel2.schritt_label.text())
+    pruefe(not panel2.knopf_schritt_zurueck.isHidden(),
+           "am dritten Schritt steht 'Zurueck' unten bereit")
+    pruefe(panel2.knopf_schritt_weiter.isHidden(),
+           "am letzten Schritt gibt es kein 'Weiter' mehr")
+    pruefe(panel2.knopf_schritt_zurueck.parent() is panel2.form,
+           "die Navigation sitzt unten im Panel (nicht im Rollbereich)")
     pruefe(panel2.knopf_ergebnis.isEnabled(),
            "der Knopf 'Iterationen anzeigen' ist nach dem Lauf frei")
     pruefe(os.path.isfile(panel2._ergebnis_pfad()),
@@ -392,6 +404,19 @@ try:
                % os.path.basename(panel2._log_pfad()))
         pruefe("von" in panel2.ergebnis_info.text() or "of" in panel2.ergebnis_info.text(),
                "die Info nennt auch die Gesamtzahl")
+    from freecad.TopoOpt.core import netz as netz_modul
+    state1 = netz_modul.neueste_state1(panel2.obj.WorkingDir)
+    pruefe(bool(state1), "die Zustandsdatei der letzten Iteration wird gefunden (%s)"
+           % os.path.basename(state1 or "-"))
+    vorher_objekte = len(panel2.obj.Document.Objects)
+    geladen = panel2._ergebnisnetz_laden()
+    nachher_objekte = len(panel2.obj.Document.Objects)
+    log("Ergebnisnetz: %s | Info: %s" % (os.path.basename(geladen or "-"),
+                                         panel2.ergebnis_info.text()))
+    pruefe(bool(geladen), "das Ergebnisnetz wird geladen (%s)" % (geladen or "-"))
+    pruefe(nachher_objekte > vorher_objekte,
+           "das geladene Netz liegt als neues Objekt im Dokument (%d -> %d)"
+           % (vorher_objekte, nachher_objekte))
     panel2._zeige_schritt(1)
 
     panel2.reject()

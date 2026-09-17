@@ -354,6 +354,40 @@ VTK viewer from the first prototype, "because it runs cleanly and nicely".
   panel is meant to stay at ~348 px.  The small control buttons get `min-width: 0px` in an own
   style sheet, that is measured again after every layout change.
 
+## D22 - Panel layout like the prototype: text step bar, own scroll area, navigation below
+
+The user compared with the first prototype again: the clickable step buttons were not nice, the
+scroll bar sat outside the panel, and the prototype keeps the step bar visible while scrolling
+with back/next at the bottom.  The prototype's structure (`taskpanel.py:130-166`) is:
+
+    QVBoxLayout
+      step bar   (one RichText QLabel: bold current step, " › " between, gray others)  fixed
+      QScrollArea (setWidgetResizable, NoFrame) -> QStackedWidget (the pages)          scrolls
+      navigation (["< Zurück"] ... ["Weiter >"], the outer button hides)               fixed
+
+* The step bar is now such a label (`schritt_label`, RichText) instead of tool buttons -
+  clicking a step is gone, the way forward is the navigation below (as in the prototype).
+* The pages sit in a `QScrollArea` with `setWidgetResizable(True)` and `NoFrame`, so the scroll
+  bar belongs to the content area, not to the whole task panel.
+* Below: `< Zurück` / `Weiter >` (`_schritt_zurueck`, `_schritt_weiter`); at the first step
+  there is no "back", at the last none "forward" (the outer button hides, as in the prototype).
+* `_zeige_schritt` puts the scroll bar back to the top on every step change.
+* Measured: the panel's minimum width dropped from **348 to 234 px** - the text bar and the
+  navigation below need much less room than three toggle buttons in a row.
+
+**Two separate result buttons** (the user's point: "Ergebnis anzeigen" only loaded the VTK):
+
+* **"Iterationen anzeigen"** - the VTK player (`core/vtk.py`): the surface of the material that
+  is left, per iteration, for looking at it and for the film.
+* **"Ergebnisnetz laden"** - the real result (`core/netz.py`): beso writes
+  `<name>_state1.inp` per saved iteration (state 1 = element keeps material), and the newest of
+  them is imported with FreeCAD's own `feminout.importInpMesh.import_inp` as an FEM mesh into
+  the document.  Sorted by change time, not alphabetically - alphabetically the highest
+  iteration number of an **earlier** run would be the "last" one.  The prototype did the same
+  (`taskpanel.py`: `_ergebnis_laden`).
+* Measured in the panel test: `file001_state1.inp` is found and loaded, the document gets a new
+  object.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
