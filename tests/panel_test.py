@@ -345,12 +345,17 @@ try:
            "das Verlaufsfenster wurde beim Start geoeffnet")
     pruefe(len(panel2.verlauf._achsen) == 4,
            "das Verlaufsfenster hat vier Diagramme (%d)" % len(panel2.verlauf._achsen))
-    pruefe(panel2.chk_verlauf.isChecked(), "Verlauf oeffnet standardmaessig beim Start")
+    pruefe(panel2.knopf_diagramme.text() in ("Show diagrams", "Diagramme anzeigen"),
+           "die Diagramme gehoeren zu den Ergebnissen (%s)" % panel2.knopf_diagramme.text())
+    pruefe(panel2.knopf_ergebnis.text() in ("Load result", "Ergebnis laden"),
+           "der Knopf heisst 'Ergebnis laden' (%s)" % panel2.knopf_ergebnis.text())
     pruefe("Iteration" in panel2.lauf_status.text(),
            "die Statuszeile nennt die Iteration (%s)" % panel2.lauf_status.text())
     pruefe(panel2.knopf_lauf.text() in ("Start optimization", "Optimierung starten"),
            "nach dem Lauf heisst der Knopf wieder 'Optimierung starten' (%s)"
            % panel2.knopf_lauf.text())
+    pruefe(panel2.spieler is not None,
+           "das Ergebnis wurde nach dem Lauf automatisch geladen")
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
 
     # Ergebnisse im selben Schritt ("Berechnung"): VTK-Iterationen anzeigen

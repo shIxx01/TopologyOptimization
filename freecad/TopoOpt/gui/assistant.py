@@ -637,8 +637,8 @@ class AssistantPanel:
         layout = QtWidgets.QVBoxLayout(seite)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- der Lauf ---
-        rahmen_lauf = QtWidgets.QGroupBox(uebersetze("Run"))
+        # --- rechnen: starten, abbrechen, Fortschritt, Details ---
+        rahmen_lauf = QtWidgets.QGroupBox(uebersetze("Calculate"))
         lauf = QtWidgets.QVBoxLayout(rahmen_lauf)
 
         zeile = QtWidgets.QHBoxLayout()
@@ -660,36 +660,45 @@ class AssistantPanel:
         self.lauf_status = _label_wrap("")
         lauf.addWidget(self.lauf_status)
 
-        zeile = QtWidgets.QHBoxLayout()
-        self.knopf_verlauf = QtWidgets.QPushButton(uebersetze("Show history"))
-        self.knopf_verlauf.setToolTip(uebersetze("Opens the window with the four charts "
-                                                "(mass, stress, overloaded elements, energy)"))
-        self.knopf_verlauf.clicked.connect(self._verlauf_anzeigen)
-        zeile.addWidget(self.knopf_verlauf)
-        self.chk_verlauf = QtWidgets.QCheckBox(uebersetze("Open at start"))
-        self.chk_verlauf.setChecked(True)
-        self.chk_verlauf.setToolTip(uebersetze("Open the history window when the run starts"))
-        zeile.addWidget(self.chk_verlauf)
-        zeile.addStretch(1)
-        lauf.addLayout(zeile)
+        # ausklappbares Feld fuer die letzten Logzeilen ("Detail") - gehoert zum Rechnen
+        kopf_zeile = QtWidgets.QHBoxLayout()
+        self.knopf_detail = QtWidgets.QToolButton()
+        self.knopf_detail.setText(uebersetze("Details"))
+        self.knopf_detail.setCheckable(True)
+        self.knopf_detail.setArrowType(QtCore.Qt.RightArrow)
+        self.knopf_detail.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.knopf_detail.clicked.connect(self._detail_umschalten)
+        kopf_zeile.addWidget(self.knopf_detail)
+        kopf_zeile.addStretch(1)
+        lauf.addLayout(kopf_zeile)
+
+        self.detail = QtWidgets.QPlainTextEdit()
+        self.detail.setReadOnly(True)
+        self.detail.setVisible(False)
+        self.detail.setMaximumHeight(150)
+        self.detail.setToolTip(uebersetze("The last lines of the run - 'Whole log' opens "
+                                          "the complete file."))
+        lauf.addWidget(self.detail)
         layout.addWidget(rahmen_lauf)
 
-        # --- die Ergebnisse ---
+        # --- die Ergebnisse: Netz und Diagramme ---
         rahmen_erg = QtWidgets.QGroupBox(uebersetze("Results"))
         erg = QtWidgets.QVBoxLayout(rahmen_erg)
 
         zeile = QtWidgets.QHBoxLayout()
-        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Show iterations"))
+        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Load result"))
         self.knopf_ergebnis.setToolTip(uebersetze("Reads resulting_states.vtk and shows the "
-                                                 "material that is left in the part"))
-        self.knopf_ergebnis.clicked.connect(self._ergebnis_anzeigen)
+                                                 "finished network (last iteration)"))
+        self.knopf_ergebnis.clicked.connect(self._ergebnis_knopf)
         zeile.addWidget(self.knopf_ergebnis)
+        self.knopf_diagramme = QtWidgets.QPushButton(uebersetze("Show diagrams"))
+        self.knopf_diagramme.setToolTip(uebersetze("Opens the window with the four charts "
+                                                  "(mass, stress, overloaded elements, energy)"))
+        self.knopf_diagramme.clicked.connect(self._verlauf_anzeigen)
+        zeile.addWidget(self.knopf_diagramme)
         zeile.addStretch(1)
         erg.addLayout(zeile)
 
-        # Der Schieberegler bekommt eine eigene Zeile: FreeCADs Style gibt jedem
-        # Knopf rund 106 px Mindestbreite - vier Widgets nebeneinander sprengen das
-        # schmale Panel (gemessen: 396 statt 348 px).
         self.ergebnis_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.ergebnis_slider.setMinimum(1)
         self.ergebnis_slider.setMaximum(1)
@@ -699,10 +708,10 @@ class AssistantPanel:
 
         zeile = QtWidgets.QHBoxLayout()
         zeile.addWidget(self.ergebnis_slider, 1)
-        self.knopf_zurueck = QtWidgets.QPushButton("◀")
+        self.knopf_zurueck = QtWidgets.QPushButton("\u25c0")
         self.knopf_zurueck.setToolTip(uebersetze("One iteration back"))
         self.knopf_zurueck.clicked.connect(lambda: self._ergebnis_schritt(-1))
-        self.knopf_vor = QtWidgets.QPushButton("▶")
+        self.knopf_vor = QtWidgets.QPushButton("\u25b6")
         self.knopf_vor.setToolTip(uebersetze("One iteration forward"))
         self.knopf_vor.clicked.connect(lambda: self._ergebnis_schritt(1))
         self.knopf_abspielen = QtWidgets.QPushButton(uebersetze("Play"))
@@ -725,33 +734,13 @@ class AssistantPanel:
         self.knopf_log.setToolTip(uebersetze("Opens the log file of the run"))
         self.knopf_log.clicked.connect(self._log_oeffnen)
         zeile.addWidget(self.knopf_log)
-        self.knopf_ordner = QtWidgets.QPushButton(uebersetze("Folder"))
-        self.knopf_ordner.setToolTip(uebersetze("Opens the working directory with all files"))
-        self.knopf_ordner.clicked.connect(self._ordner_oeffnen)
-        zeile.addWidget(self.knopf_ordner)
+        self.knopf_ordner_erg = QtWidgets.QPushButton(uebersetze("Open working directory"))
+        self.knopf_ordner_erg.setToolTip(uebersetze("Opens the working directory with all files"))
+        self.knopf_ordner_erg.clicked.connect(self._ordner_oeffnen)
+        zeile.addWidget(self.knopf_ordner_erg)
         zeile.addStretch(1)
         erg.addLayout(zeile)
         layout.addWidget(rahmen_erg)
-
-        # ausklappbares Feld fuer die letzten Logzeilen ("Detail")
-        kopf_zeile = QtWidgets.QHBoxLayout()
-        self.knopf_detail = QtWidgets.QToolButton()
-        self.knopf_detail.setText(uebersetze("Details"))
-        self.knopf_detail.setCheckable(True)
-        self.knopf_detail.setArrowType(QtCore.Qt.RightArrow)
-        self.knopf_detail.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
-        self.knopf_detail.clicked.connect(self._detail_umschalten)
-        kopf_zeile.addWidget(self.knopf_detail)
-        kopf_zeile.addStretch(1)
-        layout.addLayout(kopf_zeile)
-
-        self.detail = QtWidgets.QPlainTextEdit()
-        self.detail.setReadOnly(True)
-        self.detail.setVisible(False)
-        self.detail.setMaximumHeight(150)
-        self.detail.setToolTip(uebersetze("The last lines of the run - 'Whole log' opens "
-                                          "the complete file."))
-        layout.addWidget(self.detail)
         layout.addStretch(1)
 
         self.verlauf = Verlauf(zielmasse=getattr(self.obj, "MassGoalRatio", None))
@@ -784,7 +773,7 @@ class AssistantPanel:
         da = bool(pfad) and os.path.isfile(pfad)
         self.knopf_ergebnis.setEnabled(da)
         self.knopf_log.setEnabled(bool(self._log_pfad()))
-        self.knopf_ordner.setEnabled(bool(getattr(self.obj, "WorkingDir", "")))
+        self.knopf_ordner_erg.setEnabled(bool(getattr(self.obj, "WorkingDir", "")))
         if not da:
             self.ergebnis_info.setText(uebersetze("No result file yet - it is written when "
                                                  "the run is finished."))
@@ -792,6 +781,14 @@ class AssistantPanel:
         if self.spieler is None and not self.ergebnis_info.text():
             self.ergebnis_info.setText(uebersetze("resulting_states.vtk is there - "
                                                  "'Show iterations' reads it."))
+
+    def _ergebnis_knopf(self):
+        """Knopf 'Ergebnis laden': die Datei neu einlesen und das fertige Netz zeigen.
+
+        Bewusst neu einlesen - nach einem weiteren Lauf ist die Datei eine andere.
+        """
+        self.spieler = None
+        return self._ergebnis_anzeigen()
 
     def _ergebnis_anzeigen(self):
         """resulting_states.vtk einlesen und die letzte Iteration zeigen."""
@@ -946,8 +943,7 @@ class AssistantPanel:
         self.knopf_lauf.setText(uebersetze("Cancel"))
         self.knopf_lauf.setToolTip(uebersetze("Stop the run (CalculiX is stopped as well)"))
         self._setze_status(uebersetze("Run started (%s) ...") % os.path.basename(conf), "info")
-        if self.chk_verlauf.isChecked():
-            self._verlauf_anzeigen()
+        self._verlauf_anzeigen()      # Diagramme oeffnen immer beim Start
         self.lauf_timer.start()
         self._lauf_aktualisieren()
 
@@ -1016,6 +1012,7 @@ class AssistantPanel:
                 self._setze_status(uebersetze("Optimization finished after %d iteration(s).")
                                    % daten["iteration"], "ok")
                 self._ergebnisse_aktualisieren()
+                self._ergebnis_anzeigen()          # fertiges Netz gleich zeigen
             else:
                 self._setze_status(uebersetze("The run ended (code %s) - open the details.")
                                    % code, "fehler")

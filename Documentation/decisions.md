@@ -336,6 +336,19 @@ VTK viewer from the first prototype, "because it runs cleanly and nicely".
   back/forward, play/stop and the info line
   `Iteration 1 of 2 | 388 of 401 elements left (96.8 %)`.  Plus "Whole log" and "Folder"
   (the user's wish for the full log).
+
+### Nacharbeit des Nutzers (gleiche Sitzung)
+
+* The group of the run is called **"Berechnen"**, the fold-out "Details" belongs to it (the log
+  lines are about the calculation).
+* The chart button is called **"Diagramme anzeigen"** and sits in the **results** group; the
+  check box "open at start" is gone - the diagram window always opens when a run starts.
+* The folder button is called **"Arbeitsverzeichnis öffnen"**, the same wording as in step 1
+  (both are `uebersetze("Open working directory")`).
+* **The result is loaded automatically** when the run ends (`_lauf_aktualisieren` calls
+  `_ergebnis_anzeigen()` on success) and there is a button **"Ergebnis laden"** that re-reads
+  `resulting_states.vtk` and shows the finished network (last iteration) - deliberately read
+  again, because a new run writes a new file.
 * **Layout lesson**: FreeCAD's style gives every `QPushButton` a minimum width of about 106 px.
   Four widgets in one row (back, slider, forward, play) blew the panel up to 396 px though the
   panel is meant to stay at ~348 px.  The small control buttons get `min-width: 0px` in an own

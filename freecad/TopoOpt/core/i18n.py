@@ -46,6 +46,14 @@ DEUTSCH = {
         "Parameter",
     "Run":
         "Lauf",
+    "Calculate":
+        "Berechnen",
+    "Show diagrams":
+        "Diagramme anzeigen",
+    "Load result":
+        "Ergebnis laden",
+    "Reads resulting_states.vtk and shows the finished network (last iteration)":
+        "Liest resulting_states.vtk und zeigt das fertige Netz (letzte Iteration)",
     "Results":
         "Ergebnisse",
     "This step is not built yet.":
@@ -204,6 +212,14 @@ DEUTSCH = {
         "Berechnung",
     "Run":
         "Lauf",
+    "Calculate":
+        "Berechnen",
+    "Show diagrams":
+        "Diagramme anzeigen",
+    "Load result":
+        "Ergebnis laden",
+    "Reads resulting_states.vtk and shows the finished network (last iteration)":
+        "Liest resulting_states.vtk und zeigt das fertige Netz (letzte Iteration)",
     "Results":
         "Ergebnisse",
     "Show iterations":
