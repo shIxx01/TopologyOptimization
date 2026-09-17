@@ -10,11 +10,14 @@ def ensure_properties(obj):
     """Add properties that are missing (new objects and objects from older files).
 
     addProperty() has no parameter for a default value - the value has to be set
-    afterwards.  For a property that is a length the editor mode has to be set.
+    afterwards.
     """
-    if not hasattr(obj, "Analysis"):
-        obj.addProperty("App::PropertyLink", "Analysis", GROUP,
-                        "FEM analysis this optimization belongs to")
+    if not hasattr(obj, "AnalysisName"):
+        # a plain string, NOT a PropertyLink: the analysis is a group that contains
+        # this object, so a link back to it would make the dependency graph cyclic
+        # ("The graph must be a DAG", "still touched after recompute")
+        obj.addProperty("App::PropertyString", "AnalysisName", GROUP,
+                        "Name of the FEM analysis this optimization belongs to")
 
 
 class TopologyObject:
@@ -38,12 +41,26 @@ class TopologyObject:
         return None
 
 
-def create_topology_object(doc, analysis, name="TopologieOptimierung"):
-    """Create the object and put it into the (active) analysis container.
+def find_analysis(obj):
+    """The FEM analysis this object belongs to, or None.
 
-    Returns the new object.  The object keeps a link to the analysis, so it stays
-    usable even if it is moved somewhere else in the tree.
+    First choice is the group in the tree, the stored name is the fallback for the
+    case that the object was moved out of the analysis by the user.
     """
+    for parent in obj.InList:
+        if parent.TypeId.startswith("Fem::FemAnalysis"):
+            return parent
+    name = getattr(obj, "AnalysisName", "")
+    if name:
+        doc = obj.Document
+        analysis = doc.getObject(name) if doc else None
+        if analysis is not None and analysis.TypeId.startswith("Fem::FemAnalysis"):
+            return analysis
+    return None
+
+
+def create_topology_object(doc, analysis, name="TopologieOptimierung"):
+    """Create the object and put it into the (active) analysis container."""
     obj = doc.addObject("App::FeaturePython", name)
     TopologyObject(obj)
     if obj.ViewObject is not None:
@@ -51,6 +68,6 @@ def create_topology_object(doc, analysis, name="TopologieOptimierung"):
         TopologyViewProvider(obj.ViewObject)
     ensure_properties(obj)
     obj.Label = "Topologie-Optimierung"
-    obj.Analysis = analysis
+    obj.AnalysisName = analysis.Name
     analysis.addObject(obj)
     return obj
