@@ -335,6 +335,32 @@ _shutil.rmtree(ordner4, ignore_errors=True)
 # --- Schritt 3: das Protokoll eines Laufs lesen ------------------------------
 from freecad.TopoOpt.core import lauf as lauf_modul  # noqa: E402
 
+# --- Schritt 3: beso's Iterationstabelle lesen ---------------------------------
+beso_beispiel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
+                             "beso_beispiel.log")
+tabelle = lauf_modul.tabelle_lesen(beso_beispiel)
+pruefe(len(tabelle) == 6, "die Iterationstabelle wird gelesen (6 Zeilen, 2 Laeufe)")
+if len(tabelle) == 6:
+    pruefe(tabelle[0][0] == 0 and abs(tabelle[0][1]["mass"] - 20000.0) < 1e-6,
+           "die Startmasse wird gelesen: %s" % tabelle[0][1]["mass"])
+    pruefe(abs(tabelle[2][1]["mass"] - 19110.748316642857) < 1e-6,
+           "die Masse der dritten Iteration wird gelesen")
+    pruefe(tabelle[3][1].get("fi_violated") == 0 and abs(tabelle[5][1]["fi_max"] - 1.1) < 1e-6,
+           "die FI-Spalten werden gelesen (ueberlastet=%s, FI_max=%s)"
+           % (tabelle[3][1].get("fi_violated"), tabelle[5][1].get("fi_max")))
+    pruefe("fi_mean" not in tabelle[0][1],
+           "ohne Failure Index gibt es keine FI-Werte (nur Masse und Energiedichte)")
+
+f = lauf_modul.fortschritt(beso_beispiel, 0.6)
+pruefe(f["iteration"] == 2 and abs(f["masse"] - 19110.748316642857) < 1e-6,
+       "der Fortschritt kennt Iteration und Masse")
+pruefe(abs(f["ziel"] - 20000.0 * 0.6) < 1e-6,
+       "die Zielmasse ist der Anteil der Startmasse: %.0f" % f["ziel"])
+pruefe(abs(lauf_modul.anteil(f["start"], f["masse"], 0.6) - 11.12) < 0.1,
+       "der Fortschritt in Prozent: %.1f %%" % lauf_modul.anteil(f["start"], f["masse"], 0.6))
+pruefe(lauf_modul.anteil(20000.0, 8000.0, 0.6) == 100.0,
+       "bei der Zielmasse steht der Balken auf 100 %")
+
 beispiel_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
                             "lauf_beispiel.log")
 daten_lauf = lauf_modul.verlauf_lesen(beispiel_log, 0.6)

@@ -223,21 +223,34 @@ next to the input file.  **Measured** on the test model (401 C3D4, limit 2 itera
 CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the log shows
 `mass = 19369.41` then `mass = 19110.75` after `mass = 20000` at the start.
 
-## D18 - Step 3: one button, live chart inside the panel, nothing blocks
+## D18 - Step 3: one button, progress bar, live charts in an own window
 
 * **One button**: "Start optimization" becomes "Cancel" while the run goes on.  Cancel
   kills the whole process tree (`taskkill /F /T`), so the CalculiX process beso started
   ends as well.
 * **Nothing blocks**: beso runs as its own process (`subprocess.Popen`), a `QTimer` (1.5 s)
-  reads the log file and updates the display.  FreeCAD never waits for the solver.
-* **Live chart in the panel** instead of the matplotlib window of the first prototype
-  (`FreeCAD.Plot` + MDI window, kept an extra window and library).  `gui/liveplot.py`
-  draws the mass per iteration with QPainter into a ~90 px widget with the target mass as
-  a dashed line - one file, no extra window, fast enough for a timer.
-* **Collapsible "Details"** shows the last 40 log lines; the whole log file belongs to
-  step 4 (as the user asked).
-* The status line reads `Iteration 12 | Mass 15340, target 12000`.  No percentage: right
-  after the start the mass is far above the target, and "323 %" only looked like an error.
+  reads the log files and updates the display.  FreeCAD never waits for the solver.
+* **No console window**: `subprocess.Popen(..., creationflags=CREATE_NO_WINDOW)`.
+  Without it Windows opens a console window for the run - the first prototype started
+  beso in a way that did not show one, and the user noticed the difference.
+* **Progress bar** like in the first prototype: 0 % = mass of the whole part, 100 % = target
+  mass, `(start - mass) / (start * (1 - ratio)) * 100`.  It is not forced to 100 % when the
+  run stops early (iteration limit) - it shows what really happened.
+* **Charts in an own window**, as in the first prototype: `gui/verlauf.py` uses FreeCAD's
+  `Plot` module (matplotlib as MDI child window) and draws four charts - mass in percent
+  (with the target mass as a dashed line), `FI_mean`/`FI_max` (limit 1.0), overloaded
+  elements and mean energy density.  A QTimer redraws every 1.5 s; before the first
+  iteration the window says how long the run has been working, because building the filter
+  neighbourhood takes minutes on fine meshes.
+* **Source of the values is beso's own log file** `<mesh>.log`: it contains the table of
+  iterations (`i mass ener_dens_mean` and, with a failure index, four more columns).
+  `core/lauf.py` reads it.  The addon moves an old log file aside before the start, since
+  beso appends to it.
+* **Collapsible "Details"** shows the last 40 lines of our own log (`<mesh>_topoopt.log`,
+  the CalculiX output); the whole log file belongs to step 4 (as the user asked).
+* The status line reads `Iteration 12 | mass 15340, target 12000 | 3:20 min`.  No
+  percentage: right after the start the mass is far above the target and "323 %" only looked
+  like an error.
 
 ## D9 - All tests use a self made test document
 

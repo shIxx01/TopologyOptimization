@@ -276,15 +276,25 @@ try:
         panel2._lauf_aktualisieren()
         time.sleep(1)
     panel2._lauf_aktualisieren()
-    log("Lauf beendet: code=%s, Verlauf=%s, Status=%s"
-        % (panel2._lauf_prozess.returncode, panel2.verlauf.massen[:3],
-           panel2.lauf_status.text()))
+    massen = [werte.get("mass") for _, werte in panel2.verlauf.werte]
+    log("Lauf beendet: code=%s, Verlauf=%s, Status=%s, Balken=%d %%"
+        % (panel2._lauf_prozess.returncode, massen[:3],
+           panel2.lauf_status.text(), panel2.balken.value()))
     pruefe(panel2._lauf_prozess.returncode == 0,
            "der Lauf endet mit 0 (%s)" % panel2._lauf_prozess.returncode)
-    pruefe(bool(panel2.verlauf.massen), "der Verlauf hat Werte (%s)"
-           % (panel2.verlauf.massen[:3],))
-    pruefe(panel2.verlauf.ziel is not None and panel2.verlauf.ziel > 0,
-           "die Zielmasse im Verlauf ist gesetzt (%.1f)" % (panel2.verlauf.ziel or -1))
+    pruefe(bool(massen), "der Verlauf hat Werte aus beso's Tabelle (%s)" % (massen[:3],))
+    pruefe(panel2.verlauf.zielmasse is not None and panel2.verlauf.zielmasse > 0,
+           "die Zielmasse im Verlauf ist gesetzt (%.1f)" % (panel2.verlauf.zielmasse or -1))
+    pruefe(panel2.balken.value() > 0,
+           "der Fortschrittsbalken ist gewandert (%d %%)" % panel2.balken.value())
+    pruefe(panel2.balken.value() < 100,
+           "der Balken springt am Ende nicht auf 100 %% - die Zielmasse war nicht erreicht "
+           "(%d %%)" % panel2.balken.value())
+    pruefe(panel2.verlauf._fenster is not None,
+           "das Verlaufsfenster wurde beim Start geoeffnet")
+    pruefe(len(panel2.verlauf._achsen) == 4,
+           "das Verlaufsfenster hat vier Diagramme (%d)" % len(panel2.verlauf._achsen))
+    pruefe(panel2.chk_verlauf.isChecked(), "Verlauf oeffnet standardmaessig beim Start")
     pruefe("Iteration" in panel2.lauf_status.text(),
            "die Statuszeile nennt die Iteration (%s)" % panel2.lauf_status.text())
     pruefe(panel2.knopf_lauf.text() in ("Start optimization", "Optimierung starten"),

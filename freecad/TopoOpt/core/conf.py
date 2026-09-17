@@ -160,23 +160,47 @@ def schreibe_dateien(obj, inp_pfad, domains, arbeit_ordner):
 
 
 def log_pfad(inp_pfad):
-    """Die Logdatei des Laufs liegt neben der Eingabedatei."""
+    """Unser Protokoll (CalculiX-Ausgabe) liegt neben der Eingabedatei."""
     return "%s_topoopt.log" % os.path.splitext(inp_pfad)[0]
+
+
+def beso_log_pfad(inp_pfad):
+    """beso schreibt seine eigene Datei neben die Eingabedatei (file_name + .log).
+
+    Dort steht die Iterationstabelle, aus der die Verlaufsdiagramme gelesen werden.
+    """
+    return "%s.log" % os.path.splitext(inp_pfad)[0]
+
+
+def _log_beiseite(inp_pfad):
+    """Die vorherige beso-Logdatei wegkopieren - beso haengt sonst an sie an."""
+    log = beso_log_pfad(inp_pfad)
+    if not os.path.isfile(log):
+        return
+    alt = "%s_vorher.log" % os.path.splitext(inp_pfad)[0]
+    try:
+        os.replace(log, alt)
+    except OSError:
+        pass
 
 
 def starte(obj, inp_pfad, domains, arbeit_ordner):
     """Konfiguration schreiben und beso als eigenen Prozess starten.
 
-    Returns (process, path of the log file, path of beso_conf.py).
+    Returns (process, path of our log file, path of beso_conf.py).
     """
     ziel, conf = schreibe_dateien(obj, inp_pfad, domains, arbeit_ordner)
+    _log_beiseite(inp_pfad)
     log = log_pfad(inp_pfad)
     with open(log, "w", encoding="utf8") as fh:
         fh.write("TopoOpt run started: %s\n" % time.strftime("%d.%m.%Y %H:%M:%S"))
         fh.write("Input file : %s\n" % inp_pfad)
-        fh.write("Config     : %s\n\n" % conf)
+        fh.write("Config     : %s\n" % conf)
+        fh.write("beso log   : %s\n\n" % beso_log_pfad(inp_pfad))
+    # CREATE_NO_WINDOW: sonst blitzt auf Windows ein Konsolenfenster auf
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     prozess = subprocess.Popen([python_pfad(), os.path.join(ziel, "beso_main.py")],
-                               cwd=arbeit_ordner,
+                               cwd=arbeit_ordner, creationflags=flags,
                                stdout=open(log, "a", encoding="utf8"),
                                stderr=subprocess.STDOUT)
     return prozess, log, conf

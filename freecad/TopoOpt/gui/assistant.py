@@ -3,6 +3,7 @@
 
 import os
 import subprocess
+import time
 
 import FreeCAD as App
 import FreeCADGui as Gui
@@ -180,7 +181,9 @@ class AssistantPanel:
         self._robust_ergebnis = None   # Ergebnis der robusten Radius-Suche (einmal)
         self._fuelle_laeuft = False    # beim Befuellen nicht neu rechnen
         self._lauf_prozess = None      # der laufende beso-Prozess (oder None)
-        self._lauf_log = ""            # Logdatei des Laufs
+        self._lauf_log = ""            # unser Log (CalculiX-Ausgabe)
+        self._lauf_beso_log = ""       # beso's Tabelle mit den Iterationswerten
+        self._lauf_beginn = 0.0        # Startzeit des Laufs
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(uebersetze("Topology Optimization"))
@@ -623,7 +626,7 @@ class AssistantPanel:
 
     def _seite_lauf(self):
         """Step 3: start the optimization, watch it, cancel it if needed."""
-        from .liveplot import VerlaufWidget
+        from .verlauf import Verlauf
 
         seite = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(seite)
@@ -638,14 +641,28 @@ class AssistantPanel:
         zeile.addStretch(1)
         layout.addLayout(zeile)
 
+        # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
+        self.balken = QtWidgets.QProgressBar()
+        self.balken.setRange(0, 100)
+        self.balken.setValue(0)
+        self.balken.setToolTip(uebersetze("0 % = the whole part, 100 % = the target mass"))
+        layout.addWidget(self.balken)
+
         self.lauf_status = _label_wrap("")
         layout.addWidget(self.lauf_status)
 
-        rahmen = QtWidgets.QGroupBox(uebersetze("Mass per iteration"))
-        innen = QtWidgets.QVBoxLayout(rahmen)
-        self.verlauf = VerlaufWidget()
-        innen.addWidget(self.verlauf)
-        layout.addWidget(rahmen)
+        zeile = QtWidgets.QHBoxLayout()
+        self.knopf_verlauf = QtWidgets.QPushButton(uebersetze("Show history"))
+        self.knopf_verlauf.setToolTip(uebersetze("Opens the window with the four charts "
+                                                "(mass, stress, overloaded elements, energy)"))
+        self.knopf_verlauf.clicked.connect(self._verlauf_anzeigen)
+        zeile.addWidget(self.knopf_verlauf)
+        self.chk_verlauf = QtWidgets.QCheckBox(uebersetze("Open at start"))
+        self.chk_verlauf.setChecked(True)
+        self.chk_verlauf.setToolTip(uebersetze("Open the history window when the run starts"))
+        zeile.addWidget(self.chk_verlauf)
+        zeile.addStretch(1)
+        layout.addLayout(zeile)
 
         # ausklappbares Feld fuer die letzten Logzeilen ("Detail")
         kopf_zeile = QtWidgets.QHBoxLayout()
@@ -668,10 +685,20 @@ class AssistantPanel:
         layout.addWidget(self.detail)
         layout.addStretch(1)
 
+        self.verlauf = Verlauf(zielmasse=getattr(self.obj, "MassGoalRatio", None))
         self.lauf_timer = QtCore.QTimer()
         self.lauf_timer.setInterval(1500)
         self.lauf_timer.timeout.connect(self._lauf_aktualisieren)
         return seite
+
+    def _verlauf_anzeigen(self):
+        """Das Fenster mit den vier Diagrammen oeffnen (oder nach vorn holen)."""
+        fenster = self.verlauf.anzeigen()
+        if fenster is None:
+            self._setze_status(uebersetze("The plot module of FreeCAD is not available - "
+                                          "the charts need 'Plot' in FreeCAD's module folder."),
+                               "fehler")
+        return fenster
 
     def _detail_umschalten(self):
         sichtbar = self.knopf_detail.isChecked()
@@ -708,9 +735,18 @@ class AssistantPanel:
             return
         self._lauf_prozess = prozess
         self._lauf_log = log
+        self._lauf_beso_log = conf_modul.beso_log_pfad(self.obj.InpFile)
+        self._lauf_beginn = time.time()
+        self.verlauf.zielmasse = getattr(self.obj, "MassGoalRatio", None)
+        self.verlauf.zuruecksetzen()
+        self.verlauf.laeuft = True
+        self.verlauf._start_zeit = self._lauf_beginn
+        self.balken.setValue(0)
         self.knopf_lauf.setText(uebersetze("Cancel"))
         self.knopf_lauf.setToolTip(uebersetze("Stop the run (CalculiX is stopped as well)"))
         self._setze_status(uebersetze("Run started (%s) ...") % os.path.basename(conf), "info")
+        if self.chk_verlauf.isChecked():
+            self._verlauf_anzeigen()
         self.lauf_timer.start()
         self._lauf_aktualisieren()
 
@@ -731,13 +767,18 @@ class AssistantPanel:
         self._lauf_aktualisieren()
 
     def _lauf_aktualisieren(self):
-        """Vom Timer aufgerufen: Log lesen und Anzeige nachfuehren (nichts blockiert)."""
+        """Vom Timer aufgerufen: Logdateien lesen, Anzeige nachfuehren (nichts blockiert)."""
         if not self._lauf_log:
             return
-        daten = logdatei.verlauf_lesen(self._lauf_log, getattr(self.obj, "MassGoalRatio", None))
-        self.verlauf.setze_daten(daten["massen"], daten["ziel"])
+        # die Werte stehen in beso's eigener Tabelle, die letzten Zeilen in unserem Log
+        daten = logdatei.fortschritt(self._lauf_beso_log,
+                                     getattr(self.obj, "MassGoalRatio", None))
+        self.verlauf.setze_werte(daten["werte"])
+        self.verlauf.zeichne()
         laeuft = self._lauf_prozess is not None and self._lauf_prozess.poll() is None
 
+        self.balken.setValue(int(logdatei.anteil(daten["start"], daten["masse"],
+                                                 getattr(self.obj, "MassGoalRatio", None))))
         teile = []
         if daten["masse"] is not None:
             teile.append(uebersetze("Iteration %d") % daten["iteration"])
@@ -748,22 +789,29 @@ class AssistantPanel:
                 teile.append(uebersetze("mass %.0f") % daten["masse"])
         elif laeuft:
             teile.append(uebersetze("CalculiX is running ..."))
+        if self._lauf_beginn:
+            sekunden = int(time.time() - self._lauf_beginn)
+            teile.append("%d:%02d min" % (sekunden // 60, sekunden % 60))
         if teile:
             self.lauf_status.setText(" | ".join(teile))
 
         if self.detail.isVisible():
-            zeilen = daten["text"].splitlines()[-40:]
-            self.detail.setPlainText("\n".join(zeilen))
+            text = logdatei.verlauf_lesen(self._lauf_log)["text"]
+            self.detail.setPlainText("\n".join(text.splitlines()[-40:]))
             leiste = self.detail.verticalScrollBar()
             leiste.setValue(leiste.maximum())
 
         if not laeuft:
             self.lauf_timer.stop()
+            self.verlauf.laeuft = False
+            self.verlauf.schliessen()
+            self.verlauf.zeichne()
             self.knopf_lauf.setText(uebersetze("Start optimization"))
             self.knopf_lauf.setToolTip(uebersetze("Writes the beso configuration and starts beso "
                                                  "as its own process - FreeCAD stays usable."))
             code = self._lauf_prozess.returncode if self._lauf_prozess else None
-            if code == 0 and daten["fertig"]:
+            fertig = logdatei.verlauf_lesen(self._lauf_log)["fertig"]
+            if code == 0 and fertig:
                 self._setze_status(uebersetze("Optimization finished after %d iteration(s).")
                                    % daten["iteration"], "ok")
             else:
@@ -1049,7 +1097,8 @@ class AssistantPanel:
             return
         self._geschlossen = True
         try:
-            self.lauf_timer.stop()      # nur die Anzeige endet - der Lauf laeuft weiter
+            self.lauf_timer.stop()      # der Lauf selbst laeuft weiter
+            self.verlauf.schliessen()
         except Exception:
             pass
         _aktive_panels.pop(self.obj.Name, None)

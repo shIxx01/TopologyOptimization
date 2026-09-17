@@ -186,6 +186,18 @@ DEUTSCH = {
         "manuell: eigener Wert in Millimetern",
     "Start optimization":
         "Optimierung starten",
+    "Show history":
+        "Verlauf anzeigen",
+    "Open at start":
+        "beim Start öffnen",
+    "Open the history window when the run starts":
+        "Das Verlaufsfenster beim Start des Laufs öffnen",
+    "Opens the window with the four charts (mass, stress, overloaded elements, energy)":
+        "Öffnet das Fenster mit den vier Diagrammen (Masse, Auslastung, überlastete Elemente, Energiedichte)",
+    "0 % = the whole part, 100 % = the target mass":
+        "0 % = das volle Bauteil, 100 % = die Zielmasse",
+    "The plot module of FreeCAD is not available - the charts need 'Plot' in FreeCAD's module folder.":
+        "Das Plot-Modul von FreeCAD ist nicht verfügbar - die Diagramme brauchen 'Plot' im Modulordner von FreeCAD.",
     "Cancel":
         "Abbrechen",
     "Mass per iteration":
