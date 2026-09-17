@@ -335,13 +335,15 @@ class AssistantPanel:
         self.filter_zeilen = []
 
         knopf_zeile = QtWidgets.QHBoxLayout()
-        self.knopf_filter_plus = QtWidgets.QPushButton(uebersetze("Add filter"))
-        self.knopf_filter_plus.setToolTip(uebersetze("beso applies the filters one after the "
-                                                     "other, for example first 'casting', then "
-                                                     "'simple'."))
+        knopf_zeile.addStretch(1)               # the button sits on the right
+        self.knopf_filter_plus = QtWidgets.QToolButton()
+        self.knopf_filter_plus.setText("+")
+        self.knopf_filter_plus.setToolTip(uebersetze("Add filter") + " - "
+                                          + uebersetze("beso applies the filters one after the "
+                                                       "other, for example first 'casting', then "
+                                                       "'simple'."))
         self.knopf_filter_plus.clicked.connect(lambda: self._filter_hinzufuegen())
         knopf_zeile.addWidget(self.knopf_filter_plus)
-        knopf_zeile.addStretch(1)
         aussen.addLayout(knopf_zeile)
 
         hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over the "

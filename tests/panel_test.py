@@ -150,6 +150,8 @@ try:
     pruefe(panel.feld_toleranz.text() in ("0,001", "0.001"),
            "Toleranz ohne Fuellnullen: %s" % panel.feld_toleranz.text())
 
+    pruefe(panel.knopf_filter_plus.text() == "+",
+           "der Hinzufuegen-Knopf heisst '+': %r" % panel.knopf_filter_plus.text())
     panel.knopf_filter_plus.click()
     pruefe(len(panel.filter_zeilen) == 2, "Knopf '+ Filter' fuegt eine Zeile hinzu")
     pruefe(panel.filter_zeilen[1]["typ"].currentData() == "none",
