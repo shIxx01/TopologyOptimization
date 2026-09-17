@@ -18,10 +18,11 @@ Then start FreeCAD, switch to the workbench *TopoOpt* (the Addon Manager name is
 
 ## Test 1 - headless (no GUI)
 
-Covers the namespace import, object creation and persistence.
+Covers the namespace import, object creation, persistence, the .inp parser (with
+`tests/data/beispiel.inp`) and the search order for an existing input file.
 
 ```bash
-"<FreeCAD>/bin/freecadcmd.exe" test_headless.py
+"<FreeCAD>/bin/freecadcmd.exe" tests/headless_test.py
 ```
 
 What it must print: the module path, the object with `AnalysisName`, `find_analysis()`
@@ -56,18 +57,21 @@ The script checks:
 
 ## Test 3 - assistant with a real document (GUI)
 
-The table needs a document with a FEM analysis and a mesh, so this test takes the
-path of a document and works on a copy in the temp directory.  FreeCAD does not
-pass script arguments through `sys.argv`, the document therefore goes into an
-environment variable:
+First build the test document (once), then run the assistant test on it:
 
 ```bash
+"<FreeCAD>/bin/freecadcmd.exe" tests/make_test_document.py     # builds the model
+cat tests/make_test_document_ausgabe.txt                       # check: mesh and path
+
 rm -f tests/panel_test_ausgabe.txt
-export TOPOOPT_TEST_DOKUMENT="C:/.../mein.FCStd"
+export TOPOOPT_TEST_DOKUMENT="C:/.../Temp/TopoOpt_Test/modell.FCStd"
 ("<FreeCAD>/bin/freecad.exe" "C:/.../tests/panel_test.py" >/dev/null 2>&1 &)
 for i in $(seq 1 60); do sleep 3; [ -f tests/panel_test_ausgabe.txt ] && break; done
 cat tests/panel_test_ausgabe.txt
 ```
+
+FreeCAD does not pass script arguments through `sys.argv`, the document therefore goes
+into the environment variable `TOPOOPT_TEST_DOKUMENT`.
 
 It checks that the `.inp` is written into the working directory, that the element
 sets are listed with their sizes (collector sets `Eall`/`Evolumes` hidden), that a

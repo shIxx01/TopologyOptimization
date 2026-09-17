@@ -69,7 +69,7 @@ def find_inp(solver, mesh, doc_name):
     if arbeitsordner and os.path.isdir(arbeitsordner):
         pfad = os.path.join(arbeitsordner, dateiname)
         if os.path.isfile(pfad):
-            return pfad, "Arbeitsordner des Solvers"
+            return pfad, "solver"
 
     kandidaten = []
     for ordner in glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*")):
@@ -77,11 +77,11 @@ def find_inp(solver, mesh, doc_name):
         if os.path.isfile(pfad):
             kandidaten.append(pfad)
     if kandidaten:
-        return max(kandidaten, key=os.path.getmtime), "FEM-Arbeitsordner von FreeCAD"
+        return max(kandidaten, key=os.path.getmtime), "freecad"
 
     pfad = os.path.join(run_dir(doc_name, mesh.Name), dateiname)
     if os.path.isfile(pfad):
-        return pfad, "Arbeitsordner von TopoOpt"
+        return pfad, "own"
     return None, ""
 
 

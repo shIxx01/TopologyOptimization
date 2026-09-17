@@ -12,9 +12,9 @@ NON_DESIGN = "non_design"
 IGNORE = "ignore"
 
 ROLE_LABELS = {
-    DESIGN: "Design-Raum (wird optimiert)",
-    NON_DESIGN: "Nicht-Design-Raum (bleibt)",
-    IGNORE: "ignorieren",
+    DESIGN: "Design space (optimized)",
+    NON_DESIGN: "Non-design space (kept)",
+    IGNORE: "ignore",
 }
 LABEL_ROLES = {label: role for role, label in ROLE_LABELS.items()}
 

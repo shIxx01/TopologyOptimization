@@ -3,6 +3,8 @@
 
 import FreeCAD as App
 
+from ..core.i18n import uebersetze
+
 GROUP = "TopoOpt"
 
 
@@ -17,17 +19,18 @@ def ensure_properties(obj):
         # this object, so a link back to it would make the dependency graph cyclic
         # ("The graph must be a DAG", "still touched after recompute")
         obj.addProperty("App::PropertyString", "AnalysisName", GROUP,
-                        "Name of the FEM analysis this optimization belongs to")
+                        uebersetze("FEM analysis this optimization belongs to"))
     if not hasattr(obj, "Domains"):
         obj.addProperty("App::PropertyStringList", "Domains", GROUP,
-                        "Element sets and their role: <set>|<design|non_design|ignore>")
+                        uebersetze("Element sets and their role: "
+                                   "<set>|<design|non_design|ignore>"))
     if not hasattr(obj, "WorkingDir"):
         obj.addProperty("App::PropertyString", "WorkingDir", GROUP,
-                        "Working directory of the optimization (no spaces)")
+                        uebersetze("Working directory of the optimization (no spaces)"))
         obj.setEditorMode("WorkingDir", 1)          # read only in the property editor
     if not hasattr(obj, "InpFile"):
         obj.addProperty("App::PropertyString", "InpFile", GROUP,
-                        "CalculiX input file the optimization is based on")
+                        uebersetze("CalculiX input file the optimization is based on"))
         obj.setEditorMode("InpFile", 1)
 
 

@@ -5,6 +5,7 @@ import FreeCAD as App
 import FreeCADGui as Gui
 
 from .commands.create_optimization import CreateOptimizationCommand
+from .core.i18n import uebersetze
 from .resources import icon
 
 
@@ -12,7 +13,7 @@ class TopoOptWorkbench(Gui.Workbench):
     """Workbench with a single entry point: create a topology optimization."""
 
     MenuText = "TopoOpt"
-    ToolTip = "Topologieoptimierung mit CalculiX (beso)"
+    ToolTip = uebersetze("Topology optimization with CalculiX (beso)")
     Icon = icon("TopoOpt-wb.svg")
 
     def Initialize(self):

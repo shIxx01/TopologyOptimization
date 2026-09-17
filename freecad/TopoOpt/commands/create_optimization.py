@@ -10,10 +10,9 @@ hint instead of a silently created object somewhere in the document.
 import FreeCAD as App
 import FreeCADGui as Gui
 
+from ..core.i18n import uebersetze
 from ..features import create_topology_object
 from ..resources import icon
-
-translate = App.Qt.translate
 
 
 def active_analysis():
@@ -36,9 +35,8 @@ class CreateOptimizationCommand:
     def GetResources(self):
         return {
             "Pixmap": icon("TopoOpt.svg"),
-            "MenuText": translate("TopoOpt", "Topologie-Optimierung"),
-            "ToolTip": translate("TopoOpt",
-                                 "Neue Topologie-Optimierung in der aktiven FEM-Analyse anlegen"),
+            "MenuText": uebersetze("Topology Optimization"),
+            "ToolTip": uebersetze("Create a topology optimization in the active FEM analysis"),
         }
 
     def IsActive(self):
@@ -54,18 +52,17 @@ class CreateOptimizationCommand:
             return
         obj = create_topology_object(doc, analysis)
         doc.recompute()
-        App.Console.PrintMessage(
-            "TopoOpt: '%s' wurde der Analyse '%s' hinzugefuegt.\n" % (obj.Label, analysis.Label))
+        App.Console.PrintMessage(uebersetze("TopoOpt: '%s' was added to the analysis '%s'.\n")
+                                 % (obj.Label, analysis.Label))
 
     def _hint_no_analysis(self):
         from PySide import QtWidgets
         QtWidgets.QMessageBox.information(
             Gui.getMainWindow(),
-            translate("TopoOpt", "Keine aktive Analyse"),
-            translate("TopoOpt",
-                      "Bitte zuerst eine FEM-Analyse im Modellbaum aktivieren "
-                      "(Doppelklick oder Rechtsklick > Analyse aktivieren).\n\n"
-                      "Die Topologie-Optimierung wird dieser Analyse hinzugefuegt."))
+            uebersetze("No active analysis"),
+            uebersetze("Please activate a FEM analysis in the tree first (double click, or right "
+                       "click > Activate analysis).\n\nThe topology optimization is added to that "
+                       "analysis."))
 
     @classmethod
     def Install(cls):

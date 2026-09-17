@@ -65,3 +65,37 @@ manipulation.
 *Reason:* the addon ships beso, which is LGPLv3, so the code license has to be
 LGPLv3-compatible. The Index requires an exact SPDX identifier in the manifest, the LICENSE
 files and the file headers.
+
+## D7 - English source texts, German translation in a dictionary
+
+The UI texts in the code are English; `core/i18n.py` holds a German dictionary and is used
+when FreeCAD runs in German (`uebersetze()`), so every other language falls back to English.
+
+*Reason:* the addon is meant to be shared internationally, while the first users are German.
+The usual Qt workflow (`.ts` file compiled to `.qm` with `lrelease`) is not available: the
+FreeCAD 26.3 package ships neither `lrelease` nor `lupdate`. When the addon is translated by
+the community, `core/i18n.py` is the single place to replace by the `.ts`/`.qm` mechanism.
+
+## D8 - Reuse an existing input file, never write it silently
+
+`fem.find_inp()` looks for the CalculiX `.inp` in three places (working directory of the
+solver, FreeCAD's `%TEMP%/fcfem_*` directories, the addon's own working directory) and
+copies a found file into the addon's working directory. Only if nothing is found does the
+user write it - with a button, not automatically.
+
+*Reason (user request):* a file that was already written by the solver panel must not be
+written a second time (redundant work). And writing it takes time - measured 2.3 s for
+41,666 C3D10 elements - while FreeCAD is blocked; doing that silently when a dialog opens
+looks like a freeze. The dialog now only looks around and says what is missing; the step is
+called "Initialize" because it prepares the analysis case (input file plus element sets).
+
+## D9 - All tests use a self made test document
+
+`tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
+with about 400 elements, solver) in the temp directory; every test works on a copy of it.
+
+*Reason (user request):* tests must not depend on a document of somebody's own project -
+that mixes test data with real work and hides the fact that a fresh model behaves
+differently. Found while switching: without a material *reference* (`References` to the
+solid) FreeCAD writes no material ELSET at all, so the domains table stays empty. The test
+document therefore assigns the material to the body.

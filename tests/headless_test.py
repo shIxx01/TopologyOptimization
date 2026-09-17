@@ -129,12 +129,12 @@ dummy_solver.WorkingDirectory = ordner_solver
 with open(os.path.join(ordner_solver, "SuchMesh.inp"), "w") as fh:
     fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
 pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "Arbeitsordner des Solvers", "Solver-Arbeitsordner wird zuerst geprueft")
+pruefe(quelle == "solver", "Solver-Arbeitsordner wird zuerst geprueft")
 
 # 2. ohne Solver-Arbeitsordner: FreeCADs FEM-Arbeitsordner (fcfem_*)
 dummy_solver.WorkingDirectory = ""
 pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "FEM-Arbeitsordner von FreeCAD", "FreeCAD-Arbeitsordner wird gefunden")
+pruefe(quelle == "freecad", "FreeCAD-Arbeitsordner wird gefunden")
 
 # 3. nur der eigene Arbeitsordner, und der wird kopiert
 os.remove(os.path.join(ordner_solver, "SuchMesh.inp"))
@@ -142,12 +142,21 @@ eigener = fem_core.run_dir("TopoOptTest", "SuchMesh")
 with open(os.path.join(eigener, "SuchMesh.inp"), "w") as fh:
     fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
 pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
-pruefe(quelle == "Arbeitsordner von TopoOpt", "eigener Arbeitsordner wird gefunden")
+pruefe(quelle == "own", "eigener Arbeitsordner wird gefunden")
 pruefe(fem_core.datei_info(pfad).startswith("0.0 kB"), "Dateiinfo nennt Groesse (%s)"
        % fem_core.datei_info(pfad))
 os.remove(os.path.join(eigener, "SuchMesh.inp"))
 os.rmdir(ordner_solver)
 App.closeDocument(doc3.Name)
+
+# --- Uebersetzung (englische Quelle, deutsche Uebersetzung) -----------------
+from freecad.TopoOpt.core import i18n  # noqa: E402
+
+unbekannt = "a text that is not in the dictionary"
+pruefe(i18n.uebersetze(unbekannt) == unbekannt, "unbekannte Texte bleiben unveraendert")
+pruefe(i18n.uebersetze("Initialize") in ("Initialize", "Initialisieren"),
+       "bekannter Text wird uebersetzt oder bleibt englisch: %r" % i18n.uebersetze("Initialize"))
+pruefe(i18n.sprache() in ("", "de", "en", "fr", "es", "it"), "Sprache erkannt: %r" % i18n.sprache())
 
 print()
 if fehler:

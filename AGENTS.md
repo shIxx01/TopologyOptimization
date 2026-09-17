@@ -67,9 +67,13 @@ freecad/TopoOpt/
 
 * `beso` fork with reviewed fixes: https://github.com/shIxx01/beso (the addon will ship a
   copy of it; upstream is https://github.com/calculix/beso)
-* A bigger experimental workbench with assistant, live plots and a VTK iteration player
-  exists on the author's machine only; it is the reference for behaviour, not part of
-  this repository.
+
+## Test document
+
+`tests/make_test_document.py` builds a small FEM document from scratch (box, material with
+a solid reference, coarse gmsh mesh with about 400 elements, CalculiX solver).  All tests
+use it - never a document of somebody's own project.  Its output goes to
+`%TEMP%/TopoOpt_Test/modell.FCStd` (or the path in `TOPOOPT_TEST_DOKUMENT`).
 
 ## Definition of done for a change
 

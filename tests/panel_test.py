@@ -80,8 +80,7 @@ try:
     # Beim Oeffnen darf nichts erzeugt werden
     if not obj.InpFile:
         pruefe(panel.tabelle.rowCount() == 0, "ohne Eingabedatei bleibt die Tabelle leer")
-        pruefe("erzeugen" in panel.status.text().lower(),
-               "Hinweis auf fehlende Eingabedatei")
+        pruefe(bool(panel.status.text()), "Hinweis auf fehlende Eingabedatei vorhanden")
         log("keine Eingabedatei vorhanden -> Button wird geklickt")
         panel._inp_erzeugen()
 
@@ -89,8 +88,7 @@ try:
            "CalculiX-Eingabedatei vorhanden (%s)" % obj.InpFile)
     log("Dateiinfo: %s" % panel.info.text())
     pruefe(panel.tabelle.rowCount() > 0, "Tabelle hat Zeilen (%d)" % panel.tabelle.rowCount())
-    pruefe("s" in panel.status.text() or "Eingabedatei" in panel.status.text(),
-           "Status nennt Dauer bzw. Quelle: %s" % panel.status.text()[:120])
+    pruefe(bool(panel.status.text()), "Statusmeldung vorhanden: %s" % panel.status.text()[:110])
 
     rollen = {}
     for zeile in range(panel.tabelle.rowCount()):
