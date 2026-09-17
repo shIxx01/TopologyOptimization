@@ -11,3 +11,4 @@ venv/
 
 # test output
 tests/*_ausgabe.txt
+tests/data/*.log

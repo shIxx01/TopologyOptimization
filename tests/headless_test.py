@@ -274,6 +274,11 @@ pruefe(ergebnis.get("ohne_nachbarn") == 0,
 pruefe(ergebnis.get("radius", 0) >= radius_modul.BESO_AUTO * daten["mittel"],
        "robuster Radius ist mindestens so gross wie besos 'auto'")
 pruefe(radius_modul.robust({}) == {}, "ohne Elementdaten kommt ein leeres Ergebnis")
+# beso schreibt beim Einlesen eine Logdatei neben die .inp (write_to_log) - im Test
+# wieder weg damit, im Arbeitsordner ist sie gewollt
+protokoll = os.path.splitext(beispiel)[0] + ".log"
+if os.path.isfile(protokoll):
+    os.remove(protokoll)
 
 print()
 if fehler:
