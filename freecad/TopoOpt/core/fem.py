@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Finding the FEM parts of a document and preparing the CalculiX input file."""
 
+import glob
 import os
 import re
+import shutil
 import tempfile
-
-import FreeCAD as App
+import time
 
 KEIN_LEERZEICHEN = re.compile(r"\s")
 
@@ -38,7 +39,7 @@ def find_materials(doc):
 
 
 def run_dir(doc_name, base_name):
-    """Working directory for beso - without spaces, inside the temp directory.
+    """Working directory of the optimization - without spaces, inside temp.
 
     CalculiX cuts the job name at the first space, so a directory with spaces
     would silently produce a 0 byte .dat file.
@@ -50,8 +51,55 @@ def run_dir(doc_name, base_name):
     return pfad
 
 
+def find_inp(solver, mesh, doc_name):
+    """Look for an input file that already exists. Returns (path, source) or (None, "").
+
+    If the user ran the analysis before (solver panel: "Write .inp file"), the
+    file is already there and does not have to be written again:
+
+    1. working directory of the solver (where FreeCAD writes it),
+    2. FreeCAD's own FEM working directories (%TEMP%/fcfem_*), newest first,
+    3. a working directory this addon used in an earlier session.
+    """
+    if mesh is None:
+        return None, ""
+    dateiname = "%s.inp" % mesh.Name
+
+    arbeitsordner = getattr(solver, "WorkingDirectory", "") or ""
+    if arbeitsordner and os.path.isdir(arbeitsordner):
+        pfad = os.path.join(arbeitsordner, dateiname)
+        if os.path.isfile(pfad):
+            return pfad, "Arbeitsordner des Solvers"
+
+    kandidaten = []
+    for ordner in glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*")):
+        pfad = os.path.join(ordner, dateiname)
+        if os.path.isfile(pfad):
+            kandidaten.append(pfad)
+    if kandidaten:
+        return max(kandidaten, key=os.path.getmtime), "FEM-Arbeitsordner von FreeCAD"
+
+    pfad = os.path.join(run_dir(doc_name, mesh.Name), dateiname)
+    if os.path.isfile(pfad):
+        return pfad, "Arbeitsordner von TopoOpt"
+    return None, ""
+
+
+def uebernehme_inp(quelle, doc_name, mesh):
+    """Copy an existing input file into the working directory of the optimization.
+
+    The optimizer writes its iteration files next to the input file, so they
+    belong together in one directory - and FreeCAD's own directory stays
+    untouched.  Returns the path of the copy.
+    """
+    ziel = os.path.join(run_dir(doc_name, mesh.Name), "%s.inp" % mesh.Name)
+    if os.path.abspath(quelle) != os.path.abspath(ziel):
+        shutil.copyfile(quelle, ziel)
+    return ziel
+
+
 def write_inp(analysis, solver, mesh, target_dir):
-    """Create the .inp with FreeCAD's writer and return its path.
+    """Create the input file with FreeCAD's writer and return its path.
 
     The order matters: setup_working_dir() first, then update_objects() (without
     it `f.mesh` is missing), and write_inp_file() last - set_inp_file_name()
@@ -76,16 +124,22 @@ def write_inp(analysis, solver, mesh, target_dir):
     return fem.inp_file_name
 
 
-def prepare_inp(analysis, mesh, solver, doc_name, erneut=False):
-    """Working directory and .inp for an analysis. Returns (verzeichnis, inp_pfad).
+def erzeuge_inp(analysis, solver, mesh, doc_name):
+    """Write a new input file into the working directory. Returns (path, seconds)."""
+    ziel = run_dir(doc_name, mesh.Name)
+    start = time.time()
+    pfad = write_inp(analysis, solver, mesh, ziel)
+    return pfad, time.time() - start
 
-    An existing .inp is reused unless `erneut` is True - writing it takes a few
-    seconds for a fine mesh.
-    """
-    verzeichnis = run_dir(doc_name, mesh.Name if mesh else "modell")
-    inp = os.path.join(verzeichnis, "%s.inp" % (mesh.Name if mesh else "modell"))
-    if os.path.isfile(inp) and not erneut:
-        return verzeichnis, inp
-    App.Console.PrintMessage("TopoOpt: erzeuge %s ...\n" % inp)
-    pfad = write_inp(analysis, solver, mesh, verzeichnis)
-    return verzeichnis, pfad
+
+def datei_info(pfad):
+    """Short description of a file for the user: size and timestamp."""
+    if not pfad or not os.path.isfile(pfad):
+        return ""
+    groesse = os.path.getsize(pfad)
+    einheit = "kB"
+    wert = groesse / 1024.0
+    if wert > 1024:
+        wert, einheit = wert / 1024.0, "MB"
+    geaendert = time.strftime("%d.%m.%Y %H:%M", time.localtime(os.path.getmtime(pfad)))
+    return "%.1f %s, Stand %s" % (wert, einheit, geaendert)

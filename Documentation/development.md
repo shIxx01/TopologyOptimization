@@ -57,11 +57,14 @@ The script checks:
 ## Test 3 - assistant with a real document (GUI)
 
 The table needs a document with a FEM analysis and a mesh, so this test takes the
-path of a document and works on a copy in the temp directory:
+path of a document and works on a copy in the temp directory.  FreeCAD does not
+pass script arguments through `sys.argv`, the document therefore goes into an
+environment variable:
 
 ```bash
 rm -f tests/panel_test_ausgabe.txt
-("<FreeCAD>/bin/freecad.exe" "C:/.../tests/panel_test.py" "C:/.../mein.FCStd" >/dev/null 2>&1 &)
+export TOPOOPT_TEST_DOKUMENT="C:/.../mein.FCStd"
+("<FreeCAD>/bin/freecad.exe" "C:/.../tests/panel_test.py" >/dev/null 2>&1 &)
 for i in $(seq 1 60); do sleep 3; [ -f tests/panel_test_ausgabe.txt ] && break; done
 cat tests/panel_test_ausgabe.txt
 ```

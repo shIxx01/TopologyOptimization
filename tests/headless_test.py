@@ -110,6 +110,45 @@ pruefe(gespeichert == ["A|design", "B|non_design"], "Rollen werden stabil format
 zurueck = dom.parse_domains(gespeichert)
 pruefe(zurueck == {"A": dom.DESIGN, "B": dom.NON_DESIGN}, "Rollen werden wieder eingelesen")
 
+# --- Eingabedatei finden (Suchreihenfolge) ---------------------------------
+import tempfile as _tempfile  # noqa: E402
+from freecad.TopoOpt.core import fem as fem_core  # noqa: E402
+
+doc3 = App.newDocument("TopoOptSuchTest")
+dummy_mesh = doc3.addObject("App::FeaturePython", "SuchMesh")
+dummy_solver = doc3.addObject("App::FeaturePython", "SuchSolver")
+
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
+pruefe(pfad is None, "ohne Datei wird nichts gefunden")
+
+# 1. Arbeitsordner des Solvers hat Vorrang
+ordner_solver = os.path.join(_tempfile.gettempdir(), "fcfem_topoopt_test")
+os.makedirs(ordner_solver, exist_ok=True)
+dummy_solver.addProperty("App::PropertyString", "WorkingDirectory", "Test", "test")
+dummy_solver.WorkingDirectory = ordner_solver
+with open(os.path.join(ordner_solver, "SuchMesh.inp"), "w") as fh:
+    fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
+pruefe(quelle == "Arbeitsordner des Solvers", "Solver-Arbeitsordner wird zuerst geprueft")
+
+# 2. ohne Solver-Arbeitsordner: FreeCADs FEM-Arbeitsordner (fcfem_*)
+dummy_solver.WorkingDirectory = ""
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
+pruefe(quelle == "FEM-Arbeitsordner von FreeCAD", "FreeCAD-Arbeitsordner wird gefunden")
+
+# 3. nur der eigene Arbeitsordner, und der wird kopiert
+os.remove(os.path.join(ordner_solver, "SuchMesh.inp"))
+eigener = fem_core.run_dir("TopoOptTest", "SuchMesh")
+with open(os.path.join(eigener, "SuchMesh.inp"), "w") as fh:
+    fh.write("*ELSET, ELSET=SuchSet\n1, 2, 3\n")
+pfad, quelle = fem_core.find_inp(dummy_solver, dummy_mesh, "TopoOptTest")
+pruefe(quelle == "Arbeitsordner von TopoOpt", "eigener Arbeitsordner wird gefunden")
+pruefe(fem_core.datei_info(pfad).startswith("0.0 kB"), "Dateiinfo nennt Groesse (%s)"
+       % fem_core.datei_info(pfad))
+os.remove(os.path.join(eigener, "SuchMesh.inp"))
+os.rmdir(ordner_solver)
+App.closeDocument(doc3.Name)
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

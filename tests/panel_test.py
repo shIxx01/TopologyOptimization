@@ -39,9 +39,14 @@ def pruefe(bedingung, text):
 
 
 try:
-    quelle = sys.argv[1] if len(sys.argv) > 1 else ""
+    # FreeCAD does not pass script arguments through sys.argv, so the document is
+    # given in an environment variable (see Documentation/development.md)
+    quelle = os.environ.get("TOPOOPT_TEST_DOKUMENT", "") or (sys.argv[1] if len(sys.argv) > 1 else "")
+    if quelle.lower().endswith(".py"):
+        quelle = ""          # never treat a script as a document
     if not quelle or not os.path.isfile(quelle):
-        raise SystemExit("Aufruf: freecad.exe tests/panel_test.py <dokument.FCStd>")
+        raise SystemExit("Aufruf: TOPOOPT_TEST_DOKUMENT=<dokument.FCStd> freecad.exe "
+                         "tests/panel_test.py")
 
     import FreeCAD as App
 
@@ -49,7 +54,11 @@ try:
     from freecad.TopoOpt.gui.assistant import AssistantPanel
 
     kopie = os.path.join(tempfile.gettempdir(), "TopoOpt_PanelTest.FCStd")
+    if os.path.exists(kopie):
+        os.remove(kopie)
     shutil.copy(quelle, kopie)
+    if os.path.getsize(kopie) < 1000:                 # a document is never that small
+        raise SystemExit("Die Kopie von %s sieht nicht wie ein Dokument aus." % quelle)
     doc = App.openDocument(kopie)
     log("Dokument: %s (%d Objekte)" % (doc.Name, len(doc.Objects)))
 
@@ -67,8 +76,21 @@ try:
     log("Status : %s" % panel.status.text())
     log("Kopf   : %s" % panel.kopf.text())
     log("Arbeit : %s" % obj.WorkingDir)
-    pruefe(os.path.isfile(obj.InpFile), "CalculiX-Eingabedatei erzeugt (%s)" % obj.InpFile)
+
+    # Beim Oeffnen darf nichts erzeugt werden
+    if not obj.InpFile:
+        pruefe(panel.tabelle.rowCount() == 0, "ohne Eingabedatei bleibt die Tabelle leer")
+        pruefe("erzeugen" in panel.status.text().lower(),
+               "Hinweis auf fehlende Eingabedatei")
+        log("keine Eingabedatei vorhanden -> Button wird geklickt")
+        panel._inp_erzeugen()
+
+    pruefe(bool(obj.InpFile) and os.path.isfile(obj.InpFile),
+           "CalculiX-Eingabedatei vorhanden (%s)" % obj.InpFile)
+    log("Dateiinfo: %s" % panel.info.text())
     pruefe(panel.tabelle.rowCount() > 0, "Tabelle hat Zeilen (%d)" % panel.tabelle.rowCount())
+    pruefe("s" in panel.status.text() or "Eingabedatei" in panel.status.text(),
+           "Status nennt Dauer bzw. Quelle: %s" % panel.status.text()[:120])
 
     rollen = {}
     for zeile in range(panel.tabelle.rowCount()):
@@ -77,7 +99,8 @@ try:
         anzahl = panel.tabelle.item(zeile, 2).text()
         rollen[name] = feld.currentText()
         log("  %-28s %-30s %s" % (name, feld.currentText(), anzahl))
-        pruefe(name.lower() not in ("eall", "evolumes"), "Sammelset '%s' wird nicht angeboten" % name)
+        pruefe(name.lower() not in ("eall", "evolumes", "efaces", "eedges", "enodes"),
+               "'%s' ist kein Sammelset" % name)
     pruefe(bool(obj.Domains), "Rollen im Objekt gespeichert: %s" % (obj.Domains,))
     pruefe(any("design" in e for e in obj.Domains),
            "ein Design-Raum ist vorbelegt")

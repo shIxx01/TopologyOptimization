@@ -12,7 +12,7 @@ from ..core import elsets as elset_reader
 from ..core import fem
 from ..features.topology_object import find_analysis
 
-SCHRITTE = ("Domains", "Parameter", "Lauf", "Ergebnisse")
+SCHRITTE = ("Analysefall", "Parameter", "Lauf", "Ergebnisse")
 _aktive_panels = {}          # Panel-Instanzen am Leben halten (sonst raeumt der GC sie ab)
 
 
@@ -40,16 +40,22 @@ def open_assistant(obj):
 
 
 class AssistantPanel:
-    """Step-by-step dialog: domains, parameters, run, results.
+    """Step-by-step dialog: analysis case, parameters, run, results.
 
-    Only the first step exists so far; the further steps are shown in the step
-    bar but are not selectable yet.
+    Step 1 only prepares the analysis case: it looks for the CalculiX input file
+    that FreeCAD may have written before (solver panel), shows it and reads the
+    element sets.  Nothing heavy happens when the dialog opens - writing a new
+    input file is a click of the user's own, because it can take a few seconds
+    and FreeCAD is blocked while it runs.
     """
 
     def __init__(self, obj):
         self.obj = obj
-        self.domains = {}          # elset -> rolle (Spiegel des Objekts)
+        self.domains = {}          # elset -> Rolle (Spiegel des Objekts)
         self.elsets = {}           # elset -> Anzahl Elemente
+        self.analyse = None
+        self.netz = None
+        self.solver = None
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle("Topologie-Optimierung")
@@ -66,23 +72,9 @@ class AssistantPanel:
         self.status.setWordWrap(True)
         aussen.addWidget(self.status)
 
+        aussen.addWidget(self._inp_bereich())
         aussen.addWidget(self._domain_tabelle(), 1)
 
-        fuss = QtWidgets.QHBoxLayout()
-        self.knopf_inp = QtWidgets.QPushButton("CalculiX-Eingabedatei neu erzeugen")
-        self.knopf_inp.setToolTip("Liest das Netz neu ein und schreibt die .inp erneut.\n"
-                                  "Noetig, wenn du Netz, Material oder Randbedingungen geaendert hast.")
-        self.knopf_inp.clicked.connect(self._inp_neu)
-        fuss.addWidget(self.knopf_inp)
-        fuss.addStretch(1)
-        self.pfad_feld = QtWidgets.QLineEdit()
-        self.pfad_feld.setReadOnly(True)
-        self.pfad_feld.setToolTip("Arbeitsordner der Optimierung (ohne Leerzeichen, "
-                                  "auszerhalb deiner Dokumente)")
-        fuss.addWidget(self.pfad_feld, 1)
-        aussen.addLayout(fuss)
-
-        # Panel zuerst anzeigen, dann die (langsame) Arbeit erledigen
         QtCore.QTimer.singleShot(50, self.laden)
 
     # ------------------------------------------------------------------ UI
@@ -96,15 +88,35 @@ class AssistantPanel:
             knopf.setText("%d %s" % (nummer, name))
             knopf.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
             knopf.setEnabled(nummer == 1)
-            knopf.setToolTip("Dieser Schritt ist noch nicht eingebaut."
-                             if nummer > 1 else "Element-Sets auswaehlen")
+            knopf.setToolTip("Dieser Schritt ist noch nicht eingebaut." if nummer > 1
+                             else "Analysefall vorbereiten: CalculiX-Eingabedatei und Element-Sets")
             layout.addWidget(knopf)
             self.schritt_knoepfe.append(knopf)
         layout.addStretch(1)
         return leiste
 
+    def _inp_bereich(self):
+        rahmen = QtWidgets.QGroupBox("CalculiX-Eingabedatei (Grundlage der Optimierung)")
+        layout = QtWidgets.QGridLayout(rahmen)
+
+        self.pfad_feld = QtWidgets.QLineEdit()
+        self.pfad_feld.setReadOnly(True)
+        self.pfad_feld.setToolTip("Der Optimierer schreibt seine Iterationsdateien neben diese Datei.")
+        layout.addWidget(self.pfad_feld, 0, 0, 1, 2)
+
+        self.info = QtWidgets.QLabel("")
+        layout.addWidget(self.info, 1, 0)
+
+        self.knopf_inp = QtWidgets.QPushButton("Eingabedatei erzeugen")
+        self.knopf_inp.setToolTip("Schreibt die .inp aus dem FEM-Modell neu (Netz, Material,\n"
+                                  "Randbedingungen). Dauert bei feinen Netzen einige Sekunden,\n"
+                                  "FreeCAD ist so lange blockiert.")
+        self.knopf_inp.clicked.connect(self._inp_erzeugen)
+        layout.addWidget(self.knopf_inp, 1, 1)
+        return rahmen
+
     def _domain_tabelle(self):
-        rahmen = QtWidgets.QGroupBox("Element-Sets der Analyse")
+        rahmen = QtWidgets.QGroupBox("Domains - welche Elemente werden optimiert?")
         layout = QtWidgets.QVBoxLayout(rahmen)
         self.tabelle = QtWidgets.QTableWidget(0, 3)
         self.tabelle.setHorizontalHeaderLabels(["Element-Set", "Rolle", "Elemente"])
@@ -118,46 +130,56 @@ class AssistantPanel:
         return rahmen
 
     # --------------------------------------------------------------- Daten
-    def laden(self, erneut=False):
-        """Read analysis, mesh and element sets; fill the table."""
+    def laden(self):
+        """Look at analysis, mesh and an existing input file. Writes nothing."""
         QtWidgets.QApplication.processEvents()
-        self._setze_status("Suche Analyse und Netz ...")
-        analyse = find_analysis(self.obj)
-        if analyse is None:
+        self._setze_status("Suche Analyse, Netz und vorhandene CalculiX-Eingabedatei ...")
+        self.analyse = find_analysis(self.obj)
+        if self.analyse is None:
             self._setze_status("Keine FEM-Analyse gefunden. Bitte das Objekt in eine Analyse "
-                               "legen (aktive Analyse) oder die Analyse wiederherstellen.", fehler=True)
+                               "legen (aktive Analyse) oder die Analyse wiederherstellen.",
+                               fehler=True)
             return
-        netz = fem.find_mesh(analyse)
-        solver = fem.find_solver(analyse)
+        self.netz = fem.find_mesh(self.analyse)
+        self.solver = fem.find_solver(self.analyse)
         self.kopf.setText("Analyse: %s   |   Netz: %s"
-                          % (analyse.Label, netz.Label if netz else "-"))
-        if netz is None or solver is None:
+                          % (self.analyse.Label, self.netz.Label if self.netz else "-"))
+        self.obj.WorkingDir = fem.run_dir(self.obj.Document.Name, self.netz.Name if self.netz else "modell")
+        if self.netz is None or self.solver is None:
             self._setze_status("Die Analyse braucht ein Netz und einen Solver "
                                "(FEM-Arbeitsbereich: Netz und Solver anlegen).", fehler=True)
             return
 
-        try:
-            self._setze_status("Bereite Arbeitsordner und CalculiX-Eingabedatei vor ...")
-            QtWidgets.QApplication.processEvents()
-            verzeichnis, inp = fem.prepare_inp(analyse, netz, solver,
-                                               self.obj.Document.Name, erneut=erneut)
-        except Exception as exc:
-            self._setze_status("Die CalculiX-Eingabedatei konnte nicht erzeugt werden: %s" % exc,
-                               fehler=True)
+        pfad, quelle = fem.find_inp(self.solver, self.netz, self.obj.Document.Name)
+        if not pfad:
+            self._uebernehme_inp("", "")
+            self._setze_status("Es gibt noch keine CalculiX-Eingabedatei fuer die Analyse '%s'. "
+                               "Klick auf 'Eingabedatei erzeugen', damit die Element-Sets gelesen "
+                               "werden koennen." % self.analyse.Label)
             return
 
-        self.obj.WorkingDir = verzeichnis
-        self.obj.InpFile = inp
-        self.pfad_feld.setText(verzeichnis)
+        kopie = fem.uebernehme_inp(pfad, self.obj.Document.Name, self.netz)
+        self._uebernehme_inp(kopie, quelle)
+        typen = ", ".join(elset_reader.element_types(kopie)) or "?"
+        self._setze_status("Eingabedatei verwendet (Quelle: %s). %d Element-Set(s), Elementtyp %s. "
+                           "Der Design-Raum wird optimiert, der Nicht-Design-Raum bleibt stehen."
+                           % (quelle, len(self.elsets), typen))
+
+    def _uebernehme_inp(self, pfad, quelle):
+        """Set the input file in the object and fill the table from it."""
+        self.obj.InpFile = pfad
+        self.pfad_feld.setText(pfad or "")
         self.pfad_feld.setCursorPosition(0)
+        info = fem.datei_info(pfad)
+        self.info.setText(("%s - %s" % (quelle, info)) if (pfad and quelle) else
+                          ("keine Datei vorhanden" if not pfad else info))
+        self.knopf_inp.setText("Eingabedatei erzeugen" if not pfad else "Eingabedatei neu erzeugen")
 
-        alle = elset_reader.read_elsets(inp)
-        self.elsets = dom.zeige_elsets(alle)
-        typen = elset_reader.element_types(inp)
-        if not self.elsets:
-            self._setze_status("In %s wurden keine Element-Sets gefunden." % inp, fehler=True)
+        if not pfad or not os.path.isfile(pfad):
+            self.elsets = {}
+            self.tabelle.setRowCount(0)
             return
-
+        self.elsets = dom.zeige_elsets(elset_reader.read_elsets(pfad))
         gespeichert = dom.parse_domains(self.obj.Domains)
         if gespeichert:
             self.domains = {name: gespeichert.get(name, dom.IGNORE) for name in self.elsets}
@@ -165,9 +187,6 @@ class AssistantPanel:
             self.domains = dom.vorschlag(self.elsets)
             self._speichere_domains()
         self._fuelle_tabelle()
-        self._setze_status("%d Element-Set(s) aus %s gelesen (Elementtyp: %s). "
-                           "Der Design-Raum wird optimiert, der Nicht-Design-Raum bleibt stehen."
-                           % (len(self.elsets), os.path.basename(inp), ", ".join(typen) or "?"))
         self.obj.Document.recompute()
 
     def _fuelle_tabelle(self):
@@ -177,10 +196,10 @@ class AssistantPanel:
             self.tabelle.insertRow(zeile)
             self.tabelle.setItem(zeile, 0, QtWidgets.QTableWidgetItem(name))
             auswahl = QtWidgets.QComboBox()
-            for rolle in (dom.DESIGN, dom.NON_DESIGN, dom.IGNORE):
+            reihenfolge = (dom.DESIGN, dom.NON_DESIGN, dom.IGNORE)
+            for rolle in reihenfolge:
                 auswahl.addItem(dom.ROLE_LABELS[rolle], rolle)
-            auswahl.setCurrentIndex(list((dom.DESIGN, dom.NON_DESIGN, dom.IGNORE))
-                                    .index(self.domains.get(name, dom.IGNORE)))
+            auswahl.setCurrentIndex(reihenfolge.index(self.domains.get(name, dom.IGNORE)))
             auswahl.currentIndexChanged.connect(
                 lambda _index, feld=auswahl, setname=name: self._rolle_geaendert(setname, feld))
             self.tabelle.setCellWidget(zeile, 1, auswahl)
@@ -198,8 +217,28 @@ class AssistantPanel:
     def _speichere_domains(self):
         self.obj.Domains = dom.format_domains(self.domains)
 
-    def _inp_neu(self):
-        self.laden(erneut=True)
+    # -------------------------------------------------------------- Aktionen
+    def _inp_erzeugen(self):
+        """Write a new input file - only on an explicit click (can take seconds)."""
+        if self.analyse is None or self.netz is None or self.solver is None:
+            self._setze_status("Ohne Analyse, Netz und Solver kann keine Eingabedatei "
+                               "erzeugt werden.", fehler=True)
+            return
+        self.knopf_inp.setEnabled(False)
+        self._setze_status("Erzeuge die CalculiX-Eingabedatei aus dem FEM-Modell ... "
+                           "FreeCAD ist so lange blockiert.")
+        try:
+            pfad, dauer = fem.erzeuge_inp(self.analyse, self.solver, self.netz,
+                                          self.obj.Document.Name)
+        except Exception as exc:
+            self._setze_status("Die Eingabedatei konnte nicht erzeugt werden: %s" % exc, fehler=True)
+            self.knopf_inp.setEnabled(True)
+            return
+        self._uebernehme_inp(pfad, "neu erzeugt")
+        typen = ", ".join(elset_reader.element_types(pfad)) or "?"
+        self._setze_status("Eingabedatei in %.1f s erzeugt. %d Element-Set(s), Elementtyp %s."
+                           % (dauer, len(self.elsets), typen))
+        self.knopf_inp.setEnabled(True)
 
     def _setze_status(self, text, fehler=False):
         self.status.setText(text)
