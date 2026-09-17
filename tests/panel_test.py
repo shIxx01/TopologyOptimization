@@ -17,6 +17,7 @@ in the document object.
 """
 
 import os
+import time
 import shutil
 import sys
 import tempfile
@@ -254,6 +255,44 @@ try:
     pruefe("nicht vorhanden" not in panel2.kopf.text()
            and "not available" not in panel2.kopf.text(),
            "mit vollstaendiger Analyse ist keine rote Meldung mehr da")
+    # Schritt 3: die Lauf-Seite mit einem echten (sehr kurzen) Lauf
+    panel2._zeige_schritt(3)
+    pruefe(panel2.seiten.currentIndex() == 2, "Schritt 3 zeigt die Lauf-Seite")
+    pruefe(panel2.knopf_lauf.text() in ("Start optimization", "Optimierung starten"),
+           "der Knopf heisst 'Optimierung starten' (%s)" % panel2.knopf_lauf.text())
+    pruefe(panel2.detail.isHidden(), "das Detail-Feld ist zugeklappt")
+    panel2.knopf_detail.setChecked(True)
+    panel2._detail_umschalten()
+    pruefe(panel2.detail.isHidden() is False, "das Detail-Feld klappt auf")
+
+    obj.IterationsLimit = "1"                     # nur eine Iteration rechnen
+    panel2.knopf_lauf.click()
+    pruefe(panel2._lauf_prozess is not None, "der Lauf wurde gestartet")
+    pruefe(panel2.knopf_lauf.text() in ("Cancel", "Abbrechen"),
+           "waehrend des Laufs heisst der Knopf 'Abbrechen' (%s)" % panel2.knopf_lauf.text())
+    log("Lauf gestartet, warte auf das Ende ...")
+    beginn = time.time()
+    while panel2._lauf_prozess.poll() is None and time.time() - beginn < 180:
+        panel2._lauf_aktualisieren()
+        time.sleep(1)
+    panel2._lauf_aktualisieren()
+    log("Lauf beendet: code=%s, Verlauf=%s, Status=%s"
+        % (panel2._lauf_prozess.returncode, panel2.verlauf.massen[:3],
+           panel2.lauf_status.text()))
+    pruefe(panel2._lauf_prozess.returncode == 0,
+           "der Lauf endet mit 0 (%s)" % panel2._lauf_prozess.returncode)
+    pruefe(bool(panel2.verlauf.massen), "der Verlauf hat Werte (%s)"
+           % (panel2.verlauf.massen[:3],))
+    pruefe(panel2.verlauf.ziel is not None and panel2.verlauf.ziel > 0,
+           "die Zielmasse im Verlauf ist gesetzt (%.1f)" % (panel2.verlauf.ziel or -1))
+    pruefe("Iteration" in panel2.lauf_status.text(),
+           "die Statuszeile nennt die Iteration (%s)" % panel2.lauf_status.text())
+    pruefe(panel2.knopf_lauf.text() in ("Start optimization", "Optimierung starten"),
+           "nach dem Lauf heisst der Knopf wieder 'Optimierung starten' (%s)"
+           % panel2.knopf_lauf.text())
+    pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
+    panel2._zeige_schritt(1)
+
     panel2.reject()
     App.closeDocument(doc.Name)
     os.remove(kopie)

@@ -223,6 +223,22 @@ next to the input file.  **Measured** on the test model (401 C3D4, limit 2 itera
 CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the log shows
 `mass = 19369.41` then `mass = 19110.75` after `mass = 20000` at the start.
 
+## D18 - Step 3: one button, live chart inside the panel, nothing blocks
+
+* **One button**: "Start optimization" becomes "Cancel" while the run goes on.  Cancel
+  kills the whole process tree (`taskkill /F /T`), so the CalculiX process beso started
+  ends as well.
+* **Nothing blocks**: beso runs as its own process (`subprocess.Popen`), a `QTimer` (1.5 s)
+  reads the log file and updates the display.  FreeCAD never waits for the solver.
+* **Live chart in the panel** instead of the matplotlib window of the first prototype
+  (`FreeCAD.Plot` + MDI window, kept an extra window and library).  `gui/liveplot.py`
+  draws the mass per iteration with QPainter into a ~90 px widget with the target mass as
+  a dashed line - one file, no extra window, fast enough for a timer.
+* **Collapsible "Details"** shows the last 40 log lines; the whole log file belongs to
+  step 4 (as the user asked).
+* The status line reads `Iteration 12 | Mass 15340, target 12000`.  No percentage: right
+  after the start the mass is far above the target, and "323 %" only looked like an error.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

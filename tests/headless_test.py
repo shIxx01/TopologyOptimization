@@ -332,6 +332,27 @@ pruefe(conf_modul.log_pfad(os.path.join(ordner4, "Mesh.inp")).endswith("Mesh_top
        "die Logdatei liegt neben der Eingabedatei")
 _shutil.rmtree(ordner4, ignore_errors=True)
 
+# --- Schritt 3: das Protokoll eines Laufs lesen ------------------------------
+from freecad.TopoOpt.core import lauf as lauf_modul  # noqa: E402
+
+beispiel_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
+                            "lauf_beispiel.log")
+daten_lauf = lauf_modul.verlauf_lesen(beispiel_log, 0.6)
+print("Lauf-Protokoll: start=%s ziel=%s iteration=%s massen=%s fertig=%s"
+      % (daten_lauf["start"], daten_lauf["ziel"], daten_lauf["iteration"],
+         daten_lauf["massen"], daten_lauf["fertig"]), flush=True)
+pruefe(daten_lauf["start"] is not None and abs(daten_lauf["start"] - 20000.0) < 1e-6,
+       "die Startmasse wird gelesen (%s)" % daten_lauf["start"])
+pruefe(abs((daten_lauf["ziel"] or 0) - 12000.0) < 1e-6,
+       "die Zielmasse ist Anteil x Startmasse (%s)" % daten_lauf["ziel"])
+pruefe(daten_lauf["iteration"] == 2, "die Iterationen werden gezaehlt (%d)"
+       % daten_lauf["iteration"])
+pruefe(len(daten_lauf["massen"]) == 2 and abs(daten_lauf["massen"][1][1] - 19110.748) < 1e-3,
+       "die Massen je Iteration werden gelesen (%s)" % (daten_lauf["massen"],))
+pruefe(daten_lauf["fertig"] is True, "das Ende des Laufs wird erkannt")
+pruefe(lauf_modul.verlauf_lesen("gibt-es-nicht.log")["iteration"] == 0,
+       "ohne Logdatei kommt ein leeres Ergebnis")
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

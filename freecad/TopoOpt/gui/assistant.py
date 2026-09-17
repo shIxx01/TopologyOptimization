@@ -2,14 +2,17 @@
 """The assistant dialog of a topology optimization."""
 
 import os
+import subprocess
 
 import FreeCAD as App
 import FreeCADGui as Gui
 from PySide import QtCore, QtGui, QtWidgets
 
+from ..core import conf as conf_modul
 from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
+from ..core import lauf as logdatei
 from ..core import radius as radius_modul
 from ..core.i18n import uebersetze
 from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_filters,
@@ -19,7 +22,7 @@ from ..features.topology_object import find_analysis, ensure_properties
 SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
 
 # steps that are built (the others show a placeholder)
-GEBAUTE_SCHRITTE = (1, 2)
+GEBAUTE_SCHRITTE = (1, 2, 3)
 SCHRITT_TIPPS = {
     1: "Prepare the analysis case: CalculiX input file and element sets",
     2: "Set target mass, filters and iteration limits",
@@ -176,6 +179,8 @@ class AssistantPanel:
         self._robust_daten = None      # Elementdaten aus der .inp (einmal holen)
         self._robust_ergebnis = None   # Ergebnis der robusten Radius-Suche (einmal)
         self._fuelle_laeuft = False    # beim Befuellen nicht neu rechnen
+        self._lauf_prozess = None      # der laufende beso-Prozess (oder None)
+        self._lauf_log = ""            # Logdatei des Laufs
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(uebersetze("Topology Optimization"))
@@ -190,7 +195,8 @@ class AssistantPanel:
         self.seiten = QtWidgets.QStackedWidget()
         self.seiten.addWidget(self._seite_initialisieren())
         self.seiten.addWidget(self._seite_parameter())
-        for _ in range(len(SCHRITTE) - 2):
+        self.seiten.addWidget(self._seite_lauf())
+        for _ in range(len(SCHRITTE) - 3):
             self.seiten.addWidget(self._seite_platzhalter())
         aussen.addWidget(self.seiten, 1)
         self._zeige_schritt(1)
@@ -615,6 +621,157 @@ class AssistantPanel:
             self._fuelle_laeuft = False
         self._filter_geaendert()
 
+    def _seite_lauf(self):
+        """Step 3: start the optimization, watch it, cancel it if needed."""
+        from .liveplot import VerlaufWidget
+
+        seite = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(seite)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        zeile = QtWidgets.QHBoxLayout()
+        self.knopf_lauf = QtWidgets.QPushButton(uebersetze("Start optimization"))
+        self.knopf_lauf.setToolTip(uebersetze("Writes the beso configuration and starts beso "
+                                             "as its own process - FreeCAD stays usable."))
+        self.knopf_lauf.clicked.connect(self._lauf_knopf)
+        zeile.addWidget(self.knopf_lauf)
+        zeile.addStretch(1)
+        layout.addLayout(zeile)
+
+        self.lauf_status = _label_wrap("")
+        layout.addWidget(self.lauf_status)
+
+        rahmen = QtWidgets.QGroupBox(uebersetze("Mass per iteration"))
+        innen = QtWidgets.QVBoxLayout(rahmen)
+        self.verlauf = VerlaufWidget()
+        innen.addWidget(self.verlauf)
+        layout.addWidget(rahmen)
+
+        # ausklappbares Feld fuer die letzten Logzeilen ("Detail")
+        kopf_zeile = QtWidgets.QHBoxLayout()
+        self.knopf_detail = QtWidgets.QToolButton()
+        self.knopf_detail.setText(uebersetze("Details"))
+        self.knopf_detail.setCheckable(True)
+        self.knopf_detail.setArrowType(QtCore.Qt.RightArrow)
+        self.knopf_detail.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
+        self.knopf_detail.clicked.connect(self._detail_umschalten)
+        kopf_zeile.addWidget(self.knopf_detail)
+        kopf_zeile.addStretch(1)
+        layout.addLayout(kopf_zeile)
+
+        self.detail = QtWidgets.QPlainTextEdit()
+        self.detail.setReadOnly(True)
+        self.detail.setVisible(False)
+        self.detail.setMaximumHeight(150)
+        self.detail.setToolTip(uebersetze("The last lines of the run - the whole log file "
+                                          "belongs to step 4."))
+        layout.addWidget(self.detail)
+        layout.addStretch(1)
+
+        self.lauf_timer = QtCore.QTimer()
+        self.lauf_timer.setInterval(1500)
+        self.lauf_timer.timeout.connect(self._lauf_aktualisieren)
+        return seite
+
+    def _detail_umschalten(self):
+        sichtbar = self.knopf_detail.isChecked()
+        self.detail.setVisible(sichtbar)
+        self.knopf_detail.setArrowType(QtCore.Qt.DownArrow if sichtbar
+                                       else QtCore.Qt.RightArrow)
+        if sichtbar:
+            self._lauf_aktualisieren()
+
+    # ------------------------------------------------------------ der Lauf
+    def _lauf_knopf(self):
+        """Ein Knopf: starten, und waehrend des Laufs abbrechen."""
+        if self._lauf_prozess is not None and self._lauf_prozess.poll() is None:
+            self._lauf_abbrechen()
+        else:
+            self._lauf_starten()
+
+    def _lauf_starten(self):
+        if not self.obj.InpFile or not os.path.isfile(self.obj.InpFile):
+            self._setze_status(uebersetze("There is no input file yet - see step 1."), "fehler")
+            self._zeige_schritt(1)
+            return
+        domains = dict(self.domains)
+        if not [name for name, rolle in domains.items() if rolle == dom.DESIGN]:
+            self._setze_status(uebersetze("No design space is marked - see step 1."), "fehler")
+            self._zeige_schritt(1)
+            return
+        try:
+            prozess, log, conf = conf_modul.starte(self.obj, self.obj.InpFile, domains,
+                                                   self.obj.WorkingDir or
+                                                   os.path.dirname(self.obj.InpFile))
+        except Exception as exc:
+            self._setze_status(uebersetze("The run could not be started: %s") % exc, "fehler")
+            return
+        self._lauf_prozess = prozess
+        self._lauf_log = log
+        self.knopf_lauf.setText(uebersetze("Cancel"))
+        self.knopf_lauf.setToolTip(uebersetze("Stop the run (CalculiX is stopped as well)"))
+        self._setze_status(uebersetze("Run started (%s) ...") % os.path.basename(conf), "info")
+        self.lauf_timer.start()
+        self._lauf_aktualisieren()
+
+    def _lauf_abbrechen(self):
+        prozess = self._lauf_prozess
+        if prozess is None or prozess.poll() is not None:
+            return
+        try:
+            if os.name == "nt":
+                # /T beendet auch CalculiX, das beso gestartet hat
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(prozess.pid)],
+                               capture_output=True)
+            else:
+                prozess.terminate()
+        except Exception as exc:
+            App.Console.PrintWarning("TopoOpt: %s\n" % exc)
+        self._setze_status(uebersetze("Run cancelled."), "auftrag")
+        self._lauf_aktualisieren()
+
+    def _lauf_aktualisieren(self):
+        """Vom Timer aufgerufen: Log lesen und Anzeige nachfuehren (nichts blockiert)."""
+        if not self._lauf_log:
+            return
+        daten = logdatei.verlauf_lesen(self._lauf_log, getattr(self.obj, "MassGoalRatio", None))
+        self.verlauf.setze_daten(daten["massen"], daten["ziel"])
+        laeuft = self._lauf_prozess is not None and self._lauf_prozess.poll() is None
+
+        teile = []
+        if daten["masse"] is not None:
+            teile.append(uebersetze("Iteration %d") % daten["iteration"])
+            if daten["ziel"]:
+                teile.append(uebersetze("mass %.0f, target %.0f")
+                             % (daten["masse"], daten["ziel"]))
+            else:
+                teile.append(uebersetze("mass %.0f") % daten["masse"])
+        elif laeuft:
+            teile.append(uebersetze("CalculiX is running ..."))
+        if teile:
+            self.lauf_status.setText(" | ".join(teile))
+
+        if self.detail.isVisible():
+            zeilen = daten["text"].splitlines()[-40:]
+            self.detail.setPlainText("\n".join(zeilen))
+            leiste = self.detail.verticalScrollBar()
+            leiste.setValue(leiste.maximum())
+
+        if not laeuft:
+            self.lauf_timer.stop()
+            self.knopf_lauf.setText(uebersetze("Start optimization"))
+            self.knopf_lauf.setToolTip(uebersetze("Writes the beso configuration and starts beso "
+                                                 "as its own process - FreeCAD stays usable."))
+            code = self._lauf_prozess.returncode if self._lauf_prozess else None
+            if code == 0 and daten["fertig"]:
+                self._setze_status(uebersetze("Optimization finished after %d iteration(s).")
+                                   % daten["iteration"], "ok")
+            else:
+                self._setze_status(uebersetze("The run ended (code %s) - open the details.")
+                                   % code, "fehler")
+                self.knopf_detail.setChecked(True)
+                self._detail_umschalten()
+
     def _inp_bereich(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (.inp)"))
         layout = QtWidgets.QGridLayout(rahmen)
@@ -891,6 +1048,10 @@ class AssistantPanel:
         if self._geschlossen:
             return
         self._geschlossen = True
+        try:
+            self.lauf_timer.stop()      # nur die Anzeige endet - der Lauf laeuft weiter
+        except Exception:
+            pass
         _aktive_panels.pop(self.obj.Name, None)
         try:
             Gui.Control.closeDialog()

@@ -184,6 +184,43 @@ DEUTSCH = {
         "automatisch: 2 x mittlere Elementgr\u00f6\u00dfe (wie in beso)",
     "manual: your own value in millimetres":
         "manuell: eigener Wert in Millimetern",
+    "Start optimization":
+        "Optimierung starten",
+    "Cancel":
+        "Abbrechen",
+    "Mass per iteration":
+        "Masse je Iteration",
+    "Details":
+        "Details",
+    "Writes the beso configuration and starts beso as its own process - FreeCAD stays usable.":
+        "Schreibt die beso-Konfiguration und startet beso als eigenen Prozess - FreeCAD bleibt "
+        "bedienbar.",
+    "Stop the run (CalculiX is stopped as well)":
+        "Lauf stoppen (CalculiX wird mit beendet)",
+    "Run started (%s) ...":
+        "Lauf gestartet (%s) ...",
+    "Run cancelled.":
+        "Lauf abgebrochen.",
+    "Iteration %d":
+        "Iteration %d",
+    "mass %.0f, target %.0f":
+        "Masse %.0f, Ziel %.0f",
+    "mass %.0f":
+        "Masse %.0f",
+    "CalculiX is running ...":
+        "CalculiX rechnet ...",
+    "Optimization finished after %d iteration(s).":
+        "Optimierung nach %d Iteration(en) fertig.",
+    "The run ended (code %s) - open the details.":
+        "Der Lauf endete (Code %s) - Details \u00f6ffnen.",
+    "The run could not be started: %s":
+        "Der Lauf konnte nicht gestartet werden: %s",
+    "There is no input file yet - see step 1.":
+        "Es gibt noch keine Eingabedatei - siehe Schritt 1.",
+    "No design space is marked - see step 1.":
+        "Es ist kein Design-Raum markiert - siehe Schritt 1.",
+    "The last lines of the run - the whole log file belongs to step 4.":
+        "Die letzten Zeilen des Laufs - die vollst\u00e4ndige Logdatei geh\u00f6rt zu Schritt 4.",
     "For 'robust' press the arrow button once: beso then checks the radius and the value appears next to it.":
         "Bei \u201erobust\u201c einmal den Pfeil-Knopf dr\u00fccken: beso pr\u00fcft dann den Radius, "
         "der Wert erscheint daneben.",
