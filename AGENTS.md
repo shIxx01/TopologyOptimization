@@ -16,11 +16,12 @@ and (later) runs beso in an external process.
 ## Rules for working on this addon
 
 1. **Stay close to beso - clean and minimal.** This is a small front end for beso, not a
-   fork of it and not a place for accumulated special cases. Do not copy code from older
-   prototypes of this project (they carry fixes nobody can still justify). Understand the
-   rule from the documentation, then write the smallest version that is understandable
-   line by line. Add something only when there is a measured case for it, and name the
-   measurement in the commit or in `Documentation/decisions.md`.
+   fork of it. Older prototypes of this project may be **read**, but their code is taken
+   over only where it is clearly useful and understandable; they also carry fixes from
+   experiments that are no longer needed. Understand the rule from the documentation,
+   then write the smallest version that is understandable line by line. Add something
+   only when there is a measured case for it, and name the measurement in the commit or
+   in `Documentation/decisions.md`.
 2. **Use beso's own functions where they exist** (`beso_lib`, `beso_filters`) instead of
    re-implementing them - the less of beso is duplicated, the less can drift apart.
 3. **Use beso's names** for its concepts (filters, casting, mass_goal_ratio); invented
