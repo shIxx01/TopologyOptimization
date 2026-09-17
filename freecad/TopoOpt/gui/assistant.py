@@ -11,7 +11,7 @@ from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
 from ..core.i18n import uebersetze
-from ..core.params import BASES, FORMATS, MASS_CHANGE
+from ..core.params import BASES, FORMATS, MASS_CHANGE, format_filters, parse_filters
 from ..features.topology_object import find_analysis, ensure_properties
 
 SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
@@ -30,7 +30,7 @@ MASSE_MIN = 5
 MASSE_MAX = 95
 
 
-def _combo_schmal(combo, zeichen=6):
+def _combo_schmal(combo, zeichen=5):
     """A combo box may be narrow - the popup shows the full text anyway."""
     combo.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
     combo.setMinimumContentsLength(zeichen)
@@ -57,6 +57,17 @@ MASS_CHANGE_LABELS = {
 }
 TIP_MASSE = ("How much of the material stays: 40 % means the optimized part keeps about "
              "40 % of its mass.")
+
+# the filter rows of step 2 (beso knows "simple" and "casting"; "no filter" means the
+# row is left out)
+FILTER_OPTIONEN = (
+    ("none", "no filter"),
+    ("simple", "simple - smooth, no direction"),
+    ("casting", "casting - demouldable in one direction"),
+)
+RADIUS_MODI = (("auto", "automatic"), ("manual", "manual"))
+TIP_FILTER = ("The filter smooths the result. 'simple' averages over all elements in the "
+              "radius, 'casting' also keeps the part demouldable in one direction.")
 
 # where a found input file came from (keys used by fem.find_inp)
 QUELLTEXTE = {
@@ -125,11 +136,7 @@ class AssistantPanel:
         aussen.setContentsMargins(8, 8, 8, 8)
         aussen.setSpacing(6)
 
-        self.kopf = QtWidgets.QLabel("")
-        self.kopf.setTextFormat(QtCore.Qt.RichText)
-        self.kopf.setWordWrap(True)
-        aussen.addWidget(self.kopf)
-
+        # the step bar is always there, so it sits above everything else
         aussen.addWidget(self._schrittleiste())
 
         # one page per step; only the steps that are built can be chosen
@@ -184,6 +191,11 @@ class AssistantPanel:
         seite = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(seite)
         layout.setContentsMargins(0, 0, 0, 0)
+        # the header line (analysis, mesh, solver) belongs to this step only
+        self.kopf = QtWidgets.QLabel("")
+        self.kopf.setTextFormat(QtCore.Qt.RichText)
+        self.kopf.setWordWrap(True)
+        layout.addWidget(self.kopf)
         layout.addWidget(self._inp_bereich())
         layout.addWidget(self._domain_tabelle(), 1)
         return seite
@@ -263,7 +275,9 @@ class AssistantPanel:
                                               "of the computer."))
         self.feld_kerne.valueChanged.connect(self._parameter_geaendert)
         form.addWidget(self.feld_kerne, zeile, 1)
-        layout.addWidget(rahmen)
+        layout.addWidget(rahmen)          # Optimierung
+
+        layout.addWidget(self._filter_bereich())
 
         # --- result files ------------------------------------------------
         rahmen = QtWidgets.QGroupBox(uebersetze("Result files"))
@@ -285,6 +299,119 @@ class AssistantPanel:
         layout.addWidget(rahmen)
         layout.addStretch(1)
         return seite
+
+    def _filter_bereich(self):
+        """Step 2: the sensitivity filter - up to three rows like the beso GUI."""
+        rahmen = QtWidgets.QGroupBox(uebersetze("Sensitivity filter (smoothing)"))
+        form = QtWidgets.QGridLayout(rahmen)
+        self.filter_zeilen = []
+        for nummer in (1, 2, 3):
+            zeile = self._filter_zeile(nummer)
+            form.addWidget(_label_wrap(uebersetze("Filter %d") % nummer), nummer - 1, 0)
+            form.addWidget(zeile["typ"], nummer - 1, 1)
+            form.addWidget(zeile["radius_modus"], nummer - 1, 2)
+            form.addWidget(zeile["radius_wert"], nummer - 1, 3)
+            form.addWidget(zeile["richtung"], nummer - 1, 4)
+            self.filter_zeilen.append(zeile)
+        layout_hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over "
+                                                "the elements inside the radius and keeps the "
+                                                "result smooth. 'automatic' uses beso's own "
+                                                "value (2 x mean element size)."))
+        layout_hinweis.setStyleSheet("color: %s;" % FARBE_GRAU)
+        form.addWidget(layout_hinweis, 3, 0, 1, 5)
+        return rahmen
+
+    def _filter_zeile(self, nummer):
+        """The widgets of one filter row."""
+        zeile = {}
+        zeile["typ"] = _combo_schmal(QtWidgets.QComboBox(), 5)
+        for wert, text in FILTER_OPTIONEN:
+            zeile["typ"].addItem(uebersetze(text), wert)
+        zeile["typ"].setToolTip(uebersetze(TIP_FILTER))
+        zeile["typ"].currentIndexChanged.connect(self._filter_geaendert)
+
+        zeile["radius_modus"] = _combo_schmal(QtWidgets.QComboBox(), 5)
+        for wert, text in RADIUS_MODI:
+            zeile["radius_modus"].addItem(uebersetze(text), wert)
+        zeile["radius_modus"].setToolTip(uebersetze("'automatic' lets beso choose the radius "
+                                                    "from the element size, 'manual' uses the "
+                                                    "value in millimetres."))
+        zeile["radius_modus"].currentIndexChanged.connect(self._filter_geaendert)
+
+        zeile["radius_wert"] = QtWidgets.QDoubleSpinBox()
+        zeile["radius_wert"].setRange(0.001, 1000.0)
+        zeile["radius_wert"].setDecimals(3)
+        zeile["radius_wert"].setSuffix(" mm")
+        zeile["radius_wert"].setValue(2.0)
+        zeile["radius_wert"].setToolTip(uebersetze("Radius in millimetres - a larger radius "
+                                                   "gives thicker struts and fewer fine "
+                                                   "details. The filter needs a radius in "
+                                                   "which every element has a neighbour."))
+        zeile["radius_wert"].valueChanged.connect(self._filter_geaendert)
+
+        zeile["richtung"] = QtWidgets.QLineEdit("(0, 0, 1)")
+        zeile["richtung"].setMinimumWidth(50)
+        zeile["richtung"].setVisible(False)     # only the casting filter needs it
+        zeile["richtung"].setToolTip(uebersetze("Only for the casting filter: the direction in "
+                                                "which the part has to be demouldable."))
+        zeile["richtung"].editingFinished.connect(self._filter_geaendert)
+        return zeile
+
+    def _filter_geaendert(self):
+        """Enable what belongs to the chosen filter type and store the filters."""
+        for zeile in self.filter_zeilen:
+            typ = zeile["typ"].currentData()
+            aktiv = typ != "none"
+            casting = typ == "casting"
+            zeile["radius_modus"].setEnabled(aktiv)
+            # only show what is needed: a hidden widget does not make the panel wider
+            zeile["radius_wert"].setVisible(aktiv and zeile["radius_modus"].currentData() != "auto")
+            zeile["richtung"].setVisible(casting)
+            zeile["richtung"].setEnabled(casting)
+        self.obj.Filters = format_filters(self._sammle_filter())
+
+    def _sammle_filter(self):
+        """The filters from the widgets, in the form beso uses."""
+        liste = []
+        for zeile in self.filter_zeilen:
+            typ = zeile["typ"].currentData()
+            if typ == "none":
+                continue
+            reichweite = ("auto" if zeile["radius_modus"].currentData() == "auto"
+                          else round(zeile["radius_wert"].value(), 4))
+            eintrag = [typ, reichweite]
+            if typ == "casting":
+                eintrag.append(zeile["richtung"].text().strip() or "(0, 0, 1)")
+            liste.append(eintrag)
+        return liste
+
+    def _fuelle_filter(self):
+        """Show the filters of the object in the three rows."""
+        filter_liste = parse_filters(getattr(self.obj, "Filters", ""))
+        for index, zeile in enumerate(self.filter_zeilen):
+            eintrag = filter_liste[index] if index < len(filter_liste) else None
+            felder = (zeile["typ"], zeile["radius_modus"], zeile["radius_wert"])
+            for feld in felder:
+                feld.blockSignals(True)
+            try:
+                if eintrag is None:
+                    zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData("none")))
+                else:
+                    zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData(eintrag[0])))
+                    reichweite = eintrag[1]
+                    if isinstance(reichweite, (int, float)):
+                        zeile["radius_modus"].setCurrentIndex(
+                            max(0, zeile["radius_modus"].findData("manual")))
+                        zeile["radius_wert"].setValue(float(reichweite))
+                    else:
+                        zeile["radius_modus"].setCurrentIndex(
+                            max(0, zeile["radius_modus"].findData("auto")))
+                    if eintrag[0] == "casting" and len(eintrag) > 2:
+                        zeile["richtung"].setText(str(eintrag[2]))
+            finally:
+                for feld in felder:
+                    feld.blockSignals(False)
+        self._filter_geaendert()
 
     def _inp_bereich(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (.inp)"))
@@ -540,6 +667,7 @@ class AssistantPanel:
         finally:
             for feld in felder:
                 feld.blockSignals(False)
+        self._fuelle_filter()
 
     def _setze_status(self, text, art="info"):
         """Status line: red for problems, orange while the user has to act, green when ready."""

@@ -117,6 +117,35 @@ DEUTSCH = {
         "etwa 40 % seiner Masse.",
     "Optimization":
         "Optimierung",
+    "Sensitivity filter (smoothing)":
+        "Sensitivit\u00e4tsfilter (Gl\u00e4ttung)",
+    "Filter %d":
+        "Filter %d",
+    "no filter":
+        "kein Filter",
+    "simple - smooth, no direction":
+        "simple - gl\u00e4ttet, ohne Richtung",
+    "casting - demouldable in one direction":
+        "casting - in eine Richtung entformbar",
+    "automatic":
+        "automatisch",
+    "manual":
+        "manuell",
+    "The filter smooths the result. 'simple' averages over all elements in the radius, 'casting' also keeps the part demouldable in one direction.":
+        "Der Filter gl\u00e4ttet das Ergebnis. \u201esimple\u201c mittelt \u00fcber alle Elemente im "
+        "Radius, \u201ecasting\u201c h\u00e4lt das Bauteil zus\u00e4tzlich in eine Richtung entformbar.",
+    "'automatic' lets beso choose the radius from the element size, 'manual' uses the value in millimetres.":
+        "\u201eautomatisch\u201c l\u00e4sst beso den Radius aus der Elementgr\u00f6\u00dfe w\u00e4hlen, "
+        "\u201emanuell\u201c nutzt den Wert in Millimetern.",
+    "Radius in millimetres - a larger radius gives thicker struts and fewer fine details. The filter needs a radius in which every element has a neighbour.":
+        "Radius in Millimetern - ein gr\u00f6\u00dferer Radius ergibt dickere Stege und weniger feine "
+        "Details. Der Filter braucht einen Radius, in dem jedes Element einen Nachbarn hat.",
+    "Only for the casting filter: the direction in which the part has to be demouldable.":
+        "Nur f\u00fcr den casting-Filter: die Richtung, in der das Bauteil entformbar sein muss.",
+    "The filter averages the sensitivities over the elements inside the radius and keeps the result smooth. 'automatic' uses beso's own value (2 x mean element size).":
+        "Der Filter mittelt die Sensitivit\u00e4ten \u00fcber die Elemente im Radius und h\u00e4lt das "
+        "Ergebnis glatt. \u201eautomatisch\u201c nutzt besos eigenen Wert (2 x mittlere "
+        "Elementgr\u00f6\u00dfe).",
     "What is optimized":
         "Was wird optimiert",
     "Stiffness - the part becomes as stiff as possible (usual)":

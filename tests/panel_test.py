@@ -72,7 +72,7 @@ try:
 
     obj = create_topology_object(doc, analyse)
     panel = AssistantPanel(obj)
-    panel.laden()
+    panel.laden()          # sofort laden, nicht auf den Timer warten
 
     log("Status : %s" % panel.status.text())
     log("Kopf   : %s" % panel.kopf.text())
@@ -135,6 +135,39 @@ try:
            "Kerne zeigen '%s' statt der 0" % panel.feld_kerne.specialValueText())
     pruefe(panel.feld_speichern.value() == 10,
            "Speicher-Intervall startet bei 10 (%d)" % panel.feld_speichern.value())
+    pruefe(panel.kopf.parent() is not panel.form,
+           "Kopfzeile steckt in Schritt 1, nicht ueber allen Schritten")
+    pruefe(panel.schritt_knoepfe[0].parent().parent() is panel.form,
+           "Schrittleiste sitzt oben im Panel")
+
+    # Filter: Standard ist besos [["simple", "auto"]]
+    pruefe(panel.filter_zeilen[0]["typ"].currentData() == "simple",
+           "Filter 1 startet mit 'simple' (%s)" % panel.filter_zeilen[0]["typ"].currentData())
+    pruefe(panel.filter_zeilen[0]["radius_modus"].currentData() == "auto",
+           "Filter 1 startet mit automatischem Radius")
+    pruefe(panel.filter_zeilen[1]["typ"].currentData() == "none",
+           "Filter 2 ist zunaechst aus")
+    panel.filter_zeilen[0]["radius_modus"].setCurrentIndex(
+        panel.filter_zeilen[0]["radius_modus"].findData("manual"))
+    panel.filter_zeilen[0]["radius_wert"].setValue(4.5)
+    log("Filter im Objekt: %s" % obj.Filters)
+    pruefe("4.5" in obj.Filters, "manueller Radius landet im Objekt: %s" % obj.Filters)
+    panel.filter_zeilen[1]["typ"].setCurrentIndex(panel.filter_zeilen[1]["typ"].findData("casting"))
+    pruefe("casting" in obj.Filters, "zweiter Filter (casting) landet im Objekt: %s" % obj.Filters)
+    pruefe(panel.filter_zeilen[1]["richtung"].isHidden() is False,
+           "Richtungsfeld ist bei casting eingeblendet")
+    panel.filter_zeilen[1]["typ"].setCurrentIndex(panel.filter_zeilen[1]["typ"].findData("none"))
+    pruefe("casting" not in obj.Filters, "ausgeschalteter Filter verschwindet: %s" % obj.Filters)
+    pruefe(panel.filter_zeilen[0]["richtung"].isHidden(),
+           "Richtungsfeld ist bei simple ausgeblendet")
+    pruefe(panel.filter_zeilen[0]["radius_wert"].isHidden() is False,
+           "mm-Feld ist bei manuellem Radius eingeblendet")
+    panel.filter_zeilen[0]["radius_modus"].setCurrentIndex(
+        panel.filter_zeilen[0]["radius_modus"].findData("auto"))
+    pruefe(panel.filter_zeilen[0]["radius_wert"].isHidden(),
+           "mm-Feld ist bei automatischem Radius ausgeblendet")
+    breite2 = panel.form.minimumSizeHint().width()
+    log("Mindestbreite nach Filteraenderung: %d px" % breite2)
     pruefe(panel.feld_masse.value() == 40, "Zielmasse zeigt 40 %% (%d)" % panel.feld_masse.value())
     pruefe(panel.combo_basis.currentData() == "stiffness",
            "Optimierungsziel steht auf stiffness (%s)" % panel.combo_basis.currentData())
