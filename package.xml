@@ -7,7 +7,7 @@
     <!--[ Info ]-->
 
     <name>TopoOpt</name>
-    <description>Topology optimization with CalculiX (based on beso)</description>
+    <description>Topology optimization with CalculiX (based on beso, which is included)</description>
     <version>0.1.0</version>
     <date>2026-09-17</date>
 

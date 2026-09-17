@@ -152,6 +152,35 @@ Two small user requests went in with it: the core count shows "all" instead of 0
 starts at **10** instead of the beso default 1 (a saved iteration of a fine mesh can need
 100 MB and more; the final result is what counts).
 
+## D15 - beso ships with the addon
+
+The beso files live in `freecad/TopoOpt/vendor/beso/` (beso_lib, beso_filters, beso_main,
+beso_plots, beso_separate, the template beso_conf.py, LICENSE, README) and
+`core/beso.py` loads them from the folder of the addon.  `sys.modules` is filled directly,
+so nothing is added to `sys.path`; the modules keep their own names because beso imports
+itself that way (`import beso_lib` inside `beso_filters`).
+
+*Reason (user request):* a user should install the workbench and start - without a second
+download and without being asked for a path.  The folder is found relative to the addon
+file, so it works wherever FreeCAD installed the addon.
+
+Licence: beso is LGPL-3.0-or-later, the addon is LGPL-3.0-or-later too, the three changes
+are marked in the sources and listed in `vendor/beso/CHANGES-TopoOpt.md`.  `beso_fc_gui.py`
+(beso's own dialog) is not included - the assistant replaces it.
+
+## D16 - The robust filter radius uses beso's own functions
+
+`core/radius.py` reads the element sizes with `beso_lib.import_inp`,
+`beso_lib.elm_volume_cg` and `beso_filters.find_size_elm` and tries the multiples
+2.0 / 2.5 / 3.0 / 4.0 … of the mean element size with `beso_filters.prepare2s` until every
+element of the design space has a neighbour.  The addon calculates nothing about elements
+or neighbourhoods itself; it only chooses the radius that beso then uses.
+
+*Reason:* beso's own `"auto"` is 2 x the mean size, which is not enough on graded meshes
+(the largest elements are further apart) - single elements then stay without a neighbour
+and the "simple" filter stops.  Measured with the bundled beso on the test input file:
+radius 0.1 x mean -> 4 of 4 elements without a neighbour, 2.0 x mean -> 0.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

@@ -232,6 +232,49 @@ pruefe("casting" in _xml, "Filter sind gespeichert")
 pruefe('name="CpuCores"' in _xml, "Kerne sind gespeichert")
 os.remove(pfad4)
 
+# --- mitgeliefertes beso + Filterradius -------------------------------------
+from freecad.TopoOpt.core import beso as beso_modul  # noqa: E402
+from freecad.TopoOpt.core import radius as radius_modul  # noqa: E402
+
+ordner, fehlend = beso_modul.pruefe()
+pruefe(not fehlend, "beso liegt vollstaendig im Addon (%s)" % ordner)
+if fehlend:
+    print("beso: fehlende Dateien %s" % (fehlend,), flush=True)
+
+lib, filters = beso_modul.module()
+pruefe(hasattr(lib, "import_inp") and hasattr(filters, "prepare2s"),
+       "beso_lib und beso_filters sind geladen")
+pruefe("beso_lib" in sys.modules and sys.modules["beso_lib"] is lib,
+       "beso_lib steht unter seinem eigenen Namen (so importiert beso sich selbst)")
+
+beispiel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "beispiel.inp")
+daten = radius_modul.gelesen(beispiel, ["MaterialSolidSolid", "NichtDesignSolid"],
+                             ["MaterialSolidSolid"])
+print("Elementdaten: mittel=%.4f maximum=%.4f anzahl=%s"
+      % (daten.get("mittel", -1), daten.get("maximum", -1), daten.get("anzahl", -1)), flush=True)
+pruefe(daten.get("anzahl", 0) > 0, "beso liest Elementgroessen aus der .inp (%s Elemente)"
+       % daten.get("anzahl"))
+pruefe(0 < daten.get("mittel", 0) <= daten.get("maximum", 0),
+       "mittlere Groesse liegt unter der groessten (%.4f <= %.4f)"
+       % (daten.get("mittel", 0), daten.get("maximum", 0)))
+
+zu_klein = radius_modul.ohne_nachbarn(daten, daten["mittel"] * 0.1)
+gross_genug = radius_modul.ohne_nachbarn(daten, daten["mittel"] * 10.0)
+print("ohne Nachbarn: bei 0,1x mittel %d, bei 10x mittel %d"
+      % (len(zu_klein), len(gross_genug)), flush=True)
+pruefe(len(zu_klein) > 0, "bei zu kleinem Radius fehlen Nachbarn (%d Elemente)" % len(zu_klein))
+pruefe(len(gross_genug) == 0, "bei grossem Radius hat jedes Element Nachbarn")
+
+ergebnis = radius_modul.robust(daten)
+print("robuster Radius: Faktor %.1f -> %.4f mm, ohne Nachbarn: %d"
+      % (ergebnis.get("faktor", -1), ergebnis.get("radius", -1),
+         ergebnis.get("ohne_nachbarn", -1)), flush=True)
+pruefe(ergebnis.get("ohne_nachbarn") == 0,
+       "robuster Radius laesst kein Element ohne Nachbarn")
+pruefe(ergebnis.get("radius", 0) >= radius_modul.BESO_AUTO * daten["mittel"],
+       "robuster Radius ist mindestens so gross wie besos 'auto'")
+pruefe(radius_modul.robust({}) == {}, "ohne Elementdaten kommt ein leeres Ergebnis")
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))
