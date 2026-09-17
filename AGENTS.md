@@ -13,6 +13,21 @@ The addon does **not** replace the FEM workbench: mesh, materials, constraints a
 loads are created there, the optimization only adds a document object to the analysis
 and (later) runs beso in an external process.
 
+## Rules for working on this addon
+
+1. **Stay close to beso - clean and minimal.** This is a small front end for beso, not a
+   fork of it and not a place for accumulated special cases. Do not copy code from older
+   prototypes of this project (they carry fixes nobody can still justify). Understand the
+   rule from the documentation, then write the smallest version that is understandable
+   line by line. Add something only when there is a measured case for it, and name the
+   measurement in the commit or in `Documentation/decisions.md`.
+2. **Use beso's own functions where they exist** (`beso_lib`, `beso_filters`) instead of
+   re-implementing them - the less of beso is duplicated, the less can drift apart.
+3. **Use beso's names** for its concepts (filters, casting, mass_goal_ratio); invented
+   names make it harder to compare the addon with beso.
+4. **The user is not a programmer.** Explain each change in plain words and let the user
+   decide about anything visible (labels, layout, defaults).
+
 ## Layout
 
 ```

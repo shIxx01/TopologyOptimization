@@ -326,7 +326,7 @@ class AssistantPanel:
         beso takes a list of filters and applies them one after the other
         (e.g. first "casting", then "simple"), so the number of rows is free.
         """
-        rahmen = QtWidgets.QGroupBox(uebersetze("Sensitivity filter (smoothing)"))
+        rahmen = QtWidgets.QGroupBox(uebersetze("Filter"))
         aussen = QtWidgets.QVBoxLayout(rahmen)
 
         self.filter_layout = QtWidgets.QVBoxLayout()
