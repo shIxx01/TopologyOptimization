@@ -155,6 +155,33 @@ DEUTSCH = {
         "casting - in eine Richtung entformbar",
     "automatic":
         "automatisch",
+    "robust (recommended)":
+        "robust (empfohlen)",
+    "automatic (as in beso)":
+        "automatisch (wie in beso)",
+    "'robust' asks beso for the smallest radius at which every element still has a neighbour (checked once, then the value is used). 'automatic (as in beso)' leaves beso's own value of 2 x mean element size, 'manual' uses your millimetres.":
+        "\u201erobust\u201c fragt beso nach dem kleinsten Radius, bei dem jedes Element noch einen "
+        "Nachbarn hat (einmal gepr\u00fcft, dann wird der Wert verwendet). \u201eautomatisch (wie in "
+        "beso)\u201c \u00fcbernimmt besos eigenen Wert von 2 x mittlerer Elementgr\u00f6\u00dfe, "
+        "\u201emanuell\u201c nutzt deine Millimeter.",
+    "Checking the robust filter radius with beso ... this can take a few seconds.":
+        "Der robuste Filterradius wird mit beso gepr\u00fcft ... das kann ein paar Sekunden dauern.",
+    "Robust filter radius: %.3f mm = %.1f x mean element size, %d element(s) without a neighbour.":
+        "Robuster Filterradius: %.3f mm = %.1f x mittlere Elementgr\u00f6\u00dfe, %d Element(e) ohne "
+        "Nachbarn.",
+    "The robust radius needs an input file and a design space - check step 1.":
+        "F\u00fcr den robusten Radius werden eine Eingabedatei und ein Design-Raum gebraucht - "
+        "siehe Schritt 1.",
+    "not calculated":
+        "nicht berechnet",
+    "Check the robust filter radius now":
+        "Robusten Filterradius jetzt pr\u00fcfen",
+    "not checked yet - use the arrow button":
+        "noch nicht gepr\u00fcft - Knopf mit dem Pfeil nutzen",
+    "%.3f mm = %.1f x mean size, %d without neighbour":
+        "%.3f mm = %.1f x mittlere Gr\u00f6\u00dfe, %d ohne Nachbarn",
+    "%.3f mm (saved value from the last check)":
+        "%.3f mm (gemerkter Wert der letzten Pr\u00fcfung)",
     "manual":
         "manuell",
     "The filter smooths the result. 'simple' averages over all elements in the radius, 'casting' also keeps the part demouldable in one direction.":

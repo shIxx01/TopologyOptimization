@@ -198,9 +198,9 @@ pruefe(len(prm.FILTER_TYPES) == 9 and "combined" not in prm.FILTER_TYPES,
        "beso kennt 9 Filtertypen (%s)" % (prm.FILTER_TYPES,))
 pruefe("open-close sensitivity" in prm.FILTER_TYPES and "casting" in prm.FILTER_TYPES,
        "die beso-Typen sind vollstaendig")
-pruefe(prm.parse_filters("kein Python") == [["simple", "auto"]],
+pruefe(prm.parse_filters("kein Python") == [["simple", "robust"]],
        "unbrauchbarer Filtertext faellt auf beso-Standard zurueck")
-pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "auto"]],
+pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "robust"]],
        "unbekannter Filtertyp wird verworfen")
 
 doc4 = App.newDocument("TopoOptParameterTest")

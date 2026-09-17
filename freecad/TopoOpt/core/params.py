@@ -53,7 +53,7 @@ MORPHOLOGY_TYPES = FILTER_TYPES[1:8]
 
 FORMATS = ("inp vtk", "frd")
 
-DEFAULT_FILTERS = [["simple", "auto"]]
+DEFAULT_FILTERS = [["simple", "robust"]]
 
 
 def mass_ratios(speed):
@@ -85,7 +85,7 @@ def parse_filters(text):
             continue
         reichweite = eintrag[1]
         if not isinstance(reichweite, (int, float)):
-            reichweite = "auto"
+            reichweite = "auto" if reichweite != "robust" else "robust"
         rest = [str(w) for w in eintrag[2:]]
         ergebnis.append([typ, reichweite] + rest)
     return ergebnis or [list(f) for f in DEFAULT_FILTERS]

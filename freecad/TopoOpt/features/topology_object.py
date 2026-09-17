@@ -84,6 +84,15 @@ def ensure_properties(obj):
                         uebersetze("File format of the resulting meshes"))
         obj.ResultFormat = list(FORMATS)
         obj.ResultFormat = "inp vtk"
+    if not hasattr(obj, "RobusterRadius"):
+        # result of the robust filter radius (beso needs a value, not "robust")
+        obj.addProperty("App::PropertyFloat", "RobusterRadius", GROUP,
+                        uebersetze("Calculated robust filter radius in mm (0 = not calculated)"))
+        obj.setEditorMode("RobusterRadius", 1)      # read only in the property editor
+    if not hasattr(obj, "MittlereGroesse"):
+        obj.addProperty("App::PropertyFloat", "MittlereGroesse", GROUP,
+                        uebersetze("Mean element size of the design space in mm"))
+        obj.setEditorMode("MittlereGroesse", 1)
 
 
 def read_domains(obj):

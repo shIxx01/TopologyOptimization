@@ -145,10 +145,26 @@ try:
            "Standard: eine Filterzeile (%d)" % len(panel.filter_zeilen))
     pruefe(panel.filter_zeilen[0]["typ"].currentData() == "simple",
            "Filter 1 startet mit 'simple' (%s)" % panel.filter_zeilen[0]["typ"].currentData())
-    pruefe(panel.filter_zeilen[0]["radius_modus"].currentData() == "auto",
-           "Filter 1 startet mit automatischem Radius")
+    pruefe(panel.filter_zeilen[0]["radius_modus"].currentData() == "robust",
+           "Filter 1 startet mit 'robust' (%s)" % panel.filter_zeilen[0]["radius_modus"].currentData())
     pruefe(panel.feld_toleranz.text() in ("0,001", "0.001"),
            "Toleranz ohne Fuellnullen: %s" % panel.feld_toleranz.text())
+
+    # der robuste Radius wird nur auf Knopfdruck gerechnet (dauert bei feinen Netzen)
+    # vorher die Rolle zurueck auf Design-Raum: ohne Design-Raum gibt es keinen Radius
+    for zeile in range(panel.tabelle.rowCount()):
+        if panel.tabelle.item(zeile, 0).text() == erster:
+            panel.tabelle.cellWidget(zeile, 1).setCurrentIndex(0)
+    log("Radius-Info vor der Pruefung: %s" % panel.filter_zeilen[0]["radius_info"].text())
+    pruefe("robust" in obj.Filters, "robust steht im Objekt: %s" % obj.Filters)
+    panel.filter_zeilen[0]["pruefen"].click()
+    log("Radius-Info nach der Pruefung: %s" % panel.filter_zeilen[0]["radius_info"].text())
+    pruefe(obj.RobusterRadius > 0, "robuster Radius ist berechnet (%.4f mm)"
+           % obj.RobusterRadius)
+    pruefe("mm" in panel.filter_zeilen[0]["radius_info"].text()
+           or "mm" in panel.filter_zeilen[0]["radius_info"].toolTip(),
+           "die Filterzeile zeigt den berechneten Radius (%s)"
+           % panel.filter_zeilen[0]["radius_info"].text())
 
     pruefe(panel.knopf_filter_plus.text() == "+",
            "der Hinzufuegen-Knopf heisst '+': %r" % panel.knopf_filter_plus.text())

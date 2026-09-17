@@ -10,6 +10,7 @@ from PySide import QtCore, QtGui, QtWidgets
 from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
+from ..core import radius as radius_modul
 from ..core.i18n import uebersetze
 from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_filters,
                            parse_filters)
@@ -85,7 +86,12 @@ FILTER_LABELS = {
 }
 FILTER_OPTIONEN = tuple([("none", "no filter")]
                         + [(typ, FILTER_LABELS.get(typ, typ)) for typ in FILTER_TYPES])
-RADIUS_MODI = (("auto", "automatic"), ("manual", "manual"))
+RADIUS_MODI = (("robust", "robust (recommended)"), ("auto", "automatic (as in beso)"),
+               ("manual", "manual"))
+TIP_RADIUS = ("'robust' asks beso for the smallest radius at which every element still has a "
+              "neighbour (checked once, then the value is used). 'automatic (as in beso)' "
+              "leaves beso's own value of 2 x mean element size, 'manual' uses your "
+              "millimetres.")
 TIP_FILTER = ("The filter smooths the result. 'simple' averages over all elements in the "
               "radius, 'casting' also keeps the part demouldable in one direction.")
 
@@ -149,6 +155,9 @@ class AssistantPanel:
         self.solver = None
         self._geschlossen = False
         self._schritt = 1
+        self._robust_daten = None      # Elementdaten aus der .inp (einmal holen)
+        self._robust_ergebnis = None   # Ergebnis der robusten Radius-Suche (einmal)
+        self._fuelle_laeuft = False    # beim Befuellen nicht neu rechnen
 
         self.form = QtWidgets.QWidget()
         self.form.setWindowTitle(uebersetze("Topology Optimization"))
@@ -358,12 +367,13 @@ class AssistantPanel:
         """Add a filter row (also used when the dialog shows the stored filters)."""
         zeile = self._filter_zeile()
         zeile["typ"].setCurrentIndex(max(0, zeile["typ"].findData(typ)))
-        if isinstance(reichweite, (int, float)):
+        if reichweite in ("auto", "robust"):
+            zeile["radius_modus"].setCurrentIndex(
+                max(0, zeile["radius_modus"].findData(reichweite)))
+        elif isinstance(reichweite, (int, float)):
             zeile["radius_modus"].setCurrentIndex(
                 max(0, zeile["radius_modus"].findData("manual")))
             zeile["radius_wert"].setValue(float(reichweite))
-        else:
-            zeile["radius_modus"].setCurrentIndex(max(0, zeile["radius_modus"].findData("auto")))
         zeile["richtung"].setText(str(richtung))
         self.filter_layout.addWidget(zeile["widget"])
         self.filter_zeilen.append(zeile)
@@ -397,19 +407,17 @@ class AssistantPanel:
         zeile["label"] = _label_wrap("")
         layout.addWidget(zeile["label"])
 
-        zeile["typ"] = _combo_schmal(QtWidgets.QComboBox(), 5)
+        zeile["typ"] = _combo_schmal(QtWidgets.QComboBox(), 4)
         for wert, text in FILTER_OPTIONEN:
             zeile["typ"].addItem(uebersetze(text), wert)
         zeile["typ"].setToolTip(uebersetze(TIP_FILTER))
         zeile["typ"].currentIndexChanged.connect(self._filter_geaendert)
         layout.addWidget(zeile["typ"], 1)
 
-        zeile["radius_modus"] = _combo_schmal(QtWidgets.QComboBox(), 5)
+        zeile["radius_modus"] = _combo_schmal(QtWidgets.QComboBox(), 4)
         for wert, text in RADIUS_MODI:
             zeile["radius_modus"].addItem(uebersetze(text), wert)
-        zeile["radius_modus"].setToolTip(uebersetze("'automatic' lets beso choose the radius "
-                                                    "from the element size, 'manual' uses the "
-                                                    "value in millimetres."))
+        zeile["radius_modus"].setToolTip(uebersetze(TIP_RADIUS))
         zeile["radius_modus"].currentIndexChanged.connect(self._filter_geaendert)
         layout.addWidget(zeile["radius_modus"])
 
@@ -424,6 +432,18 @@ class AssistantPanel:
                                                    "which every element has a neighbour."))
         zeile["radius_wert"].valueChanged.connect(self._filter_geaendert)
         layout.addWidget(zeile["radius_wert"])
+
+        # shows what came out of the robust check (grau, klein)
+        zeile["radius_info"] = _label_wrap("")
+        zeile["radius_info"].setStyleSheet("color: %s;" % FARBE_GRAU)
+        layout.addWidget(zeile["radius_info"], 1)
+
+        # the check takes a few seconds on fine meshes - so the user starts it
+        zeile["pruefen"] = QtWidgets.QToolButton()
+        zeile["pruefen"].setText("\u21bb")       # circular arrow
+        zeile["pruefen"].setToolTip(uebersetze("Check the robust filter radius now"))
+        zeile["pruefen"].clicked.connect(lambda _checked=False, z=zeile: self._pruefe_radius(z))
+        layout.addWidget(zeile["pruefen"])
 
         zeile["richtung"] = QtWidgets.QLineEdit("(0, 0, 1)")
         zeile["richtung"].setMinimumWidth(50)
@@ -446,12 +466,97 @@ class AssistantPanel:
             typ = zeile["typ"].currentData()
             aktiv = typ != "none"
             casting = typ == "casting"
+            modus = zeile["radius_modus"].currentData()
             zeile["radius_modus"].setEnabled(aktiv)
             # only show what is needed: a hidden widget does not make the panel wider
-            zeile["radius_wert"].setVisible(aktiv and zeile["radius_modus"].currentData() != "auto")
+            zeile["radius_wert"].setVisible(aktiv and modus == "manual")
             zeile["richtung"].setVisible(casting)
             zeile["richtung"].setEnabled(casting)
+            if aktiv and modus == "robust":
+                if self._robust_ergebnis is not None:
+                    self._radius_anzeige(zeile)
+                elif self.obj.RobusterRadius > 0:
+                    # beim Oeffnen des Dialogs nicht rechnen - den gemerkten Wert zeigen
+                    zeile["radius_info"].setText("%.3f mm" % self.obj.RobusterRadius)
+                    zeile["radius_info"].setToolTip(
+                        uebersetze("%.3f mm (saved value from the last check)")
+                        % self.obj.RobusterRadius)
+                else:
+                    # kurz halten - ein langer Text macht das Panel breit
+                    zeile["radius_info"].setText("\u2013")
+                    zeile["radius_info"].setToolTip(
+                        uebersetze("not checked yet - use the arrow button"))
+            else:
+                zeile["radius_info"].setText("")
+                zeile["radius_info"].setToolTip("")
         self.obj.Filters = format_filters(self._sammle_filter())
+
+    def _robusten_radius(self):
+        """Der robuste Radius, gerechnet von beso (siehe core/radius.py).
+
+        Die Elementdaten werden nur einmal geholt und gemerkt - das Lesen der .inp
+        und die Nachbarsuche dauern bei feinen Netzen einige Sekunden.
+        """
+        if self._robust_daten is None:
+            daten = {}
+            if self.obj.InpFile and os.path.isfile(self.obj.InpFile):
+                design = [name for name, rolle in self.domains.items() if rolle == dom.DESIGN]
+                if design:
+                    alle = list(self.elsets) or design
+                    daten = radius_modul.gelesen(self.obj.InpFile, alle, design)
+            self._robust_daten = daten
+        if not self._robust_daten:
+            return {}
+        ergebnis = radius_modul.robust(self._robust_daten)
+        ergebnis["mittel"] = self._robust_daten["mittel"]
+        return ergebnis
+
+    def _pruefe_radius(self, zeile):
+        """Der Knopf an der Filterzeile: robusten Radius neu rechnen und anzeigen.
+
+        Die Rechnung dauert bei feinen Netzen ein paar Sekunden, deshalb startet sie
+        der Nutzer selbst (und nicht das Oeffnen des Dialogs).
+        """
+        self._robust_daten = None
+        self._robust_ergebnis = None
+        self._setze_status(uebersetze("Checking the robust filter radius with beso ... "
+                                      "this can take a few seconds."), "info")
+        QtWidgets.QApplication.processEvents()
+        try:
+            self._robust_ergebnis = self._robusten_radius()
+        except Exception as exc:
+            self._robust_ergebnis = {}
+            App.Console.PrintError("TopoOpt: %s\n" % exc)
+            self._setze_status(uebersetze("The robust radius could not be calculated: %s")
+                               % exc, "fehler")
+        if self._robust_ergebnis:
+            self.obj.RobusterRadius = self._robust_ergebnis["radius"]
+            self.obj.MittlereGroesse = self._robust_ergebnis["mittel"]
+            self._setze_status(uebersetze("Robust filter radius: %.3f mm = %.1f x mean "
+                                          "element size, %d element(s) without a neighbour.")
+                               % (self._robust_ergebnis["radius"],
+                                  self._robust_ergebnis["faktor"],
+                                  self._robust_ergebnis["ohne_nachbarn"]), "ok")
+        else:
+            self._setze_status(uebersetze("The robust radius needs an input file and a "
+                                          "design space - check step 1."), "fehler")
+        for andere in self.filter_zeilen:
+            if andere["radius_modus"].currentData() == "robust":
+                self._radius_anzeige(andere)
+        self.obj.Filters = format_filters(self._sammle_filter())
+
+    def _radius_anzeige(self, zeile):
+        """Schreibt das Ergebnis der Radius-Pruefung an die Filterzeile (kurz + Tooltip)."""
+        if not self._robust_ergebnis:
+            zeile["radius_info"].setText("?")
+            zeile["radius_info"].setToolTip(uebersetze("not calculated"))
+            return
+        zeile["radius_info"].setText("%.3f mm" % self._robust_ergebnis["radius"])
+        zeile["radius_info"].setToolTip(uebersetze("%.3f mm = %.1f x mean size, %d without "
+                                                   "neighbour")
+                                        % (self._robust_ergebnis["radius"],
+                                           self._robust_ergebnis["faktor"],
+                                           self._robust_ergebnis["ohne_nachbarn"]))
 
     def _sammle_filter(self):
         """The filters from the widgets, in the form beso uses."""
@@ -460,7 +565,8 @@ class AssistantPanel:
             typ = zeile["typ"].currentData()
             if typ == "none":
                 continue
-            reichweite = ("auto" if zeile["radius_modus"].currentData() == "auto"
+            modus = zeile["radius_modus"].currentData()
+            reichweite = (modus if modus in ("auto", "robust")
                           else round(zeile["radius_wert"].value(), 4))
             eintrag = [typ, reichweite]
             if typ == "casting":
@@ -470,11 +576,15 @@ class AssistantPanel:
 
     def _fuelle_filter(self):
         """Rebuild the rows from the filters stored in the object."""
-        for zeile in list(self.filter_zeilen):
-            self._filter_entfernen(zeile)
-        for eintrag in parse_filters(getattr(self.obj, "Filters", "")):
-            richtung = str(eintrag[2]) if len(eintrag) > 2 else "(0, 0, 1)"
-            self._filter_hinzufuegen(eintrag[0], eintrag[1], richtung)
+        self._fuelle_laeuft = True
+        try:
+            for zeile in list(self.filter_zeilen):
+                self._filter_entfernen(zeile)
+            for eintrag in parse_filters(getattr(self.obj, "Filters", "")):
+                richtung = str(eintrag[2]) if len(eintrag) > 2 else "(0, 0, 1)"
+                self._filter_hinzufuegen(eintrag[0], eintrag[1], richtung)
+        finally:
+            self._fuelle_laeuft = False
         self._filter_geaendert()
 
     def _inp_bereich(self):
@@ -547,6 +657,9 @@ class AssistantPanel:
         self.netz = fem.find_mesh(self.analyse) if self.analyse is not None else None
         self.solver = fem.find_solver(self.analyse) if self.analyse is not None else None
         self._setze_kopf()
+        # a new look at the document: element data and radius are looked up again
+        self._robust_daten = None
+        self._robust_ergebnis = None
         self._fuelle_parameter()
         if self.analyse is None or self.netz is None or self.solver is None:
             # what is missing is in the header line; this hint is about the file
