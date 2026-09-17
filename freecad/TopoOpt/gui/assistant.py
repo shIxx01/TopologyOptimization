@@ -277,7 +277,8 @@ class AssistantPanel:
         self.kopf.setWordWrap(True)
         layout.addWidget(self.kopf)
         layout.addWidget(self._inp_bereich())
-        layout.addWidget(self._domain_tabelle(), 1)
+        layout.addWidget(self._domain_tabelle())
+        layout.addStretch(1)          # Leerraum darunter, nicht in der Tabelle
         return seite
 
     def _seite_parameter(self):
@@ -1283,6 +1284,21 @@ class AssistantPanel:
             self.tabelle.setCellWidget(zeile, 3, sigma)
             self.felder_stress[name] = sigma
         self._fuelle_laeuft = False
+        self._tabelle_hoehe_anpassen()
+
+    def _tabelle_hoehe_anpassen(self):
+        """Die Domain-Tabelle so hoch wie ihr Inhalt.
+
+        Ohne das dehnt sie sich ueber den ganzen Platz (Stretch) und der Schritt
+        sieht aus, als sei er leer.  Ab zwoelf Zeilen bleibt sie stehen und rollt
+        innen - sonst waechst sie bei vielen Element-Sets endlos.
+        """
+        kopf = self.tabelle.horizontalHeader().height()
+        zeilen = sum(self.tabelle.rowHeight(r) for r in range(self.tabelle.rowCount()))
+        rahmen = 2 * self.tabelle.frameWidth() + 4
+        hoehe = kopf + zeilen + rahmen
+        grenze = kopf + 12 * 24 + rahmen
+        self.tabelle.setFixedHeight(min(hoehe, grenze))
 
     def _stress_geaendert(self, elset, feld):
         if self._fuelle_laeuft:

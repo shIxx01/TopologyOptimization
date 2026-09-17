@@ -139,6 +139,14 @@ try:
            "Speicher-Intervall startet bei 10 (%d)" % panel.feld_speichern.value())
     pruefe(panel.kopf.parent() is not panel.form,
            "Kopfzeile steckt in Schritt 1, nicht ueber allen Schritten")
+    # die Domain-Tabelle ist so hoch wie ihr Inhalt, nicht hoeher
+    kopfhoehe = panel.tabelle.horizontalHeader().height()
+    erwartet = kopfhoehe + panel.tabelle.rowCount() * panel.tabelle.rowHeight(0) + 8
+    pruefe(abs(panel.tabelle.height() - erwartet) <= 12,
+           "die Domain-Tabelle ist so hoch wie ihr Inhalt (%d px, erwartet ~%d)"
+           % (panel.tabelle.height(), erwartet))
+    pruefe(panel.tabelle.height() < 200,
+           "die Tabelle fuellt nicht den ganzen Schritt (%d px)" % panel.tabelle.height())
     pruefe(panel.schritt_label.parent() is panel.form,
            "Schrittleiste sitzt oben im Panel (ausserhalb des Rollbereichs)")
     pruefe(panel.scroll.widget() is panel.seiten,

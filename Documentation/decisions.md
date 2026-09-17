@@ -375,6 +375,14 @@ with back/next at the bottom.  The prototype's structure (`taskpanel.py:130-166`
 * Measured: the panel's minimum width dropped from **348 to 234 px** - the text bar and the
   navigation below need much less room than three toggle buttons in a row.
 
+**The element-set table does not fill the step any more.**  The user asked why the list in step 1
+was so long downwards: the table lay in the layout with stretch 1
+(`layout.addWidget(self._domain_tabelle(), 1)`), so it grew over the whole free space - and with
+the new scroll area over the whole scroll area.  Now it is added without stretch, the free space
+is taken by a stretch below it, and `_tabelle_hoehe_anpassen()` sets the height to
+header + rows (measured: **64 px** with one element set).  From twelve rows on it keeps that
+height and scrolls inside itself, otherwise a model with many element sets would grow endlessly.
+
 **Two separate result buttons** (the user's point: "Ergebnis anzeigen" only loaded the VTK):
 
 * **"Iterationen anzeigen"** - the VTK player (`core/vtk.py`): the surface of the material that
