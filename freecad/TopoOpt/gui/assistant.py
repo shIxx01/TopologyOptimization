@@ -21,15 +21,14 @@ from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_fil
                            parse_filters)
 from ..features.topology_object import find_analysis, ensure_properties
 
-SCHRITTE = ("Initialize", "Parameters", "Run", "Results")
+SCHRITTE = ("Initialize", "Parameters", "Calculation")
 
 # steps that are built (the others show a placeholder)
 GEBAUTE_SCHRITTE = (1, 2, 3)
 SCHRITT_TIPPS = {
     1: "Prepare the analysis case: CalculiX input file and element sets",
     2: "Set target mass, filters and iteration limits",
-    3: "Run the optimization with CalculiX",
-    4: "Look at the result and compare it with the FEM result",
+    3: "Start the run, watch it and look at the result (iterations, log, folder)",
 }
 
 # range of the target-mass slider in percent (0 and 100 % make no sense)
@@ -201,7 +200,7 @@ class AssistantPanel:
         self.seiten = QtWidgets.QStackedWidget()
         self.seiten.addWidget(self._seite_initialisieren())
         self.seiten.addWidget(self._seite_parameter())
-        self.seiten.addWidget(self._seite_lauf())
+        self.seiten.addWidget(self._seite_berechnung())
         for _ in range(len(SCHRITTE) - 3):
             self.seiten.addWidget(self._seite_platzhalter())
         aussen.addWidget(self.seiten, 1)
@@ -627,13 +626,20 @@ class AssistantPanel:
             self._fuelle_laeuft = False
         self._filter_geaendert()
 
-    def _seite_lauf(self):
-        """Step 3: start the optimization, watch it, cancel it if needed."""
+    def _seite_berechnung(self):
+        """Step 3: start the optimization, watch it and look at the result.
+
+        Run and results belong together - the user asked for one step "Calculation".
+        """
         from .verlauf import Verlauf
 
         seite = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(seite)
         layout.setContentsMargins(0, 0, 0, 0)
+
+        # --- der Lauf ---
+        rahmen_lauf = QtWidgets.QGroupBox(uebersetze("Run"))
+        lauf = QtWidgets.QVBoxLayout(rahmen_lauf)
 
         zeile = QtWidgets.QHBoxLayout()
         self.knopf_lauf = QtWidgets.QPushButton(uebersetze("Start optimization"))
@@ -642,17 +648,17 @@ class AssistantPanel:
         self.knopf_lauf.clicked.connect(self._lauf_knopf)
         zeile.addWidget(self.knopf_lauf)
         zeile.addStretch(1)
-        layout.addLayout(zeile)
+        lauf.addLayout(zeile)
 
         # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
         self.balken = QtWidgets.QProgressBar()
         self.balken.setRange(0, 100)
         self.balken.setValue(0)
         self.balken.setToolTip(uebersetze("0 % = the whole part, 100 % = the target mass"))
-        layout.addWidget(self.balken)
+        lauf.addWidget(self.balken)
 
         self.lauf_status = _label_wrap("")
-        layout.addWidget(self.lauf_status)
+        lauf.addWidget(self.lauf_status)
 
         zeile = QtWidgets.QHBoxLayout()
         self.knopf_verlauf = QtWidgets.QPushButton(uebersetze("Show history"))
@@ -665,7 +671,67 @@ class AssistantPanel:
         self.chk_verlauf.setToolTip(uebersetze("Open the history window when the run starts"))
         zeile.addWidget(self.chk_verlauf)
         zeile.addStretch(1)
-        layout.addLayout(zeile)
+        lauf.addLayout(zeile)
+        layout.addWidget(rahmen_lauf)
+
+        # --- die Ergebnisse ---
+        rahmen_erg = QtWidgets.QGroupBox(uebersetze("Results"))
+        erg = QtWidgets.QVBoxLayout(rahmen_erg)
+
+        zeile = QtWidgets.QHBoxLayout()
+        self.knopf_ergebnis = QtWidgets.QPushButton(uebersetze("Show iterations"))
+        self.knopf_ergebnis.setToolTip(uebersetze("Reads resulting_states.vtk and shows the "
+                                                 "material that is left in the part"))
+        self.knopf_ergebnis.clicked.connect(self._ergebnis_anzeigen)
+        zeile.addWidget(self.knopf_ergebnis)
+        zeile.addStretch(1)
+        erg.addLayout(zeile)
+
+        # Der Schieberegler bekommt eine eigene Zeile: FreeCADs Style gibt jedem
+        # Knopf rund 106 px Mindestbreite - vier Widgets nebeneinander sprengen das
+        # schmale Panel (gemessen: 396 statt 348 px).
+        self.ergebnis_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.ergebnis_slider.setMinimum(1)
+        self.ergebnis_slider.setMaximum(1)
+        self.ergebnis_slider.setMinimumWidth(40)
+        self.ergebnis_slider.setToolTip(uebersetze("Iteration to show"))
+        self.ergebnis_slider.valueChanged.connect(self._ergebnis_zeigen)
+
+        zeile = QtWidgets.QHBoxLayout()
+        zeile.addWidget(self.ergebnis_slider, 1)
+        self.knopf_zurueck = QtWidgets.QPushButton("◀")
+        self.knopf_zurueck.setToolTip(uebersetze("One iteration back"))
+        self.knopf_zurueck.clicked.connect(lambda: self._ergebnis_schritt(-1))
+        self.knopf_vor = QtWidgets.QPushButton("▶")
+        self.knopf_vor.setToolTip(uebersetze("One iteration forward"))
+        self.knopf_vor.clicked.connect(lambda: self._ergebnis_schritt(1))
+        self.knopf_abspielen = QtWidgets.QPushButton(uebersetze("Play"))
+        self.knopf_abspielen.setCheckable(True)
+        self.knopf_abspielen.setToolTip(uebersetze("Show one iteration after the other"))
+        self.knopf_abspielen.clicked.connect(self._ergebnis_abspielen)
+        for knopf in (self.knopf_zurueck, self.knopf_vor, self.knopf_abspielen):
+            # FreeCADs Style gibt jedem Knopf eine Mindestbreite von rund 106 px -
+            # vier Widgets nebeneinander sprengen das schmale Panel (gemessen: 396 px).
+            # Fuer diese kleinen Knoepfe gilt die Vorgabe nicht.
+            knopf.setStyleSheet("min-width: 0px; padding: 2px 6px;")
+            zeile.addWidget(knopf)
+        erg.addLayout(zeile)
+
+        self.ergebnis_info = _label_wrap("")
+        erg.addWidget(self.ergebnis_info)
+
+        zeile = QtWidgets.QHBoxLayout()
+        self.knopf_log = QtWidgets.QPushButton(uebersetze("Whole log"))
+        self.knopf_log.setToolTip(uebersetze("Opens the log file of the run"))
+        self.knopf_log.clicked.connect(self._log_oeffnen)
+        zeile.addWidget(self.knopf_log)
+        self.knopf_ordner = QtWidgets.QPushButton(uebersetze("Folder"))
+        self.knopf_ordner.setToolTip(uebersetze("Opens the working directory with all files"))
+        self.knopf_ordner.clicked.connect(self._ordner_oeffnen)
+        zeile.addWidget(self.knopf_ordner)
+        zeile.addStretch(1)
+        erg.addLayout(zeile)
+        layout.addWidget(rahmen_erg)
 
         # ausklappbares Feld fuer die letzten Logzeilen ("Detail")
         kopf_zeile = QtWidgets.QHBoxLayout()
@@ -683,15 +749,19 @@ class AssistantPanel:
         self.detail.setReadOnly(True)
         self.detail.setVisible(False)
         self.detail.setMaximumHeight(150)
-        self.detail.setToolTip(uebersetze("The last lines of the run - the whole log file "
-                                          "belongs to step 4."))
+        self.detail.setToolTip(uebersetze("The last lines of the run - 'Whole log' opens "
+                                          "the complete file."))
         layout.addWidget(self.detail)
         layout.addStretch(1)
 
         self.verlauf = Verlauf(zielmasse=getattr(self.obj, "MassGoalRatio", None))
+        self.spieler = None                    # VTK-Player, sobald Ergebnisse geladen sind
         self.lauf_timer = QtCore.QTimer()
         self.lauf_timer.setInterval(1500)
         self.lauf_timer.timeout.connect(self._lauf_aktualisieren)
+        self.ergebnis_timer = QtCore.QTimer()
+        self.ergebnis_timer.setInterval(700)
+        self.ergebnis_timer.timeout.connect(lambda: self._ergebnis_schritt(1, vom_timer=True))
         return seite
 
     def _verlauf_anzeigen(self):
@@ -702,6 +772,131 @@ class AssistantPanel:
                                           "the charts need 'Plot' in FreeCAD's module folder."),
                                "fehler")
         return fenster
+
+    def _ergebnis_pfad(self):
+        """Die Datei mit den Iterationen liegt im Arbeitsordner des Laufs."""
+        ordner = getattr(self.obj, "WorkingDir", "")
+        return os.path.join(ordner, "resulting_states.vtk") if ordner else ""
+
+    def _ergebnisse_aktualisieren(self):
+        """Ist schon ein Ergebnis da?  Dann den Knopf freigeben und den Zustand zeigen."""
+        pfad = self._ergebnis_pfad()
+        da = bool(pfad) and os.path.isfile(pfad)
+        self.knopf_ergebnis.setEnabled(da)
+        self.knopf_log.setEnabled(bool(self._log_pfad()))
+        self.knopf_ordner.setEnabled(bool(getattr(self.obj, "WorkingDir", "")))
+        if not da:
+            self.ergebnis_info.setText(uebersetze("No result file yet - it is written when "
+                                                 "the run is finished."))
+            return
+        if self.spieler is None and not self.ergebnis_info.text():
+            self.ergebnis_info.setText(uebersetze("resulting_states.vtk is there - "
+                                                 "'Show iterations' reads it."))
+
+    def _ergebnis_anzeigen(self):
+        """resulting_states.vtk einlesen und die letzte Iteration zeigen."""
+        pfad = self._ergebnis_pfad()
+        if not pfad or not os.path.isfile(pfad):
+            self.ergebnis_info.setText(uebersetze("No resulting_states.vtk in the working "
+                                                 "directory yet."))
+            return None
+        if self.spieler is None:
+            from .vtk_anzeige import Spieler
+            try:
+                self.spieler = Spieler.laden(pfad, self.obj.Document,
+                                             label=uebersetze("TopoOpt iteration"))
+            except Exception as exc:
+                self.ergebnis_info.setText(uebersetze("The result file could not be read: %s")
+                                           % exc)
+                return None
+            self.ergebnis_slider.setRange(1, self.spieler.anzahl)
+            self.ergebnis_slider.setValue(self.spieler.anzahl)   # letzte Iteration
+        self._ergebnis_zeigen(self.ergebnis_slider.value())
+        return self.spieler
+
+    def _ergebnis_zeigen(self, nummer):
+        """Iteration ``nummer`` anzeigen (vom Schieberegler oder vom Timer)."""
+        if self.spieler is None:
+            return
+        daten = self.spieler.zeigen(nummer)
+        if self.ergebnis_slider.value() != daten["nummer"]:
+            self.ergebnis_slider.blockSignals(True)
+            self.ergebnis_slider.setValue(daten["nummer"])
+            self.ergebnis_slider.blockSignals(False)
+        self.ergebnis_info.setText(
+            uebersetze("Iteration %d of %d | %s of %s elements left (%.1f %%)")
+            % (daten["nummer"], daten["anzahl"],
+               "{:,}".format(daten["zellen"]).replace(",", "."),
+               "{:,}".format(daten["gesamt"]).replace(",", "."), daten["prozent"]))
+
+    def _ergebnis_schritt(self, richtung, vom_timer=False):
+        """Eine Iteration weiter oder zurueck."""
+        if self.spieler is None:
+            if vom_timer:
+                self._ergebnis_abspielen(False)
+            return
+        neu = self.ergebnis_slider.value() + richtung
+        if neu > self.spieler.anzahl or neu < 1:
+            if vom_timer:
+                self._ergebnis_abspielen(False)      # am Ende angekommen
+            return
+        self.ergebnis_slider.setValue(neu)
+
+    def _ergebnis_abspielen(self, an=None):
+        """Alle Iterationen nacheinander zeigen."""
+        if an is None:
+            an = self.knopf_abspielen.isChecked()
+        if an and self.spieler is None:
+            self._ergebnis_anzeigen()
+        if an and self.spieler is not None:
+            if self.ergebnis_slider.value() >= self.spieler.anzahl:
+                self.ergebnis_slider.setValue(1)      # von vorn
+            self.knopf_abspielen.setChecked(True)
+            self.knopf_abspielen.setText(uebersetze("Stop"))
+            self.ergebnis_timer.start()
+        else:
+            self.ergebnis_timer.stop()
+            self.knopf_abspielen.setChecked(False)
+            self.knopf_abspielen.setText(uebersetze("Play"))
+
+    def _log_pfad(self):
+        """Unsere Logdatei - aus dem Lauf oder aus der Eingabedatei abgeleitet."""
+        if self._lauf_log and os.path.isfile(self._lauf_log):
+            return self._lauf_log
+        inp = getattr(self.obj, "InpFile", "")
+        if inp:
+            pfad = conf_modul.log_pfad(inp)
+            if os.path.isfile(pfad):
+                return pfad
+        return ""
+
+    def _log_oeffnen(self):
+        """Das vollstaendige Log im Standardprogramm oeffnen."""
+        pfad = self._log_pfad()
+        if not pfad:
+            self.ergebnis_info.setText(uebersetze("There is no log file yet."))
+            return
+        try:
+            if os.name == "nt":
+                os.startfile(pfad)
+            else:
+                subprocess.Popen(["xdg-open", pfad])
+        except Exception as exc:
+            self.ergebnis_info.setText(uebersetze("The log file could not be opened: %s") % exc)
+
+    def _ordner_oeffnen(self):
+        """Den Arbeitsordner im Dateimanager oeffnen."""
+        ordner = getattr(self.obj, "WorkingDir", "")
+        if not ordner or not os.path.isdir(ordner):
+            self.ergebnis_info.setText(uebersetze("There is no working directory yet."))
+            return
+        try:
+            if os.name == "nt":
+                os.startfile(ordner)
+            else:
+                subprocess.Popen(["xdg-open", ordner])
+        except Exception as exc:
+            self.ergebnis_info.setText(uebersetze("The folder could not be opened: %s") % exc)
 
     def _detail_umschalten(self):
         sichtbar = self.knopf_detail.isChecked()
@@ -745,6 +940,9 @@ class AssistantPanel:
         self.verlauf.laeuft = True
         self.verlauf._start_zeit = self._lauf_beginn
         self.balken.setValue(0)
+        self.spieler = None                    # ein neuer Lauf hat neue Ergebnisse
+        self.ergebnis_slider.setRange(1, 1)
+        self._ergebnisse_aktualisieren()
         self.knopf_lauf.setText(uebersetze("Cancel"))
         self.knopf_lauf.setToolTip(uebersetze("Stop the run (CalculiX is stopped as well)"))
         self._setze_status(uebersetze("Run started (%s) ...") % os.path.basename(conf), "info")
@@ -817,6 +1015,7 @@ class AssistantPanel:
             if code == 0 and fertig:
                 self._setze_status(uebersetze("Optimization finished after %d iteration(s).")
                                    % daten["iteration"], "ok")
+                self._ergebnisse_aktualisieren()
             else:
                 self._setze_status(uebersetze("The run ended (code %s) - open the details.")
                                    % code, "fehler")
@@ -966,6 +1165,7 @@ class AssistantPanel:
             self._speichere_domains()
         self._fuelle_tabelle()
         self._vorschlag_aus_material()
+        self._ergebnisse_aktualisieren()
         self.obj.Document.recompute()
 
     def _vorschlag_aus_material(self):
@@ -1178,6 +1378,7 @@ class AssistantPanel:
         self._geschlossen = True
         try:
             self.lauf_timer.stop()      # der Lauf selbst laeuft weiter
+            self.ergebnis_timer.stop()
             self.verlauf.schliessen()
         except Exception:
             pass

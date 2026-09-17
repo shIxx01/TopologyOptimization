@@ -26,7 +26,7 @@ EINHEITEN = {
     "pa": 1e-6,
 }
 
-ZAHL = re.compile(r"^\s*([-+0-9.eE,]+)\s*([A-Za-z/().^*² ]*)\s*$")
+ZAHL = re.compile(r"^\s*([-+0-9.eE,]+)\s*([A-Za-z0-9/().^*² ]*)\s*$")
 
 # Schluessel, die eine Streckgrenze enthalten koennen (Reihenfolge = Vorrang)
 SCHLUESSEL = ("YieldStrength", "UltimateTensileStrength", "CompressiveStrength")

@@ -314,6 +314,33 @@ deliberately emptied is stored as `"<set>|0"`, so the suggestion does not come b
 The assignment material -> element set goes by name (`MaterialSolid` belongs to
 `MaterialSolidSolid`); with exactly one material it applies to all sets.
 
+## D21 - Steps 3 and 4 are one step "Calculation" with the viewer of the prototype
+
+The user asked to put run and results together in one tab named "Berechnung" and to take the
+VTK viewer from the first prototype, "because it runs cleanly and nicely".
+
+* The step bar now has three steps: **Initialize | Parameters | Calculation**.  The
+  calculation page holds a "Run" group (start/cancel, progress bar, status, history) and a
+  "Results" group (iterations, log, folder).
+* `core/vtk.py` is the reader of the prototype, kept as it was - including the three traps it
+  had to solve, each with the measurement in the docstring:
+  * node numbers in `resulting_states.vtk` are **0-based**; subtracting 1 tears the mesh
+    (measured in the test: largest edge 13.3 mm correct against 102.5 mm with -1),
+  * the `LOOKUP_TABLE` line must not end a `SCALARS` section, otherwise the iterations stay
+    empty,
+  * the surface triangles must be turned outwards, otherwise half of them are lit from the
+    wrong side and it looks like a hole.
+* `gui/vtk_anzeige.py` shows the material that is left as **one** mesh object that is updated
+  (`TopoOpt_Iteration`) - not one object per iteration.
+* Controls: "Show iterations" (reads the file, jumps to the last iteration), a slider,
+  back/forward, play/stop and the info line
+  `Iteration 1 of 2 | 388 of 401 elements left (96.8 %)`.  Plus "Whole log" and "Folder"
+  (the user's wish for the full log).
+* **Layout lesson**: FreeCAD's style gives every `QPushButton` a minimum width of about 106 px.
+  Four widgets in one row (back, slider, forward, play) blew the panel up to 396 px though the
+  panel is meant to stay at ~348 px.  The small control buttons get `min-width: 0px` in an own
+  style sheet, that is measured again after every layout change.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

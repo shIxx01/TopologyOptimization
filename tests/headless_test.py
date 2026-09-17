@@ -451,6 +451,66 @@ nur_eins = material_modul.streckgrenze([("Irgendwas", {"YieldStrength": "235 MPa
 pruefe(nur_eins == {"VoelligAnderes": 235.0},
        "bei genau einem Material gilt es fuer alle Sets (%s)" % (nur_eins,))
 
+# --- VTK-Iterationen lesen (resulting_states.vtk) ------------------------------
+from freecad.TopoOpt.core import vtk as vtk_modul  # noqa: E402
+
+vtk_beispiel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
+                            "states_beispiel.vtk")
+vtk_daten = vtk_modul.laden(vtk_beispiel)
+pruefe(len(vtk_daten["punkte"]) == 170, "die Knoten werden gelesen (%d)"
+       % len(vtk_daten["punkte"]))
+pruefe(len(vtk_daten["zellen"]) == 401, "die Zellen werden gelesen (%d)"
+       % len(vtk_daten["zellen"]))
+pruefe(vtk_daten["zellen"][0][0] < len(vtk_daten["punkte"]),
+       "die Knotennummern sind 0-basiert (erste Nummer %d)" % vtk_daten["zellen"][0][0])
+pruefe(len(vtk_daten["zustaende"]) == 2 and vtk_daten["namen"][0] == "element_states001",
+       "beide Iterationen werden gelesen (%s)" % (vtk_daten["namen"],))
+
+# Die Knotennummern sind 0-basiert: mit -1 verschobene Zellen ergeben weit
+# auseinanderliegende Ecken.  Genau das war der Fehler im Prototyp.
+def _groesste_kante(punkte, zellen, zustand):
+    groesste = 0.0
+    for i, zelle in enumerate(zellen[:300]):
+        if not zustand[i]:
+            continue
+        ecken = [punkte[zelle[j]] for j in range(4)]
+        for a in range(4):
+            for b in range(a + 1, 4):
+                groesste = max(groesste, (ecken[a] - ecken[b]).Length)
+    return groesste
+
+richtig = _groesste_kante(vtk_daten["punkte"], vtk_daten["zellen"], vtk_daten["zustaende"][0])
+verschoben = _groesste_kante(vtk_daten["punkte"],
+                             [[k - 1 for k in zelle] for zelle in vtk_daten["zellen"]],
+                             vtk_daten["zustaende"][0])
+# Das Beispielnetz ist grob (Balken 100 x 20 x 10 mm, 401 Elemente): die groesste
+# Elementkante liegt bei rund 13 mm, mit verschobenen Nummern bei ueber 100 mm.
+pruefe(richtig < 20, "mit 0-basierten Nummern bleibt die groesste Kante zur Elementgroesse "
+       "passend (%.2f mm)" % richtig)
+pruefe(verschoben > 5 * richtig,
+       "mit -1 verschobenen Nummern wird das Netz zerfetzt (%.2f mm gegen %.2f mm, Faktor %.1f)"
+       % (verschoben, richtig, verschoben / richtig))
+
+zusammen = vtk_modul.zusammenfassung(vtk_daten, 1)
+pruefe(zusammen["nummer"] == 1 and zusammen["anzahl"] == 2 and zusammen["gesamt"] == 401,
+       "die Zusammenfassung kennt Iteration, Anzahl und Zellen (%s)" % (zusammen,))
+pruefe(0 <= zusammen["prozent"] <= 100, "der Materialanteil liegt zwischen 0 und 100 %% (%.1f)"
+       % zusammen["prozent"])
+
+flaechen = vtk_modul.randflaechen(vtk_daten["zellen"], vtk_daten["zustaende"][-1],
+                                  vtk_daten["punkte"])
+pruefe(len(flaechen) > 100, "die Oberflaeche hat Flaechen (%d)" % len(flaechen))
+volumen = vtk_modul.volumen(vtk_daten["punkte"], flaechen)
+pruefe(volumen > 0, "die Flaechen zeigen nach aussen (Volumen %.1f positiv)" % volumen)
+zufall = vtk_modul.volumen(vtk_daten["punkte"], [f[::-1] for f in flaechen])
+pruefe(zufall < 0, "umgedrehte Flaechen ergeben negatives Volumen (%.1f)" % zufall)
+kanten = vtk_modul.kantenprobe(flaechen)
+pruefe(kanten.get(2, 0) > 0.9 * sum(kanten.values()),
+       "die Kantenprobe zeigt eine geschlossene Oberflaeche (%s)" % (kanten,))
+pruefe(vtk_modul.zellvolumen(vtk_daten["punkte"], vtk_daten["zellen"],
+                             vtk_daten["zustaende"][-1]) > 0,
+       "das Zellvolumen des Materials ist positiv")
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

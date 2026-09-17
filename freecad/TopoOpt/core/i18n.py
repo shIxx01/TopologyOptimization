@@ -200,6 +200,58 @@ DEUTSCH = {
         "Optimierung starten",
     "Show history":
         "Verlauf anzeigen",
+    "Calculation":
+        "Berechnung",
+    "Run":
+        "Lauf",
+    "Results":
+        "Ergebnisse",
+    "Show iterations":
+        "Iterationen anzeigen",
+    "Play":
+        "Abspielen",
+    "Stop":
+        "Stop",
+    "Whole log":
+        "Vollständiges Log",
+    "Folder":
+        "Ordner",
+    "One iteration back":
+        "Eine Iteration zurück",
+    "One iteration forward":
+        "Eine Iteration vor",
+    "Iteration to show":
+        "Anzuzeigende Iteration",
+    "Show one iteration after the other":
+        "Die Iterationen nacheinander zeigen",
+    "Reads resulting_states.vtk and shows the material that is left in the part":
+        "Liest resulting_states.vtk und zeigt das stehengebliebene Material",
+    "Opens the log file of the run":
+        "Öffnet die Logdatei des Laufs",
+    "Opens the working directory with all files":
+        "Öffnet den Arbeitsordner mit allen Dateien",
+    "No result file yet - it is written when the run is finished.":
+        "Noch keine Ergebnisdatei – sie entsteht am Ende des Laufs.",
+    "resulting_states.vtk is there - 'Show iterations' reads it.":
+        "resulting_states.vtk ist vorhanden – 'Iterationen anzeigen' liest sie ein.",
+    "No resulting_states.vtk in the working directory yet.":
+        "Im Arbeitsordner liegt noch keine resulting_states.vtk.",
+    "The result file could not be read: %s":
+        "Die Ergebnisdatei konnte nicht gelesen werden: %s",
+    "Iteration %d of %d | %s of %s elements left (%.1f %%)":
+        "Iteration %d von %d | %s von %s Elementen übrig (%.1f %%)",
+    "There is no log file yet.":
+        "Es gibt noch keine Logdatei.",
+    "The log file could not be opened: %s":
+        "Die Logdatei konnte nicht geöffnet werden: %s",
+    "There is no working directory yet.":
+        "Es gibt noch keinen Arbeitsordner.",
+    "The folder could not be opened: %s":
+        "Der Ordner konnte nicht geöffnet werden: %s",
+    "TopoOpt iteration":
+        "TopoOpt Iteration",
+    "The last lines of the run - 'Whole log' opens the complete file.":
+        "Die letzten Zeilen des Laufs – 'Vollständiges Log' öffnet die ganze Datei.",
     "Open at start":
         "beim Start öffnen",
     "Open the history window when the run starts":

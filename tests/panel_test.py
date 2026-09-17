@@ -352,6 +352,41 @@ try:
            "nach dem Lauf heisst der Knopf wieder 'Optimierung starten' (%s)"
            % panel2.knopf_lauf.text())
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
+
+    # Ergebnisse im selben Schritt ("Berechnung"): VTK-Iterationen anzeigen
+    pruefe(len(panel2.schritt_knoepfe) == 3,
+           "die Schrittleiste hat drei Schritte (%d)" % len(panel2.schritt_knoepfe))
+    pruefe(panel2.schritt_knoepfe[-1].text().endswith(("Calculation", "Berechnung")),
+           "der dritte Schritt heisst 'Berechnung' (%s)" % panel2.schritt_knoepfe[-1].text())
+    pruefe(panel2.knopf_ergebnis.isEnabled(),
+           "der Knopf 'Iterationen anzeigen' ist nach dem Lauf frei")
+    pruefe(os.path.isfile(panel2._ergebnis_pfad()),
+           "resulting_states.vtk liegt im Arbeitsordner (%s)"
+           % os.path.basename(panel2._ergebnis_pfad()))
+    spieler = panel2._ergebnis_anzeigen()
+    pruefe(spieler is not None, "die Ergebnisdatei wird eingelesen")
+    if spieler is not None:
+        log("VTK: %d Iterationen, Schieberegler %d..%d, Info: %s"
+            % (spieler.anzahl, panel2.ergebnis_slider.minimum(),
+               panel2.ergebnis_slider.maximum(), panel2.ergebnis_info.text()))
+        pruefe(spieler.anzahl >= 1, "der Player kennt die Iterationen (%d)" % spieler.anzahl)
+        pruefe(panel2.ergebnis_slider.maximum() == spieler.anzahl,
+               "der Schieberegler reicht bis zur letzten Iteration (%d)"
+               % panel2.ergebnis_slider.maximum())
+        pruefe("Iteration" in panel2.ergebnis_info.text(),
+               "die Info nennt die Iteration (%s)" % panel2.ergebnis_info.text())
+        pruefe(panel2.obj.Document.getObject("TopoOpt_Iteration") is not None,
+               "das Anzeigeobjekt liegt im Dokument (TopoOpt_Iteration)")
+        if panel2.ergebnis_slider.maximum() > 1:
+            vorher = panel2.ergebnis_slider.value()
+            panel2._ergebnis_schritt(-1)
+            pruefe(panel2.ergebnis_slider.value() == vorher - 1,
+                   "der Knopf 'zurueck' geht eine Iteration zurueck (%d -> %d)"
+                   % (vorher, panel2.ergebnis_slider.value()))
+        pruefe(bool(panel2._log_pfad()), "die Logdatei des Laufs wird gefunden (%s)"
+               % os.path.basename(panel2._log_pfad()))
+        pruefe("von" in panel2.ergebnis_info.text() or "of" in panel2.ergebnis_info.text(),
+               "die Info nennt auch die Gesamtzahl")
     panel2._zeige_schritt(1)
 
     panel2.reject()
