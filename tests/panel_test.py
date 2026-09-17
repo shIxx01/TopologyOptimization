@@ -373,6 +373,10 @@ try:
     pruefe(panel2.spieler is not None,
            "das Ergebnis wurde nach dem Lauf automatisch geladen")
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
+    pruefe(panel2.lauf_status.parent() is panel2.knopf_detail.parent(),
+           "der Lauf-Status teilt sich die Zeile mit 'Details' (keine leere Zeile)")
+    pruefe(panel2.lauf_status.text() != "",
+           "der Status ist gefuellt (%s)" % panel2.lauf_status.text())
     pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit laeuft mit (%s)"
            % panel2.lauf_zeit.text())
     pruefe(panel2.lauf_zeit.parent() is panel2.form,

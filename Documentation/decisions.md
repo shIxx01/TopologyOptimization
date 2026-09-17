@@ -406,9 +406,13 @@ height and scrolls inside itself, otherwise a model with many element sets would
 * The running time moved **into the top line** (right of the step bar) - it belongs to the
   frame, not to the group, and is visible in every step.  (First it was next to the start
   button, which the user corrected with a screenshot.)
-* The **slider got its own row** with the full width (measured 640 px in a 640 px panel) and the
-  **play speed** came back from the prototype: a combo box with 0.5 s / 1 s / 2 s / 3 s
-  (`_takt_geaendert` sets the timer interval; measured: index 2 -> 2000 ms).
+* The **slider got its own row** with the full width (measured 640 px in a 640 px panel).
+* The **play speed** sits in the row of the control buttons (the user wanted it one row higher):
+  combo box 0.5 s / 1 s / 2 s / 3 s as in the prototype (`_takt_geaendert` sets the timer
+  interval; measured: index 2 -> 2000 ms).
+* **No invisible empty row**: the status line was a row of its own and stayed empty (and thus
+  invisible but place-consuming) as long as no run was going - the user saw a blank strip.  It
+  now shares the row with the fold-out "Details" button (left button, right status, gray).
 * **No scroll bar in the short steps**: one common `QScrollArea` around the `QStackedWidget` is
   always as tall as the *longest* page, so every step showed a scroll bar.  Each page now has its
   own scroll area (`self.rollen`); measured: the scroll bar range in step 1 is 0 (nothing to

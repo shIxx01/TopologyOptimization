@@ -693,10 +693,9 @@ class AssistantPanel:
         self.balken.setToolTip(uebersetze("0 % = the whole part, 100 % = the target mass"))
         lauf.addWidget(self.balken)
 
-        self.lauf_status = _label_wrap("")
-        lauf.addWidget(self.lauf_status)
-
-        # ausklappbares Feld fuer die letzten Logzeilen ("Detail") - gehoert zum Rechnen
+        # ausklappbares Feld fuer die letzten Logzeilen ("Detail") - gehoert zum Rechnen.
+        # Der Status steht in derselben Zeile: eine eigene Zeile waere unsichtbar leer,
+        # solange nichts laeuft (der Nutzer sah dort einen leeren Streifen).
         kopf_zeile = QtWidgets.QHBoxLayout()
         self.knopf_detail = QtWidgets.QToolButton()
         self.knopf_detail.setText(uebersetze("Details"))
@@ -706,6 +705,9 @@ class AssistantPanel:
         self.knopf_detail.clicked.connect(self._detail_umschalten)
         kopf_zeile.addWidget(self.knopf_detail)
         kopf_zeile.addStretch(1)
+        self.lauf_status = _label_wrap("")
+        self.lauf_status.setStyleSheet("color: gray;")
+        kopf_zeile.addWidget(self.lauf_status)
         lauf.addLayout(kopf_zeile)
 
         self.detail = QtWidgets.QPlainTextEdit()
@@ -778,23 +780,22 @@ class AssistantPanel:
         self.knopf_abspielen.clicked.connect(self._ergebnis_abspielen)
         for knopf in (self.knopf_zurueck, self.knopf_vor, self.knopf_abspielen):
             # FreeCADs Style gibt jedem Knopf eine Mindestbreite von rund 106 px -
-            # vier Widgets nebeneinander sprengen das schmale Panel (gemessen: 396 px).
+            # mehrere Widgets nebeneinander sprengen das schmale Panel (gemessen: 396 px).
             # Fuer diese kleinen Knoepfe gilt die Vorgabe nicht.
             knopf.setStyleSheet("min-width: 0px; padding: 2px 6px;")
             zeile.addWidget(knopf)
-        erg.addLayout(zeile)
-
-        # der Schieberegler bekommt eine eigene Zeile mit voller Breite,
-        # daneben die Abspielgeschwindigkeit wie im Prototyp
-        zeile = QtWidgets.QHBoxLayout()
-        zeile.addWidget(self.ergebnis_slider, 1)
+        # die Abspielgeschwindigkeit gehoert zu den Steuerknoepfen (wie im Prototyp)
         self.cmb_takt = QtWidgets.QComboBox()
         self.cmb_takt.addItems([uebersetze("0.5 s"), uebersetze("1 s"),
                                 uebersetze("2 s"), uebersetze("3 s")])
         self.cmb_takt.setToolTip(uebersetze("Pause between two pictures of the film"))
+        self.cmb_takt.setStyleSheet("min-width: 0px;")
         self.cmb_takt.currentIndexChanged.connect(self._takt_geaendert)
         zeile.addWidget(self.cmb_takt)
         erg.addLayout(zeile)
+
+        # der Schieberegler steht allein in seiner Zeile und bekommt die volle Breite
+        erg.addWidget(self.ergebnis_slider)
 
         self.ergebnis_info = _label_wrap("")
         erg.addWidget(self.ergebnis_info)
