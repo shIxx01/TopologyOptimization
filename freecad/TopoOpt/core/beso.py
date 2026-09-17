@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""The bundled beso optimizer (see vendor/beso/CHANGES-TopoOpt.md).
+"""The bundled beso optimizer (see beso/CHANGES-TopoOpt.md).
 
 beso ships with this addon, so a user installs the workbench and can start - there is
 no second download and no path to configure.  The folder is looked up relative to this
@@ -14,9 +14,8 @@ import importlib.util
 import os
 import sys
 
-#: folder of the bundled beso (…/TopoOpt/vendor/beso)
-ORDNER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                      "vendor", "beso")
+#: folder of the bundled beso (…/TopoOpt/beso)
+ORDNER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "beso")
 
 #: files beso needs for an optimization and for reading the input file
 DATEIEN = ("beso_main.py", "beso_lib.py", "beso_filters.py", "beso_plots.py",

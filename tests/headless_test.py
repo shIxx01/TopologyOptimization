@@ -265,6 +265,16 @@ print("ohne Nachbarn: bei 0,1x mittel %d, bei 10x mittel %d"
 pruefe(len(zu_klein) > 0, "bei zu kleinem Radius fehlen Nachbarn (%d Elemente)" % len(zu_klein))
 pruefe(len(gross_genug) == 0, "bei grossem Radius hat jedes Element Nachbarn")
 
+# die schnelle Gitterpruefung muss dasselbe liefern wie besos prepare2s
+gleich = True
+for faktor in (0.5, 1.0, 1.5, 2.0, 3.0):
+    radius = faktor * daten["mittel"]
+    if sorted(radius_modul.ohne_nachbarn(daten, radius)) != \
+            sorted(radius_modul.ohne_nachbarn_beso(daten, radius)):
+        gleich = False
+        print("Unterschied bei Faktor %.1f" % faktor, flush=True)
+pruefe(gleich, "schnelle Pruefung und besos prepare2s stimmen ueberein")
+
 ergebnis = radius_modul.robust(daten)
 print("robuster Radius: Faktor %.1f -> %.4f mm, ohne Nachbarn: %d"
       % (ergebnis.get("faktor", -1), ergebnis.get("radius", -1),

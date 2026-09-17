@@ -154,7 +154,7 @@ starts at **10** instead of the beso default 1 (a saved iteration of a fine mesh
 
 ## D15 - beso ships with the addon
 
-The beso files live in `freecad/TopoOpt/vendor/beso/` (beso_lib, beso_filters, beso_main,
+The beso files live in `freecad/TopoOpt/beso/` (beso_lib, beso_filters, beso_main,
 beso_plots, beso_separate, the template beso_conf.py, LICENSE, README) and
 `core/beso.py` loads them from the folder of the addon.  `sys.modules` is filled directly,
 so nothing is added to `sys.path`; the modules keep their own names because beso imports
@@ -165,7 +165,7 @@ download and without being asked for a path.  The folder is found relative to th
 file, so it works wherever FreeCAD installed the addon.
 
 Licence: beso is LGPL-3.0-or-later, the addon is LGPL-3.0-or-later too, the three changes
-are marked in the sources and listed in `vendor/beso/CHANGES-TopoOpt.md`.  `beso_fc_gui.py`
+are marked in the sources and listed in `beso/CHANGES-TopoOpt.md`.  `beso_fc_gui.py`
 (beso's own dialog) is not included - the assistant replaces it.
 
 ## D16 - The robust filter radius uses beso's own functions
@@ -180,6 +180,21 @@ or neighbourhoods itself; it only chooses the radius that beso then uses.
 (the largest elements are further apart) - single elements then stay without a neighbour
 and the "simple" filter stops.  Measured with the bundled beso on the test input file:
 radius 0.1 x mean -> 4 of 4 elements without a neighbour, 2.0 x mean -> 0.
+
+**Speed matters here** (the user has to wait for the check).  Measured on a mesh with
+58,871 TETRA10 and a mean element size of 2.4268 mm:
+
+| step | time |
+|---|---|
+| `import_inp` + `elm_volume_cg` + `find_size_elm` (beso) | 2.79 s |
+| `prepare2s` (beso, builds the whole neighbourhood: 11.8 million pairs) | 10.53 s |
+| own grid check (same rule, nothing stored) | 0.97 s |
+
+So `ohne_nachbarn()` asks only the question that is needed ("has every element a
+neighbour?") and stops at the first neighbour, with a grid of cell size = radius (the
+same grid beso uses, +-1 cell).  The result is identical - the test compares both
+functions for several radii, and for the mesh above both give 0 elements without a
+neighbour.  The whole check therefore costs 3.75 s instead of 12.7 s.
 
 ## D9 - All tests use a self made test document
 

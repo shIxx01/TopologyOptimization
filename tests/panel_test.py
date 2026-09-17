@@ -157,6 +157,12 @@ try:
             panel.tabelle.cellWidget(zeile, 1).setCurrentIndex(0)
     log("Radius-Info vor der Pruefung: %s" % panel.filter_zeilen[0]["radius_info"].text())
     pruefe("robust" in obj.Filters, "robust steht im Objekt: %s" % obj.Filters)
+    pruefe(panel.filter_zeilen[0]["pruefen"].isHidden() is False,
+           "der Pruef-Knopf ist bei 'robust' sichtbar")
+    pruefe(panel.filter_zeilen[0]["pruefen"].text() == "\u21bb",
+           "der Pruef-Knopf ist das Pfeilsymbol (%r)" % panel.filter_zeilen[0]["pruefen"].text())
+    pruefe(panel.filter_zeilen[0]["pruefen"].toolTip() != "",
+           "der Pruef-Knopf hat einen Tooltip")
     panel.filter_zeilen[0]["pruefen"].click()
     log("Radius-Info nach der Pruefung: %s" % panel.filter_zeilen[0]["radius_info"].text())
     pruefe(obj.RobusterRadius > 0, "robuster Radius ist berechnet (%.4f mm)"
@@ -188,6 +194,8 @@ try:
     pruefe("4.5" in obj.Filters, "manueller Radius landet im Objekt: %s" % obj.Filters)
     pruefe(panel.filter_zeilen[0]["radius_wert"].isHidden() is False,
            "mm-Feld ist bei manuellem Radius eingeblendet")
+    pruefe(panel.filter_zeilen[0]["pruefen"].isHidden(),
+           "der Pruef-Knopf ist bei 'manuell' ausgeblendet")
 
     panel.filter_zeilen[1]["minus"].click()
     pruefe(len(panel.filter_zeilen) == 1, "Knopf '-' entfernt die Zeile (%d)" % len(panel.filter_zeilen))

@@ -358,7 +358,10 @@ class AssistantPanel:
         hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over the "
                                          "elements inside the radius and keeps the result "
                                          "smooth. 'automatic' uses beso's own value "
-                                         "(2 x mean element size)."))
+                                         "(2 x mean element size).") + " "
+                              + uebersetze("For 'robust' press the arrow button once: beso "
+                                           "then checks the radius and the value appears next "
+                                           "to it."))
         hinweis.setStyleSheet("color: %s;" % FARBE_GRAU)
         aussen.addWidget(hinweis)
         return rahmen
@@ -473,6 +476,8 @@ class AssistantPanel:
             zeile["richtung"].setVisible(casting)
             zeile["richtung"].setEnabled(casting)
             if aktiv and modus == "robust":
+                # der Knopf gehoert nur zu "robust"; was er tut, steht im Hinweis darunter
+                zeile["pruefen"].setVisible(True)
                 if self._robust_ergebnis is not None:
                     self._radius_anzeige(zeile)
                 elif self.obj.RobusterRadius > 0:
@@ -482,11 +487,10 @@ class AssistantPanel:
                         uebersetze("%.3f mm (saved value from the last check)")
                         % self.obj.RobusterRadius)
                 else:
-                    # kurz halten - ein langer Text macht das Panel breit
-                    zeile["radius_info"].setText("\u2013")
-                    zeile["radius_info"].setToolTip(
-                        uebersetze("not checked yet - use the arrow button"))
+                    zeile["radius_info"].setText("")
+                    zeile["radius_info"].setToolTip("")
             else:
+                zeile["pruefen"].setVisible(False)
                 zeile["radius_info"].setText("")
                 zeile["radius_info"].setToolTip("")
         self.obj.Filters = format_filters(self._sammle_filter())

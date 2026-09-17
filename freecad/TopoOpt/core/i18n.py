@@ -174,6 +174,11 @@ DEUTSCH = {
         "siehe Schritt 1.",
     "not calculated":
         "nicht berechnet",
+    "check":
+        "pr\u00fcfen",
+    "For 'robust' press the arrow button once: beso then checks the radius and the value appears next to it.":
+        "Bei \u201erobust\u201c einmal den Pfeil-Knopf dr\u00fccken: beso pr\u00fcft dann den Radius, "
+        "der Wert erscheint daneben.",
     "Check the robust filter radius now":
         "Robusten Filterradius jetzt pr\u00fcfen",
     "not checked yet - use the arrow button":
