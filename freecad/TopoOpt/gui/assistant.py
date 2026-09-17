@@ -56,6 +56,24 @@ class _ZahlFeld(QtWidgets.QDoubleSpinBox):
             text = text.rstrip("0").rstrip(trenner)
         return text
 
+
+class _KlickLabel(QtWidgets.QLabel):
+    """A label that can be clicked - used for "berechnen" at the filter row."""
+
+    def __init__(self, text=""):
+        super(_KlickLabel, self).__init__(text)
+        self._aktion = None
+
+    def setze_aktion(self, aktion):
+        self._aktion = aktion
+        if aktion is not None:
+            self.setCursor(QtCore.Qt.PointingHandCursor)
+
+    def mousePressEvent(self, event):
+        if self._aktion is not None:
+            self._aktion()
+        super(_KlickLabel, self).mousePressEvent(event)
+
 # labels of the choices - the stored values are the strings beso knows
 BASIS_LABELS = {
     "stiffness": "Stiffness - the part becomes as stiff as possible (usual)",
@@ -355,13 +373,11 @@ class AssistantPanel:
         knopf_zeile.addWidget(self.knopf_filter_plus)
         aussen.addLayout(knopf_zeile)
 
-        hinweis = _label_wrap(uebersetze("The filter averages the sensitivities over the "
-                                         "elements inside the radius and keeps the result "
-                                         "smooth. 'automatic' uses beso's own value "
-                                         "(2 x mean element size).") + " "
-                              + uebersetze("For 'robust' press the arrow button once: beso "
-                                           "then checks the radius and the value appears next "
-                                           "to it."))
+        hinweis = _label_wrap(uebersetze("robust: smallest radius at which every element "
+                                         "still has a neighbour") + "\n"
+                              + uebersetze("automatic: 2 x mean element size (as in beso)")
+                              + "\n"
+                              + uebersetze("manual: your own value in millimetres"))
         hinweis.setStyleSheet("color: %s;" % FARBE_GRAU)
         aussen.addWidget(hinweis)
         return rahmen
@@ -378,6 +394,7 @@ class AssistantPanel:
                 max(0, zeile["radius_modus"].findData("manual")))
             zeile["radius_wert"].setValue(float(reichweite))
         zeile["richtung"].setText(str(richtung))
+        zeile["radius_info"].setze_aktion(lambda z=zeile: self._pruefe_radius(z))
         self.filter_layout.addWidget(zeile["widget"])
         self.filter_zeilen.append(zeile)
         self._nummeriere_filter()
@@ -436,9 +453,13 @@ class AssistantPanel:
         zeile["radius_wert"].valueChanged.connect(self._filter_geaendert)
         layout.addWidget(zeile["radius_wert"])
 
-        # shows what came out of the robust check (grau, klein)
-        zeile["radius_info"] = _label_wrap("")
-        zeile["radius_info"].setStyleSheet("color: %s;" % FARBE_GRAU)
+        # steht der berechnete Radius - oder "berechnen", solange keiner da ist
+        zeile["radius_info"] = _KlickLabel("")
+        zeile["radius_info"].setWordWrap(True)
+        # Ignored: das Feld bestimmt nicht die Mindestbreite des Panels (der Tooltip
+        # hat den vollen Text) - sonst waere das Panel wegen "berechnen" wieder breit
+        zeile["radius_info"].setSizePolicy(QtWidgets.QSizePolicy.Ignored,
+                                           QtWidgets.QSizePolicy.Preferred)
         layout.addWidget(zeile["radius_info"], 1)
 
         # the check takes a few seconds on fine meshes - so the user starts it
@@ -476,24 +497,28 @@ class AssistantPanel:
             zeile["richtung"].setVisible(casting)
             zeile["richtung"].setEnabled(casting)
             if aktiv and modus == "robust":
-                # der Knopf gehoert nur zu "robust"; was er tut, steht im Hinweis darunter
+                # der Knopf gehoert nur zu "robust"; "berechnen" im Feld tut dasselbe
                 zeile["pruefen"].setVisible(True)
                 if self._robust_ergebnis is not None:
                     self._radius_anzeige(zeile)
                 elif self.obj.RobusterRadius > 0:
                     # beim Oeffnen des Dialogs nicht rechnen - den gemerkten Wert zeigen
-                    zeile["radius_info"].setText("%.3f mm" % self.obj.RobusterRadius)
-                    zeile["radius_info"].setToolTip(
-                        uebersetze("%.3f mm (saved value from the last check)")
-                        % self.obj.RobusterRadius)
+                    self._radius_text(zeile, "%.3f mm" % self.obj.RobusterRadius, FARBE_GRAU,
+                                      uebersetze("%.3f mm (saved value from the last check)")
+                                      % self.obj.RobusterRadius)
                 else:
-                    zeile["radius_info"].setText("")
-                    zeile["radius_info"].setToolTip("")
+                    self._radius_text(zeile, uebersetze("calculate"), FARBE_AUFTRAG,
+                                      uebersetze("Check the robust filter radius now"))
             else:
                 zeile["pruefen"].setVisible(False)
-                zeile["radius_info"].setText("")
-                zeile["radius_info"].setToolTip("")
+                self._radius_text(zeile, "", "")
         self.obj.Filters = format_filters(self._sammle_filter())
+
+    def _radius_text(self, zeile, text, farbe, tooltip=""):
+        """Text, Farbe und Tooltip des Radius-Feldes an einer Filterzeile setzen."""
+        zeile["radius_info"].setText(text)
+        zeile["radius_info"].setStyleSheet("color: %s;" % farbe if farbe else "")
+        zeile["radius_info"].setToolTip(tooltip)
 
     def _robusten_radius(self):
         """Der robuste Radius, gerechnet von beso (siehe core/radius.py).
@@ -550,17 +575,16 @@ class AssistantPanel:
         self.obj.Filters = format_filters(self._sammle_filter())
 
     def _radius_anzeige(self, zeile):
-        """Schreibt das Ergebnis der Radius-Pruefung an die Filterzeile (kurz + Tooltip)."""
+        """Ergebnis der Radius-Pruefung an die Filterzeile schreiben (kurz + Tooltip)."""
         if not self._robust_ergebnis:
-            zeile["radius_info"].setText("?")
-            zeile["radius_info"].setToolTip(uebersetze("not calculated"))
+            self._radius_text(zeile, uebersetze("calculate"), FARBE_AUFTRAG,
+                              uebersetze("Check the robust filter radius now"))
             return
-        zeile["radius_info"].setText("%.3f mm" % self._robust_ergebnis["radius"])
-        zeile["radius_info"].setToolTip(uebersetze("%.3f mm = %.1f x mean size, %d without "
-                                                   "neighbour")
-                                        % (self._robust_ergebnis["radius"],
-                                           self._robust_ergebnis["faktor"],
-                                           self._robust_ergebnis["ohne_nachbarn"]))
+        self._radius_text(zeile, "%.3f mm" % self._robust_ergebnis["radius"], FARBE_OK,
+                          uebersetze("%.3f mm = %.1f x mean size, %d without neighbour")
+                          % (self._robust_ergebnis["radius"],
+                             self._robust_ergebnis["faktor"],
+                             self._robust_ergebnis["ohne_nachbarn"]))
 
     def _sammle_filter(self):
         """The filters from the widgets, in the form beso uses."""

@@ -156,6 +156,10 @@ try:
         if panel.tabelle.item(zeile, 0).text() == erster:
             panel.tabelle.cellWidget(zeile, 1).setCurrentIndex(0)
     log("Radius-Info vor der Pruefung: %s" % panel.filter_zeilen[0]["radius_info"].text())
+    pruefe(panel.filter_zeilen[0]["radius_info"].text() in ("calculate", "berechnen"),
+           "ohne Wert steht 'berechnen' im Feld (%s)" % panel.filter_zeilen[0]["radius_info"].text())
+    pruefe("color" in panel.filter_zeilen[0]["radius_info"].styleSheet(),
+           "das 'berechnen' ist eingefaerbt (%s)" % panel.filter_zeilen[0]["radius_info"].styleSheet())
     pruefe("robust" in obj.Filters, "robust steht im Objekt: %s" % obj.Filters)
     pruefe(panel.filter_zeilen[0]["pruefen"].isHidden() is False,
            "der Pruef-Knopf ist bei 'robust' sichtbar")

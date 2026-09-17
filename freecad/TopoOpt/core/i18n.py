@@ -176,6 +176,14 @@ DEUTSCH = {
         "nicht berechnet",
     "check":
         "pr\u00fcfen",
+    "calculate":
+        "berechnen",
+    "robust: smallest radius at which every element still has a neighbour":
+        "robust: kleinster Radius, bei dem jedes Element noch einen Nachbarn hat",
+    "automatic: 2 x mean element size (as in beso)":
+        "automatisch: 2 x mittlere Elementgr\u00f6\u00dfe (wie in beso)",
+    "manual: your own value in millimetres":
+        "manuell: eigener Wert in Millimetern",
     "For 'robust' press the arrow button once: beso then checks the radius and the value appears next to it.":
         "Bei \u201erobust\u201c einmal den Pfeil-Knopf dr\u00fccken: beso pr\u00fcft dann den Radius, "
         "der Wert erscheint daneben.",
