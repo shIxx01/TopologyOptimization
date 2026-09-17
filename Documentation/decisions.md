@@ -403,6 +403,12 @@ height and scrolls inside itself, otherwise a model with many element sets would
 * The four result buttons form a **2x2 grid**:
   `Ergebnisnetz laden | Diagramme anzeigen` over `Vollständiges Log | Arbeitsverzeichnis öffnen`.
   "Iterationen anzeigen" moved into the row with the slider.
+* The running time moved **into the top line** (right of the step bar) - it belongs to the
+  frame, not to the group, and is visible in every step.  (First it was next to the start
+  button, which the user corrected with a screenshot.)
+* The **slider got its own row** with the full width (measured 640 px in a 640 px panel) and the
+  **play speed** came back from the prototype: a combo box with 0.5 s / 1 s / 2 s / 3 s
+  (`_takt_geaendert` sets the timer interval; measured: index 2 -> 2000 ms).
 * **No scroll bar in the short steps**: one common `QScrollArea` around the `QStackedWidget` is
   always as tall as the *longest* page, so every step showed a scroll bar.  Each page now has its
   own scroll area (`self.rollen`); measured: the scroll bar range in step 1 is 0 (nothing to

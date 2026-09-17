@@ -256,6 +256,18 @@ DEUTSCH = {
         "Anzuzeigende Iteration",
     "Show one iteration after the other":
         "Die Iterationen nacheinander zeigen",
+    "How long the solver has been running":
+        "Wie lange der Solver schon rechnet",
+    "Pause between two pictures of the film":
+        "Pause zwischen zwei Bildern des Films",
+    "0.5 s":
+        "0,5 s",
+    "1 s":
+        "1 s",
+    "2 s":
+        "2 s",
+    "3 s":
+        "3 s",
     "Reads resulting_states.vtk and shows the material that is left in the part":
         "Liest resulting_states.vtk und zeigt das stehengebliebene Material",
     "Opens the log file of the run":

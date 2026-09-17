@@ -373,10 +373,18 @@ try:
     pruefe(panel2.spieler is not None,
            "das Ergebnis wurde nach dem Lauf automatisch geladen")
     pruefe(panel2.knopf_detail.isChecked(), "das Detail-Feld bleibt offen")
-    pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit steht neben dem Start-Knopf (%s)"
+    pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit laeuft mit (%s)"
            % panel2.lauf_zeit.text())
-    pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),
-           "Laufzeit und Start-Knopf sitzen in derselben Zeile")
+    pruefe(panel2.lauf_zeit.parent() is panel2.form,
+           "die Laufzeit steht ganz oben in der Kopfzeile")
+    pruefe(not panel2.rollen[2].widget().isAncestorOf(panel2.lauf_zeit),
+           "die Laufzeit liegt ausserhalb des Rollbereichs (immer sichtbar)")
+    # Abspielgeschwindigkeit wie im Prototyp
+    pruefe(panel2.cmb_takt.count() == 4,
+           "vier Abspielgeschwindigkeiten stehen zur Wahl (%d)" % panel2.cmb_takt.count())
+    panel2.cmb_takt.setCurrentIndex(2)
+    pruefe(panel2.ergebnis_timer.interval() == 2000,
+           "der Takt wirkt auf den Timer (%d ms)" % panel2.ergebnis_timer.interval())
 
     # Ergebnisse im selben Schritt ("Berechnung"): VTK-Iterationen anzeigen
     pruefe(panel2.schritt_label.text().count(" › ") == 2,
@@ -388,6 +396,10 @@ try:
            "am dritten Schritt steht 'Zurueck' unten bereit")
     pruefe(panel2.knopf_schritt_weiter.isHidden(),
            "am letzten Schritt gibt es kein 'Weiter' mehr")
+    log("Schieberegler-Breite: %d px (Panel %d px)"
+        % (panel2.ergebnis_slider.width(), panel2.form.width()))
+    pruefe(panel2.ergebnis_slider.width() > 100,
+           "der Schieberegler bekommt mehr Platz (%d px)" % panel2.ergebnis_slider.width())
     pruefe(panel2.knopf_schritt_zurueck.parent() is panel2.form,
            "die Navigation sitzt unten im Panel (nicht im Rollbereich)")
     pruefe(panel2.knopf_ergebnis.isEnabled(),

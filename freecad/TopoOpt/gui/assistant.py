@@ -197,10 +197,18 @@ class AssistantPanel:
         # Wie im Prototyp: die Schrittleiste steht oben und bleibt stehen, nur der
         # Inhalt rollt in einem eigenen Bereich (der Rollbalken sitzt damit innen,
         # nicht am ganzen Task-Panel), unten sind Zurueck und Weiter.
+        kopf_zeile = QtWidgets.QHBoxLayout()
         self.schritt_label = QtWidgets.QLabel("")
         self.schritt_label.setTextFormat(QtCore.Qt.RichText)
         self.schritt_label.setWordWrap(True)
-        aussen.addWidget(self.schritt_label)
+        kopf_zeile.addWidget(self.schritt_label, 1)
+        # die Laufzeit steht ganz oben rechts und ist damit in jedem Schritt zu sehen
+        self.lauf_zeit = QtWidgets.QLabel("")
+        self.lauf_zeit.setToolTip(uebersetze("How long the solver has been running"))
+        self.lauf_zeit.setStyleSheet("color: gray;")
+        self.lauf_zeit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTop)
+        kopf_zeile.addWidget(self.lauf_zeit)
+        aussen.addLayout(kopf_zeile)
 
         # Jede Seite bekommt ihre eigene Rollflaeche: ein gemeinsamer Rollbereich
         # waere immer so hoch wie die laengste Seite und zeigte deshalb auch in den
@@ -676,11 +684,6 @@ class AssistantPanel:
         self.knopf_lauf.clicked.connect(self._lauf_knopf)
         zeile.addWidget(self.knopf_lauf)
         zeile.addStretch(1)
-        # die Laufzeit steht rechts neben dem Knopf - das spart eine Zeile
-        self.lauf_zeit = QtWidgets.QLabel("")
-        self.lauf_zeit.setToolTip(uebersetze("How long the solver has been running"))
-        self.lauf_zeit.setStyleSheet("color: gray;")
-        zeile.addWidget(self.lauf_zeit)
         lauf.addLayout(zeile)
 
         # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
@@ -762,7 +765,7 @@ class AssistantPanel:
 
         zeile = QtWidgets.QHBoxLayout()
         zeile.addWidget(self.knopf_ergebnis)
-        zeile.addWidget(self.ergebnis_slider, 1)
+        zeile.addStretch(1)
         self.knopf_zurueck = QtWidgets.QPushButton("\u25c0")
         self.knopf_zurueck.setToolTip(uebersetze("One iteration back"))
         self.knopf_zurueck.clicked.connect(lambda: self._ergebnis_schritt(-1))
@@ -781,6 +784,18 @@ class AssistantPanel:
             zeile.addWidget(knopf)
         erg.addLayout(zeile)
 
+        # der Schieberegler bekommt eine eigene Zeile mit voller Breite,
+        # daneben die Abspielgeschwindigkeit wie im Prototyp
+        zeile = QtWidgets.QHBoxLayout()
+        zeile.addWidget(self.ergebnis_slider, 1)
+        self.cmb_takt = QtWidgets.QComboBox()
+        self.cmb_takt.addItems([uebersetze("0.5 s"), uebersetze("1 s"),
+                                uebersetze("2 s"), uebersetze("3 s")])
+        self.cmb_takt.setToolTip(uebersetze("Pause between two pictures of the film"))
+        self.cmb_takt.currentIndexChanged.connect(self._takt_geaendert)
+        zeile.addWidget(self.cmb_takt)
+        erg.addLayout(zeile)
+
         self.ergebnis_info = _label_wrap("")
         erg.addWidget(self.ergebnis_info)
 
@@ -794,7 +809,7 @@ class AssistantPanel:
         self.lauf_timer.setInterval(1500)
         self.lauf_timer.timeout.connect(self._lauf_aktualisieren)
         self.ergebnis_timer = QtCore.QTimer()
-        self.ergebnis_timer.setInterval(700)
+        self.ergebnis_timer.setInterval(500)     # 0,5 s wie im Prototyp
         self.ergebnis_timer.timeout.connect(lambda: self._ergebnis_schritt(1, vom_timer=True))
         return seite
 
@@ -906,6 +921,14 @@ class AssistantPanel:
                 self._ergebnis_abspielen(False)      # am Ende angekommen
             return
         self.ergebnis_slider.setValue(neu)
+
+    def _takt_geaendert(self, *_):
+        """Die Pause zwischen zwei Bildern aus der Auswahl uebernehmen."""
+        takt = self.cmb_takt.currentText().replace(",", ".").replace(" s", "").strip()
+        try:
+            self.ergebnis_timer.setInterval(int(float(takt) * 1000))
+        except ValueError:
+            self.ergebnis_timer.setInterval(500)
 
     def _ergebnis_abspielen(self, an=None):
         """Alle Iterationen nacheinander zeigen."""
