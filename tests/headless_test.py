@@ -415,6 +415,42 @@ pruefe(daten_lauf["fertig"] is True, "das Ende des Laufs wird erkannt")
 pruefe(lauf_modul.verlauf_lesen("gibt-es-nicht.log")["iteration"] == 0,
        "ohne Logdatei kommt ein leeres Ergebnis")
 
+# --- zulaessige Spannung aus dem Material -------------------------------------
+from freecad.TopoOpt.core import material as material_modul  # noqa: E402
+
+pruefe(material_modul.MPa("315 MPa") == 315.0,
+       "eine Materialangabe in MPa wird gelesen (%s)" % material_modul.MPa("315 MPa"))
+pruefe(abs(material_modul.MPa("2.1e+08 kg/(mm*s^2)") - 210000.0) < 1e-6,
+       "FreeCADs Einheit kg/(mm*s^2) wird umgerechnet (%s)" % material_modul.MPa("2.1e+08 kg/(mm*s^2)"))
+pruefe(material_modul.MPa("45 GPa") == 45000.0 and material_modul.MPa("1000 psi") > 6.8,
+       "GPa und psi werden umgerechnet")
+pruefe(material_modul.MPa("") is None and material_modul.MPa("zach MPa") is None
+       and material_modul.MPa("5 fuss") is None,
+       "unbrauchbare Angaben liefern keinen Vorschlag")
+
+# Werte wie in FreeCADs Materialkarten: Aluminum-6061-T6 hat 'YieldStrength: 276 MPa',
+# CalculiX-Steel hat keine Streckgrenze (nur YoungsModulus)
+streck = material_modul.streckgrenze(
+    [("MaterialSolidSolid", {"Name": "Alu", "YieldStrength": "276 MPa",
+                             "UltimateTensileStrength": "310 MPa"})],
+    ["MaterialSolidSolid"])
+pruefe(streck == {"MaterialSolidSolid": 276.0},
+       "die Streckgrenze der Karte wird zum Vorschlag (%s)" % (streck,))
+ohne = material_modul.streckgrenze(
+    [("MaterialSolidSolid", {"Name": "CalculiX-Steel", "YoungsModulus": "2.1e+08 kg/(mm*s^2)"})],
+    ["MaterialSolidSolid"])
+pruefe(ohne == {}, "ohne Streckgrenze in der Karte kommt kein Vorschlag (%s)" % (ohne,))
+mehrere = material_modul.streckgrenze(
+    [("MaterialSolid", {"YieldStrength": "276 MPa"}),
+     ("AnderesMaterial", {"YieldStrength": "100 MPa"})],
+    ["MaterialSolidSolid", "AnderesMaterialSolid"])
+pruefe(mehrere == {"MaterialSolidSolid": 276.0, "AnderesMaterialSolid": 100.0},
+       "bei mehreren Materialien wird ueber den Namen zugeordnet (%s)" % (mehrere,))
+nur_eins = material_modul.streckgrenze([("Irgendwas", {"YieldStrength": "235 MPa"})],
+                                       ["VoelligAnderes"])
+pruefe(nur_eins == {"VoelligAnderes": 235.0},
+       "bei genau einem Material gilt es fuer alle Sets (%s)" % (nur_eins,))
+
 print()
 if fehler:
     print("%d Pruefung(en) fehlgeschlagen" % len(fehler))

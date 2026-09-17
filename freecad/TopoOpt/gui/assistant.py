@@ -14,6 +14,7 @@ from ..core import domains as dom
 from ..core import elsets as elset_reader
 from ..core import fem
 from ..core import lauf as logdatei
+from ..core import material as material_modul
 from ..core import radius as radius_modul
 from ..core.i18n import uebersetze
 from ..core.params import (BASES, FILTER_TYPES, FORMATS, MASS_CHANGE, format_filters,
@@ -172,6 +173,7 @@ class AssistantPanel:
         self.obj = obj
         self.domains = {}          # elset -> role (mirror of the document object)
         self.stress = {}           # elset -> allowable stress in MPa (0/empty = no FI)
+        self.stress_aus = set()    # elset, bei dem der Nutzer die Spannung bewusst geloescht hat
         self.elsets = {}           # elset -> number of elements
         self.analyse = None
         self.netz = None
@@ -956,13 +958,42 @@ class AssistantPanel:
         self.elsets = dom.zeige_elsets(elset_reader.read_elsets(pfad))
         gespeichert = dom.parse_domains(self.obj.Domains)
         self.stress = dom.parse_stress(getattr(self.obj, "StressLimits", []))
+        self.stress_aus = dom.aus_stress(getattr(self.obj, "StressLimits", []))
         if gespeichert:
             self.domains = {name: gespeichert.get(name, dom.IGNORE) for name in self.elsets}
         else:
             self.domains = dom.vorschlag(self.elsets)
             self._speichere_domains()
         self._fuelle_tabelle()
+        self._vorschlag_aus_material()
         self.obj.Document.recompute()
+
+    def _vorschlag_aus_material(self):
+        """Zulaessige Spannung aus dem Material vorschlagen (steht dort eine).
+
+        Nur fuer Sets, die noch keinen Wert haben - wer das Feld bewusst leer
+        gemacht hat (Marker "<set>|0"), bekommt keinen Vorschlag mehr.
+        """
+        fehlend = [name for name in self.elsets
+                   if name not in self.stress and name not in self.stress_aus]
+        if not fehlend:
+            return
+        werte = material_modul.streckgrenze(
+            material_modul.materialien_finden(self.analyse), fehlend)
+        neu = {name: wert for name, wert in werte.items() if name in fehlend}
+        if not neu:
+            return
+        self.stress.update(neu)
+        self.obj.StressLimits = dom.format_stress(self.stress, self.stress_aus)
+        self._fuelle_laeuft = True
+        for name, wert in neu.items():
+            feld = self.felder_stress.get(name)
+            if feld is not None and not feld.text():
+                feld.setText(("%g" % wert).replace(".", ","))
+        self._fuelle_laeuft = False
+        App.Console.PrintMessage(
+            uebersetze("TopoOpt: allowable stress taken from the material (MPa): %s\\n")
+            % ", ".join("%s = %g" % (n, w) for n, w in sorted(neu.items())))
 
     def _fuelle_tabelle(self):
         self.tabelle.setRowCount(0)
@@ -1010,9 +1041,14 @@ class AssistantPanel:
             wert = 0.0
         if wert > 0:
             self.stress[elset] = wert
+            self.stress_aus.discard(elset)
         else:
             self.stress.pop(elset, None)
-        self.obj.StressLimits = dom.format_stress(self.stress)
+            if text:
+                self.stress_aus.discard(elset)
+            else:
+                self.stress_aus.add(elset)     # bewusst leer - kein Vorschlag mehr
+        self.obj.StressLimits = dom.format_stress(self.stress, self.stress_aus)
         if wert > 0:
             App.Console.PrintMessage(uebersetze("TopoOpt: allowable stress for '%s' is %s MPa - "
                                                 "the run reports a failure index.\\n")

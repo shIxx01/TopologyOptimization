@@ -58,9 +58,31 @@ def parse_stress(werte):
     return ergebnis
 
 
-def format_stress(limits):
-    """{"set": 235.0} -> ["set|235.0", ...] (stabile Reihenfolge)."""
-    return ["%s|%r" % (name, limits[name]) for name in sorted(limits)]
+def format_stress(limits, aus=None):
+    """{"set": 235.0} -> ["set|235.0", ...] (stabile Reihenfolge).
+
+    ``aus`` sind Sets mit **bewusst** leerem Feld: sie werden als "<set>|0"
+    gespeichert, damit der Vorschlag aus dem Material nicht wieder auftaucht.
+    """
+    ergebnis = ["%s|%r" % (name, limits[name]) for name in sorted(limits)]
+    ergebnis += ["%s|0" % name for name in sorted(set(aus or ()) - set(limits))]
+    return ergebnis
+
+
+def aus_stress(werte):
+    """Die als "<set>|0" gespeicherten Sets (bewusst ohne Spannung)."""
+    ergebnis = set()
+    for eintrag in werte or []:
+        if "|" not in eintrag:
+            continue
+        name, wert = eintrag.split("|", 1)
+        try:
+            zahl = float(wert.strip().replace(",", "."))
+        except ValueError:
+            continue
+        if name.strip() and zahl <= 0:
+            ergebnis.add(name.strip())
+    return ergebnis
 
 
 def vorschlag(elsets):

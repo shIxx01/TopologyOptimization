@@ -281,6 +281,29 @@ the `.dat` file beso stops with `CalculiX results not found, check CalculiX for 
 (`beso_main.py:434`).  The energy density chart has the same reason: our test document has no
 loads, so `ener_dens_mean` is 0.0 there.
 
+## D20 - The allowable stress is suggested from the material, if the material has one
+
+The user asked why he has to type the allowable stress at all and whether it can come from
+the material.  Both checked:
+
+* **beso asks for it as well**: `beso_fc_gui.py` has one text box per material,
+  `'Von Mises stress [MPa] limit, when reached, material removing will stop.'`
+  (lines 184-204) and writes exactly the same `domain_FI` (line 837).  A failure index is
+  "stress / allowable value" - without a limit there is nothing to compute, and the limit
+  is a design decision (yield strength / safety factor), not a material constant.
+* **The material can carry it**: FreeCAD material cards have `YieldStrength` - the metals do
+  (Aluminum-6061-T6: `276 MPa`, UltimateTensileStrength `310 MPa`), the plain steel cards do
+  not (`Steel`, `CalculiX-Steel`: only E, ν, ρ and thermal data).  The user's model
+  `TopologieOptimierung_KI-Workbench.FCStd` uses `CalculiX-Steel`, so it has no value.
+
+Therefore: `core/material.py` reads `YieldStrength` (or `UltimateTensileStrength`,
+`CompressiveStrength` as fallback) from the model's material objects, converts the text
+("315 MPa", "2.1e+08 kg/(mm*s^2)" -> 210000 MPa) into MPa and the assistant **fills the
+field in** - but only for sets that have no value yet.  A set whose field the user has
+deliberately emptied is stored as `"<set>|0"`, so the suggestion does not come back.
+The assignment material -> element set goes by name (`MaterialSolid` belongs to
+`MaterialSolidSolid`); with exactly one material it applies to all sets.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

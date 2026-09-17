@@ -54,6 +54,7 @@ try:
     from freecad.TopoOpt.features import create_topology_object
     from freecad.TopoOpt.gui import assistant as assist
     from freecad.TopoOpt.gui.assistant import AssistantPanel
+    from freecad.TopoOpt.core import domains as dom
 
     kopie = os.path.join(tempfile.gettempdir(), "TopoOpt_PanelTest.FCStd")
     if os.path.exists(kopie):
@@ -153,8 +154,43 @@ try:
            "der Wert landet im Objekt (%s)" % (panel.obj.StressLimits,))
     pruefe(erster in panel.stress, "der Wert steht auch im Assistenten")
     panel.felder_stress[erster].setText("")
-    pruefe(panel.obj.StressLimits == [],
-           "leeres Feld nimmt die Spannung wieder heraus (%s)" % (panel.obj.StressLimits,))
+    pruefe(panel.obj.StressLimits == ["%s|0" % erster],
+           "leeres Feld nimmt die Spannung heraus und merkt sich das (%s)"
+           % (panel.obj.StressLimits,))
+
+    # Material mit Streckgrenze -> Vorschlag (wie gewuenscht: nur wenn dort ein Wert steht)
+    material_alt = doc.getObject("MaterialSolid")
+    werte_alt = dict(material_alt.Material)
+    werte_neu = dict(werte_alt)
+    werte_neu["YieldStrength"] = "315 MPa"
+    material_alt.Material = werte_neu
+    doc.recompute()
+    panel.obj.StressLimits = []
+    panel.stress = {}
+    panel.stress_aus = set()
+    panel._fuelle_tabelle()
+    panel._vorschlag_aus_material()
+    pruefe(panel.stress.get(erster) == 315.0,
+           "die Streckgrenze aus dem Material wird vorgeschlagen (%s)" % panel.stress)
+    pruefe(panel.felder_stress[erster].text() in ("315", "315,0", "315.0"),
+           "der Vorschlag steht im Feld (%s)" % panel.felder_stress[erster].text())
+    pruefe(panel.obj.StressLimits == ["%s|315.0" % erster],
+           "der Vorschlag ist auch im Objekt gespeichert (%s)" % (panel.obj.StressLimits,))
+    # wer das Feld bewusst leer laesst, bekommt keinen Vorschlag mehr
+    panel.obj.StressLimits = ["%s|0" % erster]
+    panel.stress = {}
+    panel.stress_aus = dom.aus_stress(panel.obj.StressLimits)
+    panel._fuelle_tabelle()
+    panel._vorschlag_aus_material()
+    pruefe(erster not in panel.stress,
+           "wer das Feld geleert hat, bekommt den Vorschlag nicht wieder (%s)" % panel.stress)
+    # das Material wieder wie vorher lassen (der Lauf in Schritt 3 soll ohne FI rechnen)
+    material_alt.Material = werte_alt
+    panel.obj.StressLimits = []
+    panel.stress = {}
+    panel.stress_aus = set()
+    panel._fuelle_tabelle()
+    doc.recompute()
 
     # Filter: Standard ist besos [["simple", "auto"]]
     pruefe(len(panel.filter_zeilen) == 1,

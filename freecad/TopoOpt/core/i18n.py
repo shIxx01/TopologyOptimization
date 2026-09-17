@@ -74,6 +74,8 @@ DEUTSCH = {
         "σ (MPa)",
     "Allowable stress (von Mises) in MPa - leave empty to run without a failure index. The model needs real loads for it.":
         "Zulässige Spannung (von Mises) in MPa – leer lassen heißt: ohne Auslastungs-Index. Das Modell braucht dafür echte Lasten.",
+    "TopoOpt: allowable stress taken from the material (MPa): %s\n":
+        "TopoOpt: zulässige Spannung aus dem Material übernommen (MPa): %s\n",
     "TopoOpt: allowable stress for '%s' is %s MPa - the run reports a failure index.\n":
         "TopoOpt: zulässige Spannung für '%s' ist %s MPa – der Lauf gibt einen Auslastungs-Index aus.\n",
     "TopoOpt: no allowable stress for '%s' - the run works without a failure index.\n":
