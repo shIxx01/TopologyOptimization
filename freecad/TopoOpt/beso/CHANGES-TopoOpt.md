@@ -34,6 +34,14 @@ offered upstream as a pull request (calculix/beso#57, #58, #59):
    sensitivities stayed unfiltered and beso reported convergence at the end).
 3. **`beso_main.py`** - a shell element without `domain_thickness` gives a clear message
    instead of an `IndexError`.
+4. **`beso_main.py`** - the casting filter with the range `"auto"` stops with
+   `NameError: name 'filtered_dn' is not defined`.  The branch for a casting filter
+   without a domain list (`len(ft) == 3`) uses `filtered_dn` in
+   `get_filter_range(...)` but never sets it; the line `filtered_dn = domains_from_config`
+   is missing, exactly as it exists in the branch below for the other filters.  Measured
+   with `filter_list = [["casting", "auto", (0, 0, 1)]]`: before the fix beso stopped after
+   0.7 s without a single iteration, afterwards it runs with the automatic filter range.
+   (Not offered upstream yet.)
 
 Licence note: beso is LGPL-3.0-or-later, this addon is LGPL-3.0-or-later as well, and the
 changes are listed here and marked in the sources - the conditions for redistributing a

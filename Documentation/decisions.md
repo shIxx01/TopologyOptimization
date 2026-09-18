@@ -458,24 +458,26 @@ Ergebnis (gemessen):
 
 | Fall | gebuendeltes beso | originales beso |
 |---|---|---|
-| 3D simple robust / casting / Zielmasse 30 % | code 0, Massen 8000 -> 7000 | identisch |
+| 3D simple auto / robust / casting / Zielmasse 30 % | code 0, Massen 8000 -> 7000 | identisch |
 | 3D alle sieben Morphologie-Filter | code 0, Massen 8000 -> 7000 | identisch |
 | 2D Schale simple | code 0, Massen 1000 -> 750 | identisch |
-| 3D simple auto | **code 1**, "filter range is too small ..." | code 0 (rechnet still weiter) |
-| 3D simple manuell 1.0 (Radius < Elementabstand) | **code 1**, klare Meldung | code 0 (rechnet still weiter) |
+| 3D simple 1.5 und simple manuell 1.0 (Radius < Elementabstand) | **code 1**, klare Meldung | code 0 (rechnet still weiter) |
 | 2D ohne Schalendicke | **code 1**, klare Meldung "domain_thickness is missing" | code 1 (IndexError) |
-| 2D casting mit "auto" | code 1, `NameError: filtered_dn` | code 1, derselbe Fehler |
+| 2D casting mit "auto" | code 0, Massen 1000 -> 750 | code 1, `NameError: filtered_dn` |
 
-* **13 von 15 Szenarien liefern identische Massen** - die Fixes aendern die Rechnung also nicht,
+* **13 von 16 Szenarien liefern identische Massen** - die Fixes aendern die Rechnung also nicht,
   sie machen nur Fehler sichtbar.
-* Die zwei Abweichungen sind genau die beabsichtigten Fixes: zu kleiner Filterradius und fehlende
-  Schalendicke fuehren beim gebuendelten beso zu einer **klaren Meldung**, beim Original zu einem
-  stillen Weiterrechnen (Division durch 0) bzw. zu einem IndexError.
-* **Neuer Fund (offen):** `filter_list = [["casting", "auto", vektor]]` bricht in beso mit
-  `NameError: name 'filtered_dn' is not defined` ab - `beso_main.py` setzt `filtered_dn` nur im
-  else-Zweig, benutzt es aber in `get_filter_range(...)`, wenn der Rahmen "auto" ist. Betrifft
-  beide beso-Versionen (auch upstream) - Kandidat fuer einen weiteren PR und fuer einen Schutz im
-  Addon (casting-Rahmen immer als Zahl schreiben).
+* Die drei Abweichungen sind genau die beabsichtigten Fixes: zu kleiner Filterradius und fehlende
+  Schalendicke fuehren beim gebuendelten beso zu einer **klaren Meldung** (statt stillem
+  Weiterrechnen mit Division durch 0), und casting mit "auto" **laeuft** mit ihm, waehrend das
+  Original dort mit `NameError` abbricht.
+* **Fix 4 (behoben):** `filter_list = [["casting", "auto", vektor]]` brach in beso mit
+  `NameError: name 'filtered_dn' is not defined` ab - `beso_main.py` benutzt `filtered_dn` in
+  `get_filter_range(...)`, setzt die Variable im casting-Zweig ohne Domain-Liste aber nie. Eine
+  Zeile `filtered_dn = domains_from_config` (genau wie im Zweig darunter fuer die anderen Filter)
+  behebt es; dokumentiert in `beso/CHANGES-TopoOpt.md` als Fix 4. Gemessen mit dem Szenario
+  `2D Schale casting auto`: vorher code 1 nach 0,7 s, jetzt code 0 mit Massen 1000 -> 750 -> 750,
+  waehrend das Original-beso dort weiterhin abbricht.
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 

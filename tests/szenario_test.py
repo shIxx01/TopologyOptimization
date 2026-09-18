@@ -270,9 +270,17 @@ MODELL_3D = os.path.join(MODELLE, "modell_3d_hex.inp")
 MODELL_2D = os.path.join(MODELLE, "modell_2d_schale.inp")
 MODELL_2D_OHNE = os.path.join(MODELLE, "modell_2d_ohne_dicke.inp")
 
+# Szenarien, bei denen unser beso absichtlich anders reagiert als das Original
+BEKANNTE_ABWEICHUNGEN = ("2D Schale casting auto", "3D simple 1.5 (Radius zu klein)",
+                         "3D simple manuell 1.0")
+
 MATRIX = [
-    ("3D simple auto", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", 1.5]],
+    ("3D simple auto", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", "auto"]],
                                    "iterationen": "2", "dicken_modus": "auto"}),
+    ("3D simple 1.5 (Radius zu klein)", MODELL_3D, {"zielmasse": 0.6,
+                                                    "filter": [["simple", 1.5]],
+                                                    "iterationen": "2",
+                                                    "dicken_modus": "auto"}),
     ("3D simple robust", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", "robust"]],
                                      "iterationen": "2", "dicken_modus": "auto"}),
     ("3D simple manuell 1.0", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", 1.0]],
@@ -285,7 +293,7 @@ MATRIX = [
     ("2D Schale simple auto", MODELL_2D, {"zielmasse": 0.6, "filter": [["simple", "auto"]],
                                           "iterationen": "2", "dicken_modus": "auto"}),
     ("2D Schale casting auto", MODELL_2D, {"zielmasse": 0.6,
-                                           "filter": [["casting", "auto", "(0, 0, 1)"]],
+                                           "filter": [["casting", "auto", (0, 0, 1)]],
                                            "iterationen": "2", "dicken_modus": "auto"}),
     ("2D ohne Dicke (Fehlerfall)", MODELL_2D_OHNE,
      {"zielmasse": 0.6, "filter": [["simple", "auto"]], "iterationen": "2",
@@ -357,7 +365,14 @@ def vergleich_original():
         sag("| %s | %s | %s |" % (a["name"].replace("neu_", ""), kurz(a), kurz(b)))
     gleich = sum(1 for a, b in zip(neu, alt)
                  if [round(m, 6) for _, m in a["massen"]] == [round(m, 6) for _, m in b["massen"]])
-    pruefe("gleiche Ergebnisse bei %d von %d Szenarien" % (gleich, len(neu)), gleich == len(neu))
+    abweichend = sorted(a["name"].replace("neu_", "") for a, b in zip(neu, alt)
+                        if [round(m, 6) for _, m in a["massen"]] != [round(m, 6) for _, m in b["massen"]])
+    sag("Identische Ergebnisse: %d von %d" % (gleich, len(neu)))
+    # abweichen duerfen genau diese drei - das sind unsere Fixes:
+    #   zu kleiner Filterradius und casting mit "auto" (Original rechnet still falsch weiter
+    #   bzw. bricht mit NameError ab), fehlende Schalendicke
+    pruefe("genau unsere Fixes weichen ab (%s)" % ", ".join(BEKANNTE_ABWEICHUNGEN),
+           abweichend == sorted(BEKANNTE_ABWEICHUNGEN))
     sag()
 
 
