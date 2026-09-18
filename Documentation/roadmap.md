@@ -1,35 +1,35 @@
 # Roadmap
 
-Steps are done one at a time, each one tested before the next starts.
-
 ## Done
 
-* **Step 0 - workbench skeleton**: modern addon layout, `package.xml`, licenses, README.
-* **Step 1 - object in the active analysis**: workbench with toolbar and menu, command that
-  creates the optimization object inside the *active* FEM analysis (with a hint when there
-  is none), icon, persistence of the object, headless and GUI tests.
-* **Step 2 (first part) - step "Initialize"**: the dialog looks for an existing CalculiX
-  input file (solver panel, FreeCAD's `fcfem_*` directories, own working directory), reuses
-  it instead of writing a second one, and offers a button to write it - never silently.
-  Below that the element sets of the analysis are listed and their role is chosen (design /
-  non-design / ignore), stored in the document object right away.  UI texts are English with
-  a German translation when FreeCAD runs in German.
+* **workbench and object** - modern addon layout (`package.xml`, licenses, icons), workbench
+  with toolbar and menu, command that creates the optimization object inside the *active* FEM
+  analysis and explains itself when there is none.
+* **step "Initialize"** - finds the CalculiX input file (solver directory, FreeCAD's
+  `fcfem_*` working directories, own working directory) and reuses it instead of writing a
+  second one; writes it on a click only.  Lists the element sets and stores their role
+  (design space / non-design space / ignore) in the object.
+* **step "Parameters"** - mass goal, optimization base (`stiffness`, `failure_index`, `heat`),
+  filter type and range, tolerance, number of saved iterations, mass change, result format,
+  allowable stress per element set.  The robust filter range and the average element size are
+  computed on request, shell thicknesses come from the input file.
+* **step "Calculation"** - writes the beso configuration, runs beso in a separate process with
+  a progress bar, a stop button and a history window, loads the iterations (VTK player) and
+  the result mesh (`*_state1.inp`) into the document.
+* **tests** - headless, assistant (GUI) and a scenario matrix with 16 runs, including a
+  comparison against the unchanged beso from GitHub.
+* **documentation** - architecture, decisions with their measurements, development and test
+  recipes, README.
 
 ## Next
 
-* **Step 2 (second part) - step "Parameters"**: mass goal, optimization base (`stiffness`,
-  `failure_index`, `heat`), filter type and range, tolerance, number of saved iterations -
-  as properties of the document object, with tooltips that name concrete numbers.
-* **Step 3 - step "Run"**: ship a copy of the reviewed beso fork, write `beso_conf.py`, run
-  beso in a separate process with live progress and a stop button.
-* **Step 4 - step "Results"**: show the iteration states (VTK player) and the mass /
-  failure-index curves; provide "open working directory" and "clean up" helpers.
-* **Step 5 - publish**: document the custom-repository installation, gather user feedback in
-  the FreeCAD forum, then request inclusion in the Addon Index.
+* **publish** - gather feedback in the FreeCAD forum, then ask for inclusion in the Addon
+  Index (an addon needs evidence of user testing before it is accepted).
+* **observe** - collect reports about models that fail or look wrong and fix them with a
+  measurement each time.
 
 ## Ideas, not scheduled
 
-* presets for common settings,
-* filter range assistant ("auto robust": enlarge the radius until every element of the design
-  domain has a neighbour),
-* translations (German texts are already wrapped in `translate`).
+* presets for common parameter sets,
+* translate the UI to further languages (the German dictionary is in `core/i18n.py`),
+* an export of the result as a report (mass and failure-index curve as a table).

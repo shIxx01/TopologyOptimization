@@ -7,7 +7,7 @@ beso sichert jede gespeicherte Iteration als Zustandspaar ``<name>_state0.inp`` 
 CalculiX-Eingabefile mit Netzknoten, Elementen und Materialdaten.
 
 Geladen wird es mit FreeCADs eigenem FEM-Import (``feminout.importInpMesh``), wie es
-der erste Prototyp gemacht hat.  Daraus wird ein Mesh-Objekt, mit dem man in FreeCAD
+mit dem importInpMesh aus FreeCAD.  Daraus wird ein Mesh-Objekt, mit dem man in FreeCAD
 weiterarbeiten kann (zum Beispiel eine FEM-Rechnung darauf).
 
 Das ist etwas anderes als der VTK-Player in ``core/vtk.py``: der zeigt aus

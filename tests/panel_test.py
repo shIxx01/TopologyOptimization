@@ -117,7 +117,7 @@ try:
     pruefe(any("design" in e for e in obj.Domains),
            "ein Design-Raum ist vorbelegt")
 
-    # Rolle umschalten, wie es der Nutzer in der Tabelle tut
+    # Rolle umschalten, wie es die Tabelle erlaubt
     erster = sorted(rollen)[0]
     for zeile in range(panel.tabelle.rowCount()):
         if panel.tabelle.item(zeile, 0).text() == erster:
@@ -155,7 +155,7 @@ try:
            "im ersten Schritt ist kein Rollbalken noetig (max %d)"
            % panel.rollen[0].verticalScrollBar().maximum())
 
-    # zulaessige Spannung: leer = kein FI, Wert = FI (wie im Prototyp eine Spalte je Domain)
+    # zulaessige Spannung: leer = kein FI, Wert = FI (eine Spalte je Domain)
     pruefe(len(panel.felder_stress) == len(panel.elsets),
            "jede Domain hat ein Feld fuer die zulaessige Spannung (%d Felder)"
            % len(panel.felder_stress))
@@ -171,7 +171,7 @@ try:
            "leeres Feld nimmt die Spannung heraus und merkt sich das (%s)"
            % (panel.obj.StressLimits,))
 
-    # Material mit Streckgrenze: das Feld bleibt trotzdem leer (der Nutzer entscheidet),
+    # Material mit Streckgrenze: das Feld bleibt trotzdem leer (die Wahl liegt beim Anwender),
     # der Hinweis unter der Liste nennt den moeglichen Wert
     material_alt = doc.getObject("MaterialSolid")
     werte_alt = dict(material_alt.Material)
@@ -397,7 +397,7 @@ try:
            % panel2.lauf_zeit.text())
     pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),
            "die Laufzeit steht in derselben Zeile wie der Start-Knopf")
-    # Abspielgeschwindigkeit wie im Prototyp
+    # Abspielgeschwindigkeit des VTK-Players
     pruefe(panel2.cmb_takt.count() == 4,
            "vier Abspielgeschwindigkeiten stehen zur Wahl (%d)" % panel2.cmb_takt.count())
     panel2.cmb_takt.setCurrentIndex(2)

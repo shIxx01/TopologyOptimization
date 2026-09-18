@@ -175,7 +175,7 @@ class AssistantPanel:
         self.domains = {}          # elset -> role (mirror of the document object)
         self.stress = {}           # elset -> allowable stress in MPa (0/empty = no FI)
         self.stress_moeglich = {}  # elset -> what the material would allow (MPa)
-        self.stress_aus = set()    # elset, bei dem der Nutzer die Spannung bewusst geloescht hat
+        self.stress_aus = set()    # elset, bei dem das Feld bewusst geleert wurde
         self.elsets = {}           # elset -> number of elements
         self.analyse = None
         self.netz = None
@@ -196,7 +196,7 @@ class AssistantPanel:
         aussen.setContentsMargins(8, 8, 8, 8)
         aussen.setSpacing(6)
 
-        # Wie im Prototyp: die Schrittleiste steht oben und bleibt stehen, nur der
+        # Die Schrittleiste steht oben und bleibt stehen, nur der
         # Inhalt rollt in einem eigenen Bereich (der Rollbalken sitzt damit innen,
         # nicht am ganzen Task-Panel), unten sind Zurueck und Weiter.
         self.schritt_label = QtWidgets.QLabel("")
@@ -240,7 +240,7 @@ class AssistantPanel:
         """Zum Schritt wechseln: Text oben, Seite zeigen, Rollbalken nach oben.
 
         Der aktuelle Schritt steht fett, die anderen grau - so sieht die Leiste
-        aus wie im Prototyp (und die Knopfleiste war dem Nutzer zu unruhig).
+        aus (der aktuelle Schritt fett, die anderen grau).
         """
         self._schritt = nummer
         self.seiten.setCurrentIndex(nummer - 1)
@@ -585,7 +585,7 @@ class AssistantPanel:
         """Der Knopf an der Filterzeile: robusten Radius neu rechnen und anzeigen.
 
         Die Rechnung dauert bei feinen Netzen ein paar Sekunden, deshalb startet sie
-        der Nutzer selbst (und nicht das Oeffnen des Dialogs).
+        ein Klick (und nicht das Oeffnen des Dialogs).
         """
         self._robust_daten = None
         self._robust_ergebnis = None
@@ -659,7 +659,7 @@ class AssistantPanel:
     def _seite_berechnung(self):
         """Step 3: start the optimization, watch it and look at the result.
 
-        Run and results belong together - the user asked for one step "Calculation".
+        Run and results belong together in one step "Calculation".
         """
         from .verlauf import Verlauf
 
@@ -685,7 +685,7 @@ class AssistantPanel:
         zeile.addWidget(self.lauf_zeit)
         lauf.addLayout(zeile)
 
-        # Fortschritt wie im Prototyp: 0 % = Startmasse, 100 % = Zielmasse
+        # Fortschritt: 0 % = Startmasse, 100 % = Zielmasse
         self.balken = QtWidgets.QProgressBar()
         self.balken.setRange(0, 100)
         self.balken.setValue(0)
@@ -694,7 +694,7 @@ class AssistantPanel:
 
         # ausklappbares Feld fuer die letzten Logzeilen ("Detail") - gehoert zum Rechnen.
         # Der Status steht in derselben Zeile: eine eigene Zeile waere unsichtbar leer,
-        # solange nichts laeuft (der Nutzer sah dort einen leeren Streifen).
+        # solange nichts laeuft (sonst bleibt eine leere Zeile stehen).
         kopf_zeile = QtWidgets.QHBoxLayout()
         self.knopf_detail = QtWidgets.QToolButton()
         self.knopf_detail.setText(uebersetze("Details"))
@@ -722,7 +722,7 @@ class AssistantPanel:
         rahmen_erg = QtWidgets.QGroupBox(uebersetze("Results"))
         erg = QtWidgets.QVBoxLayout(rahmen_erg)
 
-        # die vier Knoepfe bilden ein 2x2-Raster (der Nutzer wollte sie so angeordnet):
+        # die vier Knoepfe bilden ein 2x2-Raster:
         #   Ergebnisnetz laden | Diagramme anzeigen
         #   Vollstaendiges Log | Arbeitsverzeichnis oeffnen
         raster = QtWidgets.QGridLayout()
@@ -783,7 +783,7 @@ class AssistantPanel:
             # Fuer diese kleinen Knoepfe gilt die Vorgabe nicht.
             knopf.setStyleSheet("min-width: 0px; padding: 2px 6px;")
             zeile.addWidget(knopf)
-        # die Abspielgeschwindigkeit gehoert zu den Steuerknoepfen (wie im Prototyp)
+        # die Abspielgeschwindigkeit gehoert zu den Steuerknoepfen
         self.cmb_takt = QtWidgets.QComboBox()
         self.cmb_takt.addItems([uebersetze("0.5 s"), uebersetze("1 s"),
                                 uebersetze("2 s"), uebersetze("3 s")])
@@ -809,7 +809,7 @@ class AssistantPanel:
         self.lauf_timer.setInterval(1500)
         self.lauf_timer.timeout.connect(self._lauf_aktualisieren)
         self.ergebnis_timer = QtCore.QTimer()
-        self.ergebnis_timer.setInterval(500)     # 0,5 s wie im Prototyp
+        self.ergebnis_timer.setInterval(500)     # 0,5 s je Bild
         self.ergebnis_timer.timeout.connect(lambda: self._ergebnis_schritt(1, vom_timer=True))
         return seite
 

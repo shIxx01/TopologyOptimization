@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 """Live charts of a running optimization - an own window in FreeCAD.
 
-Same idea as the first prototype and like CfdOF: FreeCAD's own Plot module
+Like CfdOF: FreeCAD's own Plot module
 (``Mod/Plot``) shows matplotlib as an MDI child window, a QTimer redraws it every
 1.5 s, so the charts follow the run.
 
@@ -105,7 +105,7 @@ class Verlauf(object):
         return self._fenster
 
     def _fenster_zu(self, *_):
-        """Vom Nutzer geschlossen - nicht ungefragt neu aufziehen."""
+        """Vom Anwender geschlossen - nicht ungefragt neu aufziehen."""
         self._fenster = None
         self._achsen = []
         self.geschlossen = True

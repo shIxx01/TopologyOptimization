@@ -13,62 +13,85 @@ FEM workbench                    TopoOpt workbench
                                           result mesh back into the document
 ```
 
-The optimization object lives **inside** the FEM analysis it works on. The analysis stays
-the single source of truth for the model: the addon only reads from it.
+The optimization object lives **inside** the FEM analysis it works on.  The analysis stays the
+single source of truth for the model; the addon only reads from it and writes the result back
+as a new mesh object.
 
 ## Components
 
 | File | Responsibility |
 |---|---|
 | `workbench.py` | registers the workbench, its toolbar and menu |
-| `commands/create_optimization.py` | the command: checks the **active** analysis, creates the object, shows a hint if there is none |
+| `commands/create_optimization.py` | the command: checks the **active** analysis, creates the object, explains itself when there is none |
 | `features/topology_object.py` | `App::FeaturePython` proxy, properties, `create_topology_object()`, `find_analysis()` |
-| `features/topology_vp.py` | view provider: icon, later the assistant on double click |
-| `resources/__init__.py` | absolute paths to icons (no `sys.path` tricks) |
+| `features/topology_vp.py` | view provider: icon, opens the assistant on double click |
+| `core/fem.py` | analysis, mesh, solver, input file - finding and writing it |
+| `core/elsets.py` | element sets, shell thicknesses and the material of a set, read from the `.inp` |
+| `core/domains.py` | roles (design / non-design / ignore) and the allowable stress per set |
+| `core/params.py` | parameters, filter list, mass change, defaults |
+| `core/radius.py` | element sizes, neighbour check, the robust filter range |
+| `core/material.py` | materials of the document, yield strength in MPa |
+| `core/conf.py` | writes `beso_conf.py`, keeps beso's configuration mechanics |
+| `core/beso.py` | locates the bundled beso copy and its modules |
+| `core/lauf.py` | reads progress out of beso's log |
+| `core/netz.py` | imports the result state (`*_state1.inp`) as a FEM mesh |
+| `core/vtk.py` | reads the iteration states (`resulting_states.vtk`) |
+| `gui/assistant.py` | the task panel with the three steps |
+| `gui/verlauf.py` | the history window (mass and failure-index curves) |
+| `gui/vtk_anzeige.py` | the VTK iteration viewer |
+| `core/i18n.py` | English source texts and the German dictionary |
+| `resources/` | absolute paths to icons (no `sys.path` tricks) |
 
 ## Why "active analysis" and not "selected analysis"
 
-FreeCAD has a built-in notion of an active analysis - the same mechanism the FEM commands
-use (`FemGui.getActiveAnalysis()` / `setActiveAnalysis()`, see
-`Mod/Fem/femcommands/manager.py`, and FEMbyGEN uses it too). The active analysis is shown
-in bold and is the container new FEM objects go into. Using it means:
+FreeCAD has a built-in notion of an active analysis - the same mechanism the FEM commands use
+(`FemGui.getActiveAnalysis()` / `setActiveAnalysis()`, see `Mod/Fem/femcommands/manager.py`).
+The active analysis is shown in bold and is the container new FEM objects go into.  Using it
+means the user never has to answer "which analysis?" and the command can refuse to act when
+there is no active analysis instead of guessing.
 
-* the user never has to answer "which analysis?" - the question is already answered by the
-  document state, exactly like the active body in PartDesign;
-* the command can refuse to act when there is no active analysis, instead of guessing.
+## The three steps of the assistant
 
-## Planned flow of a run (next steps)
+1. **Initialize** - find or write the input file and set the role of every element set.
+2. **Parameters** - mass goal, optimization base, filters and ranges, tolerance, saved
+   iterations, allowable stress.
+3. **Calculation** - run beso, watch the progress, load the result.
 
-1. **Assistant dialog** (task panel) on the optimization object, in steps:
-   design domain / non-design domain → parameters → run → results.
-2. **`beso_conf.py` generation**: the addon writes the beso configuration (path, solver,
-   `.inp` file, element sets, density, allowed stress, mass goal, filter range).
-3. **`.inp` creation** with FreeCAD's own tools (`femtools.ccxtools.FemToolsCcx`), including
-   the known pitfalls: `setup_ccx()` returns a *relative* solver path (make it absolute),
-   `femutils.is_of_type()` does not recognise `Fem::FemAnalysisPython` (search the analysis
-   by `TypeId.startswith("Fem::FemAnalysis")`), and the working directory must contain no
-   spaces (CalculiX cuts the job name at the first space).
-4. **Run beso** in a separate process (FreeCAD's bundled Python, `PYTHONUTF8=1`,
-   `MPLBACKEND=Agg`), with live progress in the panel and a stop button.
-5. **Result** into the document: import the state `.inp`/`.vtk` files, optionally as a
-   VTK iteration player.
+Every step writes into properties of the document object, so a saved document carries the
+whole setup.
 
 ## Data model
 
-The optimization object stores its parameters as FeaturePython properties, so they are
-saved inside the `.FCStd` document (no side files). `ensure_properties()` adds missing
-properties for objects written by older versions. The analysis is referenced by
-`AnalysisName` (a plain string) - see `decisions.md` for the reason.
+Parameters are FeaturePython properties of the optimization object, so they are saved inside
+the `.FCStd` document (no side files).  `ensure_properties()` adds missing properties for
+objects written by older versions.  The analysis is referenced by `AnalysisName`, a plain
+string - a `PropertyLink` back to the group that contains the object would make the dependency
+graph cyclic (see `decisions.md`).
+
+The element sets are stored as `["<set>|<role>", ...]` and the allowable stresses as
+`["<set>|<MPa>", ...]`; the document is the single source of truth, the table only shows it
+and writes changes straight back.
+
+## How a run works
+
+1. `core/conf.py` writes `beso_conf.py` into a run folder next to the input file.  The values
+   come from the object's properties; the element sets, the shell thicknesses and the material
+   of each set are read from the `.inp` instead of being guessed.
+2. beso runs in a separate process with FreeCAD's own interpreter.  Its stdout goes to a log
+   file, its progress table is read from beso's own log for the progress bar and the curves.
+3. The result files (`file00X.vtk`, `resulting_states.vtk`, `<name>_state1.inp`) are read back
+   when the user asks for them: iterations as a VTK player, the final state as a FEM mesh.
 
 ## Interaction with beso
 
-beso is a plain Python program (`beso_main.py` + modules) that is driven by a configuration
-file which it `exec`s. The addon therefore:
+beso is a plain Python program (`beso_main.py` plus modules) driven by a configuration file
+which it `exec`s.  The addon therefore:
 
-* ships a reviewed copy of beso (same code as https://github.com/shIxx01/beso),
-* writes `beso_conf.py` into the working directory,
-* starts `beso_main.py` with the bundled interpreter of FreeCAD,
+* ships a reviewed copy of beso in `freecad/TopoOpt/beso/` - upstream plus the changes listed
+  in `CHANGES-TopoOpt.md`, so nothing has to be downloaded,
+* writes `beso_conf.py` into the run folder,
+* starts `beso_main.py` with the interpreter of FreeCAD,
 * reads the iteration log for progress and the result files for the final state.
 
-beso is LGPLv3; the copy keeps its license header and the README lists the changes compared
-to upstream.
+beso is LGPLv3; the copy keeps its license header and its README, and the changes are
+documented in `CHANGES-TopoOpt.md`.

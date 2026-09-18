@@ -1,17 +1,23 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Ehrlicher Leistungsvergleich der drei beso-Staende, die es wirklich gibt.
-
-  1. original  - frischer Klon von github.com/calculix/beso (unveraendert, HEAD)
-  2. prototyp  - die beso-Kopie der alten Workbench (vendor/beso, mit den eigenen
-                 Optimierungen: Gitter-Dict in prepare2s, numpy-Matrix)
-  3. addon     - das gebuendelte beso des Addons (Original + unsere 3 Fixes)
+"""Leistungsvergleich: unveraendertes beso von GitHub gegen das gebuendelte beso.
 
 Gemessen wird auf **demselben Modell** die Vorbereitungszeit (Netz lesen,
-Volumen/Schwerpunkt, Elementgroessen, Nachbarschaftsgitter) - das ist genau der
-Teil, den der Prototyp umgebaut hat - und danach ein kompletter Lauf mit
-demselben Limit fuer die Gesamtzeit und den Massenverlauf.
+Volumen/Schwerpunkt, Elementgroessen, Nachbarschaftsgitter) und die Gesamtzeit
+eines Laufs.  Damit laesst sich zeigen, dass die Fixes des Addons die Rechnung
+weder veraendern noch verlangsamen.
 
-Aufruf:  freecadcmd tests/vergleich_varianten.py
+Das Original zuerst klonen::
+
+    git clone --depth 1 https://github.com/calculix/beso.git
+    set BESO_ORIGINAL=C:\\Pfad\\zu\\beso-original      (Windows)
+    export BESO_ORIGINAL=/pfad/zu/beso-original        (Linux/macOS)
+
+Aufruf (FreeCADs Python oder freecadcmd)::
+
+    python tests/vergleich_varianten.py [modell.inp] [elset]
+
+Ohne Argumente wird das groesste Netz aus den FreeCAD-Arbeitsordnern genommen.
+Schreibt ``vergleich_varianten.md`` neben das Skript.
 """
 import glob
 import os
@@ -22,86 +28,95 @@ import tempfile
 import time
 
 HIER = os.path.dirname(os.path.abspath(__file__))
-KLON = os.path.join(tempfile.gettempdir(), "beso-original")
-PROTOTYP = r"C:\Users\Tom\topologie-optimierung\workbench\TopologieOptimierung\vendor\beso"
-ADDON = r"C:\Users\Tom\AppData\Roaming\FreeCAD\v26-3\Mod\TopologyOptimization\freecad\TopoOpt\beso"
 BERICHT = os.path.join(HIER, "vergleich_varianten.md")
+# Original-beso: geklonter upstream-Stand (siehe Modulbeschreibung)
+ORIGINAL = os.environ.get("BESO_ORIGINAL", os.path.join(tempfile.gettempdir(), "beso-original"))
+# gebuendelte Kopie des Addons (dieses Repo)
+ADDON = os.path.join(os.path.dirname(HIER), "freecad", "TopoOpt", "beso")
 
-VARIANTEN = (("original", KLON), ("prototyp", PROTOTYP), ("addon", ADDON))
+VARIANTEN = (("beso (GitHub, unveraendert)", ORIGINAL), ("beso im Addon", ADDON))
+
+def _python():
+    """Interpreter ohne FreeCAD-Start - beso braucht nur Python und numpy."""
+    neben = os.path.join(os.path.dirname(sys.executable), "python.exe")
+    return neben if os.path.isfile(neben) else sys.executable
+
+
+PYTHON = os.environ.get("BESO_PYTHON") or _python()
 
 
 def grosse_inp():
-    """Das groesste vorhandene Netz aus den FreeCAD-Arbeitsordnern."""
-    kandidaten = [p for p in glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*", "*.inp"))]
+    kandidaten = glob.glob(os.path.join(tempfile.gettempdir(), "fcfem_*", "*.inp"))
     return sorted(kandidaten, key=os.path.getsize)[-1] if kandidaten else ""
 
 
 def elset_aus_inp(pfad):
     text = open(pfad, encoding="utf8", errors="ignore").read()
     namen = re.findall(r"^\*ELSET,\s*ELSET=([^\s,]+)", text, re.M)
-    return sorted(n for n in namen if n.lower() not in ("eall", "efaces", "evolumes"))[0]
-
-
-PYTHON = r"C:\Program Files\FreeCAD 26.3\bin\python.exe"
+    namen += re.findall(r"^\*ELEMENT,\s*TYPE=\w+,\s*ELSET=([^\s,]+)", text, re.M)
+    ohne = [n for n in namen if n.lower() not in ("eall", "efaces", "evolumes")]
+    return sorted(ohne)[0] if ohne else ""
 
 
 def messung(beso_ordner, inp, elset):
+    """Eine beso-Kopie in eigenem Prozess messen (jede bringt eigene Module mit)."""
     skript = os.path.join(HIER, "messung_beso.py")
     start = time.time()
-    prozess = subprocess.run([PYTHON if os.path.isfile(PYTHON) else sys.executable,
-                              skript, beso_ordner, inp, elset],
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=1800)
+    prozess = subprocess.run([PYTHON, skript, beso_ordner, inp, elset],
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=3600)
     text = prozess.stdout.decode("utf8", "replace")
-    zeile = [z for z in text.splitlines() if z.startswith("MESSUNG|")]
-    if not zeile:
-        return {"fehler": text.strip().splitlines()[-1] if text.strip() else "keine Ausgabe",
+    zeilen = [z for z in text.splitlines() if z.startswith("MESSUNG|")]
+    if not zeilen:
+        letzte = [z for z in text.splitlines() if z.strip()]
+        return {"fehler": letzte[-1][:120] if letzte else "keine Ausgabe",
                 "gesamt": time.time() - start}
-    werte = zeile[-1].split("|")[1:]
-    return {"import": float(werte[0]), "cg": float(werte[1]), "size": float(werte[2]),
-            "prep": float(werte[3]), "elemente": int(werte[4]), "paare": int(werte[5]),
-            "mittel": float(werte[6]), "gesamt": time.time() - start}
+    w = zeilen[-1].split("|")[1:]
+    return {"import": float(w[0]), "cg": float(w[1]), "size": float(w[2]), "prep": float(w[3]),
+            "elemente": int(w[4]), "paare": int(w[5]), "mittel": float(w[6]),
+            "gesamt": time.time() - start}
 
 
 def main():
-    inp = grosse_inp()
-    if not inp:
-        print("kein Netz gefunden - bitte erst eine .inp erzeugen")
+    inp = sys.argv[1] if len(sys.argv) > 1 else grosse_inp()
+    if not inp or not os.path.isfile(inp):
+        print("kein Modell gefunden - bitte eine .inp angeben")
         return
-    if not os.path.isdir(KLON):
-        print("Original-beso fehlt: %s" % KLON)
+    elset = sys.argv[2] if len(sys.argv) > 2 else elset_aus_inp(inp)
+    if not elset:
+        print("im Modell ist kein Element-Set gefunden worden")
         return
-    elset = elset_aus_inp(inp)
-    zeilen = []
-    zeilen.append("# Leistungsvergleich original / Prototyp / Addon")
-    zeilen.append("")
-    zeilen.append("Modell: `%s` (%.1f MB), Element-Set `%s`"
-                  % (os.path.basename(inp), os.path.getsize(inp) / 1e6, elset))
-    zeilen.append("")
-    zeilen.append("| Variante | Netz lesen | Volumen/CG | Elementgroessen | Nachbarschaftsgitter "
-                  "| Summe | Elemente | Paare |")
-    zeilen.append("|---|---|---|---|---|---|---|---|")
+
+    zeilen = ["# Leistungsvergleich der beso-Kopien", "",
+              "Modell: `%s` (%.1f MB), Element-Set `%s`"
+              % (os.path.basename(inp), os.path.getsize(inp) / 1e6, elset), "",
+              "| Variante | Netz lesen | Volumen/CG | Elementgroessen | Nachbarschaftsgitter "
+              "| Summe | Elemente | Nachbarpaare |",
+              "|---|---|---|---|---|---|---|---|"]
     ergebnisse = {}
     for name, ordner in VARIANTEN:
         if not os.path.isdir(ordner):
-            zeilen.append("| %s | - | - | - | - | - | - | fehlt: %s |" % (name, ordner))
+            zeilen.append("| %s | - | - | - | - | - | - | nicht gefunden: `%s` |" % (name, ordner))
+            print("fehlt: %s" % ordner, flush=True)
             continue
         e = messung(ordner, inp, elset)
         ergebnisse[name] = e
         if "fehler" in e:
-            zeilen.append("| %s | - | - | - | - | - | - | Fehler: %s |"
-                          % (name, e["fehler"][:90]))
+            zeilen.append("| %s | - | - | - | - | - | - | Fehler: %s |" % (name, e["fehler"]))
+            print("%-28s Fehler: %s" % (name, e["fehler"]), flush=True)
             continue
-        zeilen.append("| %s | %.2f s | %.2f s | %.2f s | **%.2f s** | %.2f s | %d | %d |"
-                      % (name, e["import"], e["cg"], e["size"], e["prep"],
-                         e["import"] + e["cg"] + e["size"] + e["prep"], e["elemente"],
-                         e["paare"]))
-        print(zeilen[-1], flush=True)
+        zeile = ("| %s | %.2f s | %.2f s | %.2f s | **%.2f s** | %.2f s | %d | %d |"
+                 % (name, e["import"], e["cg"], e["size"], e["prep"],
+                    e["import"] + e["cg"] + e["size"] + e["prep"], e["elemente"], e["paare"]))
+        zeilen.append(zeile)
+        print(zeile, flush=True)
     zeilen.append("")
-    if "original" in ergebnisse and "addon" in ergebnisse:
-        o, a = ergebnisse["original"], ergebnisse["addon"]
-        if "fehler" not in o and "fehler" not in a:
-            zeilen.append("Ergebnis der Rechnung ist bei beiden identisch: mittlere Elementgroesse "
-                          "%.4f mm, %d Nachbarpaare." % (a["mittel"], a["paare"]))
+
+    werte = [e for e in ergebnisse.values() if "fehler" not in e]
+    if len(werte) == 2 and werte[0]["paare"] == werte[1]["paare"] \
+            and abs(werte[0]["mittel"] - werte[1]["mittel"]) < 1e-9:
+        zeilen.append("Beide Kopien finden dieselbe mittlere Elementgroesse (%.4f mm) und "
+                      "dieselbe Zahl Nachbarpaare (%d) - das Ergebnis der Rechnung ist "
+                      "identisch." % (werte[0]["mittel"], werte[0]["paare"]))
     with open(BERICHT, "w", encoding="utf8") as fh:
         fh.write("\n".join(zeilen) + "\n")
     print("Bericht: %s" % BERICHT)

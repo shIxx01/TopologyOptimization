@@ -206,7 +206,7 @@ pruefe(prm.parse_filters(prm.format_filters([["quatsch", 1]])) == [["simple", "r
 doc4 = App.newDocument("TopoOptParameterTest")
 analyse4 = doc4.addObject("Fem::FemAnalysis", "Analyse")
 obj4 = create_topology_object(doc4, analyse4, "TopoOpt4")
-pruefe(abs(obj4.MassGoalRatio - 0.6) < 1e-9, "Zielmasse startet bei 0,6 (60 % vom Nutzer)")
+pruefe(abs(obj4.MassGoalRatio - 0.6) < 1e-9, "Zielmasse startet bei 0,6 (60 %)")
 pruefe(obj4.OptimizationBase == "stiffness", "Optimierungsziel startet mit 'stiffness'")
 pruefe(obj4.IterationsLimit == "auto", "Iterationen starten mit 'auto'")
 pruefe(abs(obj4.Tolerance - 1e-3) < 1e-12, "Toleranz startet mit 1e-3 (beso-Standard)")
@@ -521,7 +521,8 @@ pruefe(len(vtk_daten["zustaende"]) == 2 and vtk_daten["namen"][0] == "element_st
        "beide Iterationen werden gelesen (%s)" % (vtk_daten["namen"],))
 
 # Die Knotennummern sind 0-basiert: mit -1 verschobene Zellen ergeben weit
-# auseinanderliegende Ecken.  Genau das war der Fehler im Prototyp.
+# auseinanderliegende Ecken.  Der Test prueft, dass die Zellen wirklich
+# zusammenhaengen (kleine Kantenlaengen), statt sich auf die Reihenfolge zu verlassen.
 def _groesste_kante(punkte, zellen, zustand):
     groesste = 0.0
     for i, zelle in enumerate(zellen[:300]):

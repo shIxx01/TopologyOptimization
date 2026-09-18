@@ -13,7 +13,7 @@ Shown is the **surface of the material that is left**: from every tetrahedron wi
 state 1 the four triangles are collected and only the ones that occur once are
 drawn - those are exactly the boundary faces.
 
-This is the reader of the first prototype, kept because it works; the three traps it
+The reader for these files; the three traps it
 had to solve are noted at the places where they are handled:
 
 * node numbers are **0-based** (see :func:`laden`),

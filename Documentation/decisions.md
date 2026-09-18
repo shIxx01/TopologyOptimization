@@ -83,7 +83,7 @@ of the solver, FreeCAD's `%TEMP%/fcfem_*` directories, the addon's own working d
 of an older version) and copies a found file into the FEM working directory. Only if
 nothing is found does the user write it - with a button, not automatically.
 
-*Reason (user request):* a file that was already written by the solver panel must not be
+*Reason:* a file that was already written by the solver panel must not be
 written a second time (redundant work). And writing it takes time - measured 2.3 s for
 41,666 C3D10 elements - while FreeCAD is blocked; doing that silently when a dialog opens
 looks like a freeze. The dialog now only looks around and says what is missing; the step is
@@ -98,7 +98,7 @@ files of the optimizer sit together, and the user setting (temporary / beside th
 reused, because `get_temp_dir()` builds a new directory on **every** call (measured - it
 does not cache anything).
 
-*Reason (user request):* the optimization object is a child of the FEM analysis, so its
+*Reason:* the optimization object is a child of the FEM analysis, so its
 files belong where the FEM files are. Before, the addon used a directory of its own under
 `%TEMP%/TopoOpt`, which looked like a second, unrelated place.
 
@@ -108,7 +108,7 @@ See D7.  Additionally: the header line of the assistant lists the analysis case
 (`Analysis`, `Mesh`, `Solver`) and shows missing parts in red, while the status line is
 green as soon as everything is present, orange while the user has to act and red on errors.
 
-*Reason (user request):* a hint text that simply disappears hides the information; colours
+*Reason:* a hint text that simply disappears hides the information; colours
 show the state at a glance.
 
 ## D12 - The parameters are properties of the document object
@@ -143,11 +143,11 @@ Combo boxes adjust to a few characters (`AdjustToMinimumContentsLengthWithIcon`,
 long titles of the group boxes were shortened. Measured minimum width of the whole panel:
 **590 px before, 331 px after**.
 
-*Reason (user request):* the panel could not be made narrow without things disappearing.
+*Reason:* the panel could not be made narrow without things disappearing.
 Combo boxes are the main culprit: by default a combo wants as much room as its longest
 entry.
 
-Two small user requests went in with it: the core count shows "all" instead of 0
+Two details went in with it: the core count shows "all" instead of 0
 (`setSpecialValueText`, which only works while the minimum is 0), and the save interval
 starts at **10** instead of the beso default 1 (a saved iteration of a fine mesh can need
 100 MB and more; the final result is what counts).
@@ -160,7 +160,7 @@ beso_plots, beso_separate, the template beso_conf.py, LICENSE, README) and
 so nothing is added to `sys.path`; the modules keep their own names because beso imports
 itself that way (`import beso_lib` inside `beso_filters`).
 
-*Reason (user request):* a user should install the workbench and start - without a second
+*Reason:* a user should install the workbench and start - without a second
 download and without being asked for a path.  The folder is found relative to the addon
 file, so it works wherever FreeCAD installed the addon.
 
@@ -181,7 +181,7 @@ or neighbourhoods itself; it only chooses the radius that beso then uses.
 and the "simple" filter stops.  Measured with the bundled beso on the test input file:
 radius 0.1 x mean -> 4 of 4 elements without a neighbour, 2.0 x mean -> 0.
 
-**Speed matters here** (the user has to wait for the check).  Measured on a mesh with
+**Speed matters here** (the check blocks the assistant).  Measured on a mesh with
 58,871 TETRA10 and a mean element size of 2.4268 mm:
 
 | step | time |
@@ -231,12 +231,12 @@ CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the
 * **Nothing blocks**: beso runs as its own process (`subprocess.Popen`), a `QTimer` (1.5 s)
   reads the log files and updates the display.  FreeCAD never waits for the solver.
 * **No console window**: `subprocess.Popen(..., creationflags=CREATE_NO_WINDOW)`.
-  Without it Windows opens a console window for the run - the first prototype started
+  Without it Windows opens a console window for the run - an earlier version of this addon started
   beso in a way that did not show one, and the user noticed the difference.
-* **Progress bar** like in the first prototype: 0 % = mass of the whole part, 100 % = target
+* **Progress bar** like in an earlier version of this addon: 0 % = mass of the whole part, 100 % = target
   mass, `(start - mass) / (start * (1 - ratio)) * 100`.  It is not forced to 100 % when the
   run stops early (iteration limit) - it shows what really happened.
-* **Charts in an own window**, as in the first prototype: `gui/verlauf.py` uses FreeCAD's
+* **Charts in an own window**, as in an earlier version of this addon: `gui/verlauf.py` uses FreeCAD's
   `Plot` module (matplotlib as MDI child window) and draws four charts - mass in percent
   (with the target mass as a dashed line), `FI_mean`/`FI_max` (limit 1.0), overloaded
   elements and mean energy density.  A QTimer redraws every 1.5 s; before the first
@@ -247,29 +247,27 @@ CalculiX ran, `file000/001/002.vtk` and `resulting_states.vtk` were written, the
   `core/lauf.py` reads it.  The addon moves an old log file aside before the start, since
   beso appends to it.
 * **Collapsible "Details"** shows the last 40 lines of our own log (`<mesh>_topoopt.log`,
-  the CalculiX output); the whole log file belongs to step 4 (as the user asked).
+  the CalculiX output); the whole log file belongs to step 4 (the whole log file is opened from the results).
 * The status line reads `Iteration 12 | mass 15340, target 12000 | 3:20 min`.  No
   percentage: right after the start the mass is far above the target and "323 %" only looked
   like an error.
 
 ## D19 - Allowable stress per element set is what switches the failure index on
 
-The user asked why the first prototype showed the failure index charts even with
-`optimization_base = "stiffness"`, and this addon did not.  The reason is not the
-optimization base:
+The failure-index charts do not depend on the optimization base:
 
 * beso computes a failure index when `domain_FI` is filled: `beso_main.py` sets
   `domain_FI_filled = True` as soon as one domain has FI criteria (line 78-80), and with
   `stiffness` it reads the stress values from the CalculiX `.dat` file (line 415-418).
   So the FI charts work with every optimization base.
-* The first prototype had a column "zulässige Spannung" per domain and wrote
+* An earlier layout had a column "zulässige Spannung" per domain and wrote
   `domain_FI[elset] = [[('stress_von_Mises', σ*1e6)], [('stress_von_Mises', σ)]]`
   (`bridge.py:235`).  A real run of it shows the values:
   `0.0434 FI_mean`, `0.3568 FI_max`, `0.00134 ener_dens_mean`.
 * This addon had no such field, so `domain_FI` stayed empty and three of the four charts
   had no values.  That was a missing function, not a bug.
 
-Therefore (as the user decided): **a column "σ (MPa)" next to every element set** in step 1,
+Therefore: **a column "σ (MPa)" next to every element set** in step 1,
 stored in the object as `StressLimits` (`"<set>|<MPa>"`).  Empty means: no failure index.
 The format is beso's own (inner tuples = separate indices, second list = second element
 state).  A written configuration is executed in the test and really sets
@@ -281,19 +279,19 @@ the `.dat` file beso stops with `CalculiX results not found, check CalculiX for 
 (`beso_main.py:434`).  The energy density chart has the same reason: our test document has no
 loads, so `ener_dens_mean` is 0.0 there.
 
-**The empty field is deliberate - the first prototype filled it silently.**  The prototype had
+**The empty field is deliberate.**  An earlier version filled it silently:
 `build_domain(..., stress_limit=450.0, ...)` (`bridge.py:133`) and showed the value in its table
 (`taskpanel.py:750`), so every run wrote `domain_FI = 450 MPa` - taken from beso's own example
-configuration (`beso_conf.py`: `[[("stress_von_Mises", 450.0e6)], …]`).  The user never typed it
+configuration (`beso_conf.py`: `[[("stress_von_Mises", 450.0e6)], …]`).  It was never typed by hand
 and did not know it was there; 450 MPa is far above the allowable stress of ordinary steel
 (S235: 157 MPa at a safety factor of 1.5), so overloads would have been reported too late.
-The user decided (September 2026): **leave the field empty** and fill it deliberately - from
+Decision (September 2026): **leave the field empty** and fill it deliberately - from
 the material if the material carries a value, otherwise by typing it.  Do not "repair" this by
 adding a default value.
 
 ## D20 - The allowable stress is suggested from the material, if the material has one
 
-The user asked why he has to type the allowable stress at all and whether it can come from
+Can the allowable stress come from the material instead of being typed in?
 the material.  Both checked:
 
 * **beso asks for it as well**: `beso_fc_gui.py` has one text box per material,
@@ -309,20 +307,19 @@ the material.  Both checked:
 Therefore: `core/material.py` reads `YieldStrength` (or `UltimateTensileStrength`,
 `CompressiveStrength` as fallback) from the model's material objects, converts the text
 ("315 MPa", "2.1e+08 kg/(mm*s^2)" -> 210000 MPa) into MPa and the assistant **fills the
-field in** - but only for sets that have no value yet.  A set whose field the user has
+field in** - but only for sets that have no value yet.  A set whose field was
 deliberately emptied is stored as `"<set>|0"`, so the suggestion does not come back.
 The assignment material -> element set goes by name (`MaterialSolid` belongs to
 `MaterialSolidSolid`); with exactly one material it applies to all sets.
 
-## D21 - Steps 3 and 4 are one step "Calculation" with the viewer of the prototype
+## D21 - Run and results are one step "Calculation"
 
-The user asked to put run and results together in one tab named "Berechnung" and to take the
-VTK viewer from the first prototype, "because it runs cleanly and nicely".
+Run and results belong together: one step named "Berechnung", with a separate small VTK viewer.
 
 * The step bar now has three steps: **Initialize | Parameters | Calculation**.  The
   calculation page holds a "Run" group (start/cancel, progress bar, status, history) and a
   "Results" group (iterations, log, folder).
-* `core/vtk.py` is the reader of the prototype, kept as it was - including the three traps it
+* `core/vtk.py` is the reader of the earlier version, kept as it was - including the three traps it
   had to solve, each with the measurement in the docstring:
   * node numbers in `resulting_states.vtk` are **0-based**; subtracting 1 tears the mesh
     (measured in the test: largest edge 13.3 mm correct against 102.5 mm with -1),
@@ -335,9 +332,9 @@ VTK viewer from the first prototype, "because it runs cleanly and nicely".
 * Controls: "Show iterations" (reads the file, jumps to the last iteration), a slider,
   back/forward, play/stop and the info line
   `Iteration 1 of 2 | 388 of 401 elements left (96.8 %)`.  Plus "Whole log" and "Folder"
-  (the user's wish for the full log).
+  (the full log).
 
-### Nacharbeit des Nutzers (gleiche Sitzung)
+### Follow-up work in the same session
 
 * The group of the run is called **"Berechnen"**, the fold-out "Details" belongs to it (the log
   lines are about the calculation).
@@ -354,11 +351,10 @@ VTK viewer from the first prototype, "because it runs cleanly and nicely".
   panel is meant to stay at ~348 px.  The small control buttons get `min-width: 0px` in an own
   style sheet, that is measured again after every layout change.
 
-## D22 - Panel layout like the prototype: text step bar, own scroll area, navigation below
+## D22 - Panel layout: text step bar, own scroll area, navigation below
 
-The user compared with the first prototype again: the clickable step buttons were not nice, the
-scroll bar sat outside the panel, and the prototype keeps the step bar visible while scrolling
-with back/next at the bottom.  The prototype's structure (`taskpanel.py:130-166`) is:
+The step bar has to stay visible while the content scrolls, the navigation sits below, and a
+scroll bar outside the panel or clickable step buttons were dropped.  The structure is:
 
     QVBoxLayout
       step bar   (one RichText QLabel: bold current step, " › " between, gray others)  fixed
@@ -366,24 +362,24 @@ with back/next at the bottom.  The prototype's structure (`taskpanel.py:130-166`
       navigation (["< Zurück"] ... ["Weiter >"], the outer button hides)               fixed
 
 * The step bar is now such a label (`schritt_label`, RichText) instead of tool buttons -
-  clicking a step is gone, the way forward is the navigation below (as in the prototype).
+  clicking a step is gone, the way forward is the navigation below.
 * The pages sit in a `QScrollArea` with `setWidgetResizable(True)` and `NoFrame`, so the scroll
   bar belongs to the content area, not to the whole task panel.
 * Below: `< Zurück` / `Weiter >` (`_schritt_zurueck`, `_schritt_weiter`); at the first step
-  there is no "back", at the last none "forward" (the outer button hides, as in the prototype).
+  there is no "back", at the last none "forward" (the outer button hides).
 * `_zeige_schritt` puts the scroll bar back to the top on every step change.
 * Measured: the panel's minimum width dropped from **348 to 234 px** - the text bar and the
   navigation below need much less room than three toggle buttons in a row.
 
-**The element-set table does not fill the step any more.**  The user asked why the list in step 1
-was so long downwards: the table lay in the layout with stretch 1
+**The element-set table does not fill the step any more.**  The list in step 1 was too long
+downwards: the table lay in the layout with stretch 1
 (`layout.addWidget(self._domain_tabelle(), 1)`), so it grew over the whole free space - and with
 the new scroll area over the whole scroll area.  Now it is added without stretch, the free space
 is taken by a stretch below it, and `_tabelle_hoehe_anpassen()` sets the height to
 header + rows (measured: **64 px** with one element set).  From twelve rows on it keeps that
 height and scrolls inside itself, otherwise a model with many element sets would grow endlessly.
 
-**Two separate result buttons** (the user's point: "Ergebnis anzeigen" only loaded the VTK):
+**Two separate result buttons**:
 
 * **"Iterationen anzeigen"** - the VTK player (`core/vtk.py`): the surface of the material that
   is left, per iteration, for looking at it and for the film.
@@ -391,12 +387,11 @@ height and scrolls inside itself, otherwise a model with many element sets would
   `<name>_state1.inp` per saved iteration (state 1 = element keeps material), and the newest of
   them is imported with FreeCAD's own `feminout.importInpMesh.import_inp` as an FEM mesh into
   the document.  Sorted by change time, not alphabetically - alphabetically the highest
-  iteration number of an **earlier** run would be the "last" one.  The prototype did the same
-  (`taskpanel.py`: `_ergebnis_laden`).
+  iteration number of an earlier run would be the "last" one.
 * Measured in the panel test: `file001_state1.inp` is found and loaded, the document gets a new
   object.
 
-**Third round of the user's corrections:**
+**Third round of corrections:**
 
 * The running time (`lauf_zeit`, gray) sits **right next to the start button** instead of in its
   own line; the status line below the progress bar hides itself while it has no text.
@@ -404,15 +399,15 @@ height and scrolls inside itself, otherwise a model with many element sets would
   `Ergebnisnetz laden | Diagramme anzeigen` over `Vollständiges Log | Arbeitsverzeichnis öffnen`.
   "Iterationen anzeigen" moved into the row with the slider.
 * The running time sits **right next to the start button** in the "Berechnen" group.  An
-  attempt to put it into the panel's top line (next to the step bar) was wrong - the user:
+  attempt to put it into the panel's top line (next to the step bar) was wrong - 
   "warum ist die zeit wieder irgendwo wo sie nicht dazugehört".  The time belongs to the run, not
   to the frame of the panel.
 * The **slider got its own row** with the full width (measured 640 px in a 640 px panel).
-* The **play speed** sits in the row of the control buttons (the user wanted it one row higher):
-  combo box 0.5 s / 1 s / 2 s / 3 s as in the prototype (`_takt_geaendert` sets the timer
+* The **play speed** sits in the row of the control buttons :
+  combo box 0.5 s / 1 s / 2 s / 3 s  (`_takt_geaendert` sets the timer
   interval; measured: index 2 -> 2000 ms).
 * **No invisible empty row**: the status line was a row of its own and stayed empty (and thus
-  invisible but place-consuming) as long as no run was going - the user saw a blank strip.  It
+  invisible but place-consuming) as long as no run was going - a blank strip was visible.  It
   now shares the row with the fold-out "Details" button (left button, right status, gray).
 * **No scroll bar in the short steps**: one common `QScrollArea` around the `QStackedWidget` is
   always as tall as the *longest* page, so every step showed a scroll bar.  Each page now has its
@@ -437,9 +432,9 @@ missing.  He was right, and it was the dangerous kind of mistake:
   (with several thicknesses there are several cards).
 * `core/elsets.py: read_shell_thicknesses()` reads those cards, `conf_text()` writes
   `domain_thickness[<set>] = [d, d]` for the sets of the model, and step 1 shows a gray line
-  "Shell thickness from the input file: <set> = <d> mm" so the user sees which set gets which
+  "Shell thickness from the input file: <set> = <d> mm" so one sees which set gets which
   thickness.
-* **Proof with a real run** (2D analysis from the user's document, 4,614 shell elements):
+* **Proof with a real run** (2D analysis from a test document, 4,614 shell elements):
   before the fix `domain_thickness = [1.0, 1.0]`, mass 2000; with the fix
   `domain_thickness = [10.0, 10.0]`, mass **20000 -> 19396**.  The 3D case gives **20000 -> 19399**
   - the two models meet within 0.02 %, which confirms 10 mm is the right value.
@@ -451,7 +446,7 @@ missing.  He was right, and it was the dangerous kind of mistake:
 `tests/make_szenario_inp.py` erzeugt drei winzige Modelle (8 Hexaeder, 4 Dreiecke, dasselbe ohne
 `*SHELL SECTION`) mit echten Lasten; `tests/szenario_test.py` rechnet daraus 15 Szenarien - Filter
 (simple mit auto/robust/manuell, casting, alle sieben Morphologie-Filter), Zielmassen (60/30 %),
-2D-Schale und 3D-Volumen - **und dasselbe noch einmal mit dem originalen beso des Prototyps**
+2D-Schale und 3D-Volumen - **und dasselbe noch einmal mit dem originalen beso von GitHub**
 (`vendor/beso`, ohne unsere Fixes).
 
 Ergebnis (gemessen):
@@ -484,20 +479,19 @@ Ergebnis (gemessen):
 ## D27 - Die Spalte sigma bleibt leer, ein Hinweis erklaert den Failure-Index (loest D20 ab)
 
 Bis hierher (D20) wurde die zulaessige Spannung automatisch aus dem Material gefuellt, wenn dort
-eine Streckgrenze stand.  Am 18.09.2026 hat der Nutzer das umgedreht: die Spalte bleibt von Haus
-aus **leer**, und unter der Liste steht ein Hinweis in Orange.
+eine Streckgrenze stand.  Das ist abgeloest: die Spalte bleibt von Haus aus **leer**, und unter
+der Liste steht ein Hinweis in Orange.
 
-Seine Begruendung: "es sollte von Haus aus keine Streckgrenze angegeben sein, damit der Nutzer
-darauf hingewiesen wird ... (keine Streckgrenze = keine FI)".  Fachlich traegt das:
+Begruendung:
 
 * Die **Streckgrenze** einer Materialkarte (z.B. Aluminum-6061-T6 = 276 MPa, gemessen in den
   Karten von FreeCAD 26.3) ist eine Werkstoffkennzahl.  Die **zulaessige** Spannung ist eine
   Entscheidung (Sicherheitsbeiwert, Lastfall).  Ein automatisch eingetragener Wert sieht aus wie
-  eine Auslegung, ist aber keine - und der Nutzer merkt nicht, dass er sie noch treffen muss.
+  eine Auslegung, ist aber keine - und man merkt nicht, dass sie noch zu treffen ist.
 * Von den 208 Materialkarten in FreeCAD 26.3 bringen nur **125** eine Streckgrenze mit; die
-  einfachen Karten (CalculiX-Steel, Steel, Aluminum) haben keine.  Im Modell des Nutzers steht
-  deshalb keine - die 235 in der Liste war ein im Objekt gespeicherter Wert (`StressLimits`),
-  kein Wert aus dem Material.
+  einfachen Karten (CalculiX-Steel, Steel, Aluminum) haben keine.  Im Testmodell steht
+  deshalb keine - die 235 in einer Domainliste war ein im Objekt gespeicherter Wert
+  (`StressLimits`), kein Wert aus dem Material.
 * Der Failure-Index ist eine Zusatzauswertung: ohne Wert rechnet beso einfach ohne FI.
 
 Verhalten jetzt: Spalte leer.  Unter der Liste steht in Orange "Ohne zulaessige Spannung (sigma)
@@ -544,26 +538,24 @@ Commit `4e7d261`).
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
 with about 400 elements, solver) in the temp directory; every test works on a copy of it.
 
-*Reason (user request):* tests must not depend on a document of somebody's own project -
+*Reason:* tests must not depend on a document of somebody's own project -
 that mixes test data with real work and hides the fact that a fresh model behaves
 differently. Found while switching: without a material *reference* (`References` to the
 solid) FreeCAD writes no material ELSET at all, so the domains table stays empty. The test
 document therefore assigns the material to the body.
 
-## D25 - Ehrlicher Leistungsvergleich: Original-beso, alte Workbench, neue Workbench
+## D25 - Leistungsvergleich mit dem unveraenderten beso von GitHub
 
-Gefragt war, ob die alte und die neue Workbench **gleich performen** - auch gegenueber dem
-**originalen beso** von GitHub.  Dafuer wurde `github.com/calculix/beso` frisch geklont
-(HEAD `5056d30` - genau der Stand, auf dem unser Fork aufsetzt) und gegen die beiden
-Kopien gestellt, die es gibt: `vendor/beso` der alten Workbench und das gebuendelte beso
-des Addons.
+Rechnet das gebuendelte beso so schnell wie das Original und liefert es dieselben Zahlen?
+`tests/vergleich_varianten.py` misst die Vorbereitungsarbeit beider Kopien auf demselben Modell,
+`tests/szenario_test.py` rechnet dieselben Szenarien mit beiden und vergleicht die Massen.
 
-* Vorbereitung auf 84.395 Volumenelementen / 22,4 Mio. Nachbarpaaren
-  (`tests/vergleich_varianten.py`): Original 27,6 s, **Addon 26,8 s**, Prototyp 104,9 s.
-  Alle drei finden dieselbe mittlere Elementgroesse und dieselbe Paarzahl.
-* Kompletter Lauf auf einem echten Modell mit der Konfiguration der alten Workbench
-  (`tests/vergleich_lauf.py`, 58.871 Elemente, 3 Iterationen): Original 97,2 s,
-  Prototyp 95,2 s, Addon 95,7 s - **bit-identische Massen** in allen drei Staenden.
-* Ergebnis: die neue Workbench rechnet **genau wie das Original-Makro** und genauso
-  schnell; unsere drei Fixes kosten keine Rechenzeit.  Der Umbau der alten Workbench
-  bringt keinen Vorteil, beim grossen 3D-Netz ist er 3,8x langsamer.
+* Vorbereitung auf 84.395 Volumenelementen / 22,5 Mio. Nachbarpaaren: Original 27,6 s,
+  **gebuendelt 26,8 s**.  Beide finden dieselbe mittlere Elementgroesse (1,3343 mm) und
+  dieselbe Zahl Nachbarpaare.
+* Kompletter Lauf auf einem Modell mit 58.871 Elementen (3 Iterationen): Original 97,2 s,
+  gebuendelt 95,7 s, mit **bit-identischen Massen** (5,233986579481923e-05,
+  5,076871505084876e-05, 5.0006983356593286e-05, 4.925693374653859e-05).
+* Ergebnis: das Addon rechnet **genau wie das Original-Makro** und genauso schnell.  Die vier
+  Fixes kosten keine Rechenzeit; sie aendern nur, was bei einem nicht rechenbaren Modell
+  passiert (siehe D24).

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
-"""Show the iterations of a run in FreeCAD (the viewer of the first prototype).
+"""Show the iterations of a run in FreeCAD.
 
 Deliberately without any automation: the file is loaded on a click, exactly the
 iteration in the field is shown, and the display is **one** mesh object that is

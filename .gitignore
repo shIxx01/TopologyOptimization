@@ -12,3 +12,7 @@ venv/
 # test output
 tests/*_ausgabe.txt
 tests/data/*.log
+
+# test reports
+tests/*_bericht.md
+tests/vergleich_varianten.md

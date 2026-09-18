@@ -11,8 +11,9 @@ Der Test deckt ab:
   C) Fehlende Schalendicke: beso muss eine klare Meldung bringen (nicht still mit
      1 mm rechnen) - hier wird dokumentiert, was passiert.
   D) Referenzvergleich: dieselbe Konfiguration mit dem **gebuendelten beso** des
-     Addons und dem **originalen beso** des Prototyps (vor den Fixes) - gleiche
-     Massen? gleiche Iterationen?
+     Addons und dem **unveraenderten beso von GitHub** - gleiche Massen? gleiche
+     Iterationen?  (Original vorher klonen:
+     ``git clone --depth 1 https://github.com/calculix/beso.git``)
 
 Aufruf (GUI, deckt auch A ab):
     freecad.exe tests/szenario_test.py
@@ -34,7 +35,11 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 MODELLE = os.path.join(HIER, "szenarien")
 BERICHT = os.path.join(HIER, "szenario_bericht.md")
 ARBEIT = os.path.join(tempfile.gettempdir(), "topoopt_szenarien")
-VENDOR_BESO = r"C:\Users\Tom\topologie-optimierung\workbench\TopologieOptimierung\vendor\beso"
+# Das unveraenderte Original-beso fuer den Vergleich (https://github.com/calculix/beso):
+#     git clone --depth 1 https://github.com/calculix/beso.git
+# Pfad entweder ueber die Umgebungsvariable BESO_ORIGINAL oder als Klon im Temp-Ordner.
+ORIGINAL_BESO = os.environ.get("BESO_ORIGINAL",
+                               os.path.join(tempfile.gettempdir(), "beso-original"))
 
 zeilen = []
 ergebnisse = []
@@ -346,14 +351,15 @@ def berichte_laeufe(laeufe, titel):
 # --------------------------------------------------------------------------- #
 def vergleich_original():
     """Original-beso (ohne unsere Fixes) gegen das gebuendelte beso derselben Modelle."""
-    sag("## D) Vergleich: gebuendeltes beso gegen originales beso (Prototyp)")
+    sag("## D) Vergleich: gebuendeltes beso gegen unveraendertes beso von GitHub (upstream)")
     sag()
-    if not os.path.isdir(VENDOR_BESO):
-        sag("(uebersprungen - Original-beso nicht gefunden: %s)" % VENDOR_BESO)
+    if not os.path.isdir(ORIGINAL_BESO):
+        sag("(uebersprungen - bitte das Original klonen: git clone --depth 1 "
+            "https://github.com/calculix/beso.git \"%s\")" % ORIGINAL_BESO)
         sag()
         return
     neu = rechenmatrix(praefix="neu_")
-    alt = rechenmatrix(beso_quelle=VENDOR_BESO, praefix="alt_")
+    alt = rechenmatrix(beso_quelle=ORIGINAL_BESO, praefix="alt_")
     sag("### Gegenueberstellung")
     sag()
     sag("| Szenario | gebuendeltes beso | originales beso |")
