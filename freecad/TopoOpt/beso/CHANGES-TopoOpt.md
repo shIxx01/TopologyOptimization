@@ -19,9 +19,9 @@ addon takes its place.
 
 ## Changes compared to beso upstream
 
-The files were taken from the maintainer's beso fork, which fixes three defects of the
+The files were taken from the maintainer's beso fork, which fixes four defects of the
 upstream master.  Every change is marked in the source with a `TopoOpt:` comment and is
-offered upstream as a pull request (calculix/beso#57, #58, #59):
+offered upstream as a pull request (calculix/beso#57, #58, #59, #60):
 
 1. **`beso_filters.py`, `prepare2s`** - the sector key of a grid cell is built from the
    integer cell index instead of a coordinate rounded to 6 significant digits.  At a
@@ -40,8 +40,8 @@ offered upstream as a pull request (calculix/beso#57, #58, #59):
    `get_filter_range(...)` but never sets it; the line `filtered_dn = domains_from_config`
    is missing, exactly as it exists in the branch below for the other filters.  Measured
    with `filter_list = [["casting", "auto", (0, 0, 1)]]`: before the fix beso stopped after
-   0.7 s without a single iteration, afterwards it runs with the automatic filter range.
-   (Not offered upstream yet.)
+   after 0.7 s without a single iteration, afterwards it runs with the automatic filter range.
+   Offered upstream as calculix/beso#60.
 
 Licence note: beso is LGPL-3.0-or-later, this addon is LGPL-3.0-or-later as well, and the
 changes are listed here and marked in the sources - the conditions for redistributing a

@@ -472,7 +472,10 @@ Ergebnis (gemessen):
   Zeile `filtered_dn = domains_from_config` (genau wie im Zweig darunter fuer die anderen Filter)
   behebt es; dokumentiert in `beso/CHANGES-TopoOpt.md` als Fix 4. Gemessen mit dem Szenario
   `2D Schale casting auto`: vorher code 1 nach 0,7 s, jetzt code 0 mit Massen 1000 -> 750 -> 750,
-  waehrend das Original-beso dort weiterhin abbricht.
+  waehrend das Original-beso dort weiterhin abbricht.  Der Fix liegt im Fork `shIxx01/beso`
+  (Branch `fix/casting-auto-filter-range`, auch auf `master`) und ist upstream als
+  calculix/beso#60 angeboten.  Gegengeprueft mit der Szenario-Matrix gegen den Fork:
+  **16 von 16 Szenarien identisch** (vorher 13 von 16, weil dort nur noch der casting-Fall abwich).
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
