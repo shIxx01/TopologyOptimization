@@ -171,7 +171,8 @@ try:
            "leeres Feld nimmt die Spannung heraus und merkt sich das (%s)"
            % (panel.obj.StressLimits,))
 
-    # Material mit Streckgrenze -> Vorschlag (wie gewuenscht: nur wenn dort ein Wert steht)
+    # Material mit Streckgrenze: das Feld bleibt trotzdem leer (der Nutzer entscheidet),
+    # der Hinweis unter der Liste nennt den moeglichen Wert
     material_alt = doc.getObject("MaterialSolid")
     werte_alt = dict(material_alt.Material)
     werte_neu = dict(werte_alt)
@@ -183,25 +184,40 @@ try:
     panel.stress_aus = set()
     panel._fuelle_tabelle()
     panel._vorschlag_aus_material()
-    pruefe(panel.stress.get(erster) == 315.0,
-           "die Streckgrenze aus dem Material wird vorgeschlagen (%s)" % panel.stress)
-    pruefe(panel.felder_stress[erster].text() in ("315", "315,0", "315.0"),
-           "der Vorschlag steht im Feld (%s)" % panel.felder_stress[erster].text())
-    pruefe(panel.obj.StressLimits == ["%s|315.0" % erster],
-           "der Vorschlag ist auch im Objekt gespeichert (%s)" % (panel.obj.StressLimits,))
-    # wer das Feld bewusst leer laesst, bekommt keinen Vorschlag mehr
-    panel.obj.StressLimits = ["%s|0" % erster]
-    panel.stress = {}
-    panel.stress_aus = dom.aus_stress(panel.obj.StressLimits)
-    panel._fuelle_tabelle()
-    panel._vorschlag_aus_material()
-    pruefe(erster not in panel.stress,
-           "wer das Feld geleert hat, bekommt den Vorschlag nicht wieder (%s)" % panel.stress)
-    # das Material wieder wie vorher lassen (der Lauf in Schritt 3 soll ohne FI rechnen)
+    pruefe(panel.felder_stress[erster].text() == "",
+           "das Feld bleibt leer, auch wenn das Material eine Streckgrenze hat (%s)"
+           % panel.felder_stress[erster].text())
+    pruefe(panel.obj.StressLimits == [],
+           "ohne Eintrag wird nichts im Objekt gespeichert (%s)" % (panel.obj.StressLimits,))
+    pruefe(panel.stress_moeglich.get(erster) == 315.0,
+           "der moegliche Wert aus dem Material ist bekannt (%s)" % (panel.stress_moeglich,))
+    pruefe(not panel.hinweis_stress.isHidden() and "315" in panel.hinweis_stress.text(),
+           "der Hinweis nennt den Materialwert (%s)" % panel.hinweis_stress.text()[:70])
+    panel.felder_stress[erster].setText("200")
+    pruefe(panel.hinweis_stress.isHidden(),
+           "mit eingetragenem Wert verschwindet der Hinweis")
+    panel.felder_stress[erster].setText("")
+    pruefe(not panel.hinweis_stress.isHidden()
+           and "failure-index" in panel.hinweis_stress.text().lower(),
+           "ohne Wert weist der Hinweis auf den fehlenden Failure-Index hin (%s)"
+           % panel.hinweis_stress.text()[:70])
+    # Material ohne Streckgrenze: der Hinweis nennt keinen Wert
     material_alt.Material = werte_alt
+    doc.recompute()
     panel.obj.StressLimits = []
     panel.stress = {}
     panel.stress_aus = set()
+    panel._fuelle_tabelle()
+    panel._vorschlag_aus_material()
+    pruefe(not panel.hinweis_stress.isHidden() and "315" not in panel.hinweis_stress.text(),
+           "ohne Streckgrenze im Material nennt der Hinweis keinen Wert (%s)"
+           % panel.hinweis_stress.text()[:70])
+    pruefe(not panel.hinweis_stress.isHidden()
+           and "streckgrenze" in panel.hinweis_stress.text().lower(),
+           "stattdessen steht dort, dass keine Streckgrenze hinterlegt ist (%s)"
+           % panel.hinweis_stress.text()[:70])
+    panel.obj.StressLimits = []
+    panel.stress = {}
     panel._fuelle_tabelle()
     doc.recompute()
 

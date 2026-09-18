@@ -481,6 +481,33 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D27 - Die Spalte sigma bleibt leer, ein Hinweis erklaert den Failure-Index (loest D20 ab)
+
+Bis hierher (D20) wurde die zulaessige Spannung automatisch aus dem Material gefuellt, wenn dort
+eine Streckgrenze stand.  Am 18.09.2026 hat der Nutzer das umgedreht: die Spalte bleibt von Haus
+aus **leer**, und unter der Liste steht ein Hinweis in Orange.
+
+Seine Begruendung: "es sollte von Haus aus keine Streckgrenze angegeben sein, damit der Nutzer
+darauf hingewiesen wird ... (keine Streckgrenze = keine FI)".  Fachlich traegt das:
+
+* Die **Streckgrenze** einer Materialkarte (z.B. Aluminum-6061-T6 = 276 MPa, gemessen in den
+  Karten von FreeCAD 26.3) ist eine Werkstoffkennzahl.  Die **zulaessige** Spannung ist eine
+  Entscheidung (Sicherheitsbeiwert, Lastfall).  Ein automatisch eingetragener Wert sieht aus wie
+  eine Auslegung, ist aber keine - und der Nutzer merkt nicht, dass er sie noch treffen muss.
+* Von den 208 Materialkarten in FreeCAD 26.3 bringen nur **125** eine Streckgrenze mit; die
+  einfachen Karten (CalculiX-Steel, Steel, Aluminum) haben keine.  Im Modell des Nutzers steht
+  deshalb keine - die 235 in der Liste war ein im Objekt gespeicherter Wert (`StressLimits`),
+  kein Wert aus dem Material.
+* Der Failure-Index ist eine Zusatzauswertung: ohne Wert rechnet beso einfach ohne FI.
+
+Verhalten jetzt: Spalte leer.  Unter der Liste steht in Orange "Ohne zulaessige Spannung (sigma)
+wird kein Failure-Index berechnet."  Ist im Material ein Wert hinterlegt, **nennt** der Hinweis
+ihn ("Aus dem Material: <set> = 315 MPa - trage den Wert in die Spalte sigma ein, wenn du die
+Auslastung sehen willst"), traegt ihn aber nicht ein.  Sobald ein Wert in der Spalte steht,
+verschwindet der Hinweis - auch wenn das Feld bewusst geleert wurde, denn gerade dann ist "kein
+FI" die wichtige Information.  Woher der genannte Materialwert kommt, regelt D26 (Zuordnung aus
+der Eingabedatei).
+
 ## D26 - Keine Material- oder Dickenauswahl in der Oberflaeche
 
 Gefragt war (18.09.2026), ob man in der Domaintabelle das **Material** und die

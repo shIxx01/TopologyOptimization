@@ -110,6 +110,14 @@ DEUTSCH = {
         "Arbeitsverzeichnis \u00f6ffnen",
     "No .inp file yet.":
         "Keine .inp vorhanden.",
+    "Without an allowable stress (sigma) no failure index is computed.":
+        "Ohne zulässige Spannung (σ) wird kein Failure-Index berechnet.",
+    "From the material: %s - enter it in the sigma column if you want the utilisation.":
+        "Aus dem Material: %s - trage den Wert in die Spalte σ ein, wenn du die "
+        "Auslastung sehen willst.",
+    "No yield strength is stored in the material - enter the value you want to allow.":
+        "Im Material ist keine Streckgrenze hinterlegt - trage den Wert ein, den du "
+        "zulassen willst.",
     "%d element set(s), element type %s.":
         "%d Element-Set(s), Elementtyp %s.",
     "Source: %s":

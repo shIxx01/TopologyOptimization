@@ -135,6 +135,7 @@ FARBE_FEHLER = "#b04040"      # something is wrong
 FARBE_AUFTRAG = "#b07000"     # the user has to do something
 FARBE_OK = "#2e7d32"          # everything is ready
 FARBE_GRAU = "#808080"        # side note (size and date of the file)
+FARBE_HINWEIS = "#b07000"      # orange note: something to decide
 _aktive_panels = {}          # Panel-Instanzen am Leben halten (sonst raeumt der GC sie ab)
 
 
@@ -173,6 +174,7 @@ class AssistantPanel:
         self.obj = obj
         self.domains = {}          # elset -> role (mirror of the document object)
         self.stress = {}           # elset -> allowable stress in MPa (0/empty = no FI)
+        self.stress_moeglich = {}  # elset -> what the material would allow (MPa)
         self.stress_aus = set()    # elset, bei dem der Nutzer die Spannung bewusst geloescht hat
         self.elsets = {}           # elset -> number of elements
         self.analyse = None
@@ -1166,7 +1168,32 @@ class AssistantPanel:
         self.hinweis_dicke.setStyleSheet("color: gray;")
         self.hinweis_dicke.setVisible(False)
         layout.addWidget(self.hinweis_dicke)
+        # ohne zulaessige Spannung gibt es keinen Failure-Index - das muss man sehen
+        self.hinweis_stress = _label_wrap("")
+        self.hinweis_stress.setStyleSheet("color: %s;" % FARBE_HINWEIS)
+        self.hinweis_stress.setVisible(False)
+        layout.addWidget(self.hinweis_stress)
         return rahmen
+
+    def _zeige_stress_hinweis(self):
+        """Rot/orange unter der Liste: ohne σ kein Failure-Index."""
+        if not hasattr(self, "hinweis_stress"):
+            return
+        ohne = [name for name in sorted(self.elsets) if name not in self.stress]
+        if not ohne:
+            self.hinweis_stress.setVisible(False)
+            return
+        text = uebersetze("Without an allowable stress (sigma) no failure index is computed.")
+        moeglich = getattr(self, "stress_moeglich", {}) or {}
+        werte = ["%s = %g MPa" % (name, moeglich[name]) for name in ohne if name in moeglich]
+        if werte:
+            text += " " + uebersetze("From the material: %s - enter it in the sigma column "
+                                     "if you want the utilisation.") % ", ".join(werte)
+        elif ohne:
+            text += " " + uebersetze("No yield strength is stored in the material - enter the "
+                                     "value you want to allow.")
+        self.hinweis_stress.setText(text)
+        self.hinweis_stress.setVisible(True)
 
     # --------------------------------------------------------------- Daten
     def _setze_kopf(self):
@@ -1266,32 +1293,21 @@ class AssistantPanel:
         self.obj.Document.recompute()
 
     def _vorschlag_aus_material(self):
-        """Zulaessige Spannung aus dem Material vorschlagen (steht dort eine).
+        """Aus dem Material **merken**, welche zulaessige Spannung moeglich waere.
 
-        Nur fuer Sets, die noch keinen Wert haben - wer das Feld bewusst leer
-        gemacht hat (Marker "<set>|0"), bekommt keinen Vorschlag mehr.
+        Die Spalte σ bleibt von Haus aus leer: wer keine zulaessige Spannung
+        eintraegt, rechnet ohne Failure-Index (und soll das bewusst tun).  Damit
+        die Zahl trotzdem zur Hand ist, steht sie im Hinweis unter der Liste.
         """
-        fehlend = [name for name in self.elsets
-                   if name not in self.stress and name not in self.stress_aus]
-        if not fehlend:
-            return
-        werte = material_modul.streckgrenze(
-            material_modul.materialien_finden(self.analyse), fehlend,
-            elset_reader.read_section_materials(getattr(self.obj, "InpFile", "")))
-        neu = {name: wert for name, wert in werte.items() if name in fehlend}
-        if not neu:
-            return
-        self.stress.update(neu)
-        self.obj.StressLimits = dom.format_stress(self.stress, self.stress_aus)
-        self._fuelle_laeuft = True
-        for name, wert in neu.items():
-            feld = self.felder_stress.get(name)
-            if feld is not None and not feld.text():
-                feld.setText(("%g" % wert).replace(".", ","))
-        self._fuelle_laeuft = False
-        App.Console.PrintMessage(
-            uebersetze("TopoOpt: allowable stress taken from the material (MPa): %s\\n")
-            % ", ".join("%s = %g" % (n, w) for n, w in sorted(neu.items())))
+        fehlend = [name for name in self.elsets if name not in self.stress]
+        self.stress_moeglich = {}
+        if fehlend:
+            werte = material_modul.streckgrenze(
+                material_modul.materialien_finden(self.analyse), fehlend,
+                elset_reader.read_section_materials(getattr(self.obj, "InpFile", "")))
+            self.stress_moeglich = {name: wert for name, wert in werte.items()
+                                    if name in fehlend}
+        self._zeige_stress_hinweis()
 
     def _fuelle_tabelle(self):
         self.tabelle.setRowCount(0)
@@ -1335,6 +1351,7 @@ class AssistantPanel:
             self.tabelle.setCellWidget(zeile, 3, sigma)
             self.felder_stress[name] = sigma
         self._fuelle_laeuft = False
+        self._zeige_stress_hinweis()
         self._tabelle_hoehe_anpassen()
 
     def _tabelle_hoehe_anpassen(self):
@@ -1369,6 +1386,7 @@ class AssistantPanel:
             else:
                 self.stress_aus.add(elset)     # bewusst leer - kein Vorschlag mehr
         self.obj.StressLimits = dom.format_stress(self.stress, self.stress_aus)
+        self._zeige_stress_hinweis()
         if wert > 0:
             App.Console.PrintMessage(uebersetze("TopoOpt: allowable stress for '%s' is %s MPa - "
                                                 "the run reports a failure index.\\n")
