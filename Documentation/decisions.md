@@ -481,6 +481,37 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D26 - Keine Material- oder Dickenauswahl in der Oberflaeche
+
+Gefragt war (18.09.2026), ob man in der Domaintabelle das **Material** und die
+**Schalendicke** je Element-Set auswaehlen koennen sollte - ein Modell mit zwei Materialien,
+aber nur einem Element-Set liess vermuten, dass die Zuordnung fehlt.
+
+Nachgesehen in der echten Eingabedatei: FreeCAD schreibt beides fertig hinein, z. B.
+
+    *SOLID SECTION, ELSET=MaterialSolidSolid, MATERIAL=MaterialSolid
+    *SHELL SECTION, ELSET=MaterialSolidElementGeometry2D, MATERIAL=MaterialSolid, OFFSET=0
+    10
+
+Es gibt also nichts zuzuordnen - die Zuordnung entsteht schon in der FEM-Analyse, und
+CalculiX rechnet mit genau diesen Angaben.  Ein Modell mit zwei Materialien, von denen nur
+eines benutzt wird, hat nur fuer dieses eine eine Section-Karte und damit auch nur eine
+Domain.  Eine Auswahlliste in unserem Panel waere deshalb nicht nur ueberfluessig, sie
+koennte sogar etwas anderes behaupten als das, was CalculiX tatsaechlich rechnet.
+
+**Was aber falsch war:** Der Vorschlag fuer die zulaessige Spannung holte das Material
+ueber den **Namensanfang** ('MaterialSolid' gehoert zu 'MaterialSolidSolid').  Das geht
+zufaellig auf, solange das Set nach seinem Material heisst - und liegt falsch, sobald in
+der Eingabedatei ein anderes Material eingetragen ist (`MATERIAL=MaterialSolid001` bei
+einem Set namens `MaterialSolidSolid` haette die Streckgrenze des falschen Materials
+geliefert).  Jetzt liest `elsets.read_section_materials` den Attributwert `MATERIAL` der
+`*SOLID SECTION`/`*SHELL SECTION`-Karten, `material.streckgrenze` nutzt ihn zuerst und
+faellt nur dann auf den Namensanfang zurueck, wenn die Eingabedatei noch nichts enthaelt
+(noch nicht erzeugt).  Gemessen: `tests/headless_test.py` prueft beides - mit Zuordnung
+276 MPa (MaterialSolid001), ohne Zuordnung 235 MPa (Namensanfang).
+Die Schalendicke kommt weiterhin ausschliesslich aus der Eingabedatei (D20-Familie,
+Commit `4e7d261`).
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh

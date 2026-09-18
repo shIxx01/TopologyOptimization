@@ -56,13 +56,19 @@ def MPa(wert):
     return ergebnis if ergebnis > 0 else None
 
 
-def streckgrenze(materialien, elsets):
+def streckgrenze(materialien, elsets, aus_inp=None):
     """Was das Material der Element-Sets hergibt.
 
     ``materialien`` ist eine Liste von ``(Name, Werte-Dict)`` (siehe
-    ``materialien_finden``), ``elsets`` die Menge der Element-Sets.  Zugeordnet wird
-    ueber den Namen: das Material 'MaterialSolid' gehoert zu 'MaterialSolidSolid'.
-    Gibt es nur ein Material, gilt es fuer alle Sets ohne eigenes Material.
+    ``materialien_finden``), ``elsets`` die Menge der Element-Sets.
+
+    Zugeordnet wird zuerst ueber ``aus_inp`` - die Zuordnung Set -> Materialname,
+    die FreeCAD in die Eingabedatei schreibt (``*SOLID SECTION, ELSET=...,
+    MATERIAL=...``, siehe ``elsets.read_section_materials``).  Das ist die
+    Wahrheit: mit genau diesem Material rechnet CalculiX.  Nur wenn die
+    Eingabedatei (noch) keine Zuordnung hat, wird ueber den Namensanfang
+    zugeordnet ('MaterialSolid' gehoert zu 'MaterialSolidSolid'); gibt es nur ein
+    Material, gilt es fuer alle Sets ohne eigenes Material.
 
     Returns {"<elset>": MPa}
     """
@@ -70,10 +76,17 @@ def streckgrenze(materialien, elsets):
     eintraege = [(name, werte) for name, werte in materialien if isinstance(werte, dict)]
     for elset in elsets:
         passend = None
-        for name, werte in eintraege:
-            if name and elset.lower().startswith(name.lower()):
-                passend = werte
-                break
+        name_in_inp = (aus_inp or {}).get(elset)
+        if name_in_inp:
+            for name, werte in eintraege:
+                if name == name_in_inp:
+                    passend = werte
+                    break
+        if passend is None:
+            for name, werte in eintraege:
+                if name and elset.lower().startswith(name.lower()):
+                    passend = werte
+                    break
         if passend is None and len(eintraege) == 1:
             passend = eintraege[0][1]
         if passend is None:

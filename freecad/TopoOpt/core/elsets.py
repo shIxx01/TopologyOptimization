@@ -151,6 +151,37 @@ def read_shell_thicknesses(inp_path):
     return dicken
 
 
+def read_section_materials(inp_path):
+    """Material je Element-Set aus den Section-Karten: ``{elset: materialname}``.
+
+    FreeCAD schreibt die Zuordnung fertig in die Eingabedatei::
+
+        *SOLID SECTION, ELSET=MaterialSolidSolid, MATERIAL=MaterialSolid
+
+    Damit ist eindeutig, mit welchem Material CalculiX fuer dieses Set rechnet -
+    auch dann, wenn ein Modell mehrere Materialien enthaelt.  Sie ist deshalb die
+    Wahrheit und nicht der Name des Sets (der nur *aussieht* wie das Material).
+    """
+    zuordnung = {}
+    if not inp_path or not os.path.isfile(inp_path):
+        return zuordnung
+    try:
+        with open(inp_path, "r", encoding="utf8", errors="ignore") as fh:
+            for zeile in fh:
+                zu = zeile.strip()
+                if not zu.startswith("*"):
+                    continue
+                hoch = zu.upper()
+                if not (hoch.startswith("*SOLID SECTION") or hoch.startswith("*SHELL SECTION")):
+                    continue
+                attrs = _attribute(zu)
+                if attrs.get("ELSET") and attrs.get("MATERIAL"):
+                    zuordnung[attrs["ELSET"]] = attrs["MATERIAL"]
+    except OSError:
+        return {}
+    return zuordnung
+
+
 def gesamt_elemente(inp_path):
     """Number of elements in the mesh (from the *ELEMENT cards)."""
     roh = _rohdaten(inp_path)

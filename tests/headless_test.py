@@ -481,6 +481,30 @@ nur_eins = material_modul.streckgrenze([("Irgendwas", {"YieldStrength": "235 MPa
 pruefe(nur_eins == {"VoelligAnderes": 235.0},
        "bei genau einem Material gilt es fuer alle Sets (%s)" % (nur_eins,))
 
+# Die Zuordnung aus der Eingabedatei hat Vorrang: sie sagt, mit welchem Material
+# CalculiX wirklich rechnet.  Der Name des Sets sieht nur so aus wie ein Material.
+section_inp = os.path.join(tempfile.gettempdir(), "topoopt_section_test.inp")
+with open(section_inp, "w", encoding="utf8") as fh:
+    fh.write("*NODE\n1, 0, 0, 0\n2, 1, 0, 0\n3, 0, 1, 0\n4, 0, 0, 1\n5, 1, 1, 0\n"
+             "*ELEMENT, TYPE=C3D10, ELSET=MaterialSolidSolid\n1, 1,2,3,4,5\n"
+             "*SOLID SECTION, ELSET=MaterialSolidSolid, MATERIAL=MaterialSolid\n"
+             "*SHELL SECTION, ELSET=FlaechenSet, MATERIAL=MaterialSolid001, OFFSET=0\n5\n")
+zuordnung = elset_reader.read_section_materials(section_inp)
+pruefe(zuordnung == {"MaterialSolidSolid": "MaterialSolid", "FlaechenSet": "MaterialSolid001"},
+       "die Materialzuordnung kommt aus den Section-Karten (%s)" % (zuordnung,))
+aus_inp = material_modul.streckgrenze(
+    [("MaterialSolid", {"YieldStrength": "235 MPa"}),
+     ("MaterialSolid001", {"YieldStrength": "276 MPa"})],
+    ["MaterialSolidSolid"], {"MaterialSolidSolid": "MaterialSolid001"})
+pruefe(aus_inp == {"MaterialSolidSolid": 276.0},
+       "die Zuordnung aus der .inp schlaegt den Namensanfang (%s)" % (aus_inp,))
+ohne_inp = material_modul.streckgrenze(
+    [("MaterialSolid", {"YieldStrength": "235 MPa"}),
+     ("MaterialSolid001", {"YieldStrength": "276 MPa"})],
+    ["MaterialSolidSolid"])
+pruefe(ohne_inp == {"MaterialSolidSolid": 235.0},
+       "ohne Zuordnung in der .inp greift der Namensanfang (%s)" % (ohne_inp,))
+
 # --- VTK-Iterationen lesen (resulting_states.vtk) ------------------------------
 from freecad.TopoOpt.core import vtk as vtk_modul  # noqa: E402
 

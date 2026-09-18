@@ -1002,13 +1002,15 @@ class AssistantPanel:
 
     def _lauf_starten(self):
         if not self.obj.InpFile or not os.path.isfile(self.obj.InpFile):
-            self._setze_status(uebersetze("There is no input file yet - see step 1."), "fehler")
+            # erst den Schritt zeigen, dann die Meldung: der Wechsel zu Schritt 1
+            # schreibt die .inp-Info in dieselbe Zeile und wuerde sie sonst loeschen
             self._zeige_schritt(1)
+            self._setze_status(uebersetze("There is no input file yet - see step 1."), "fehler")
             return
         domains = dict(self.domains)
         if not [name for name, rolle in domains.items() if rolle == dom.DESIGN]:
-            self._setze_status(uebersetze("No design space is marked - see step 1."), "fehler")
             self._zeige_schritt(1)
+            self._setze_status(uebersetze("No design space is marked - see step 1."), "fehler")
             return
         try:
             prozess, log, conf = conf_modul.starte(self.obj, self.obj.InpFile, domains,
@@ -1274,7 +1276,8 @@ class AssistantPanel:
         if not fehlend:
             return
         werte = material_modul.streckgrenze(
-            material_modul.materialien_finden(self.analyse), fehlend)
+            material_modul.materialien_finden(self.analyse), fehlend,
+            elset_reader.read_section_materials(getattr(self.obj, "InpFile", "")))
         neu = {name: wert for name, wert in werte.items() if name in fehlend}
         if not neu:
             return
