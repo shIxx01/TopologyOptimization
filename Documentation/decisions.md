@@ -489,3 +489,21 @@ that mixes test data with real work and hides the fact that a fresh model behave
 differently. Found while switching: without a material *reference* (`References` to the
 solid) FreeCAD writes no material ELSET at all, so the domains table stays empty. The test
 document therefore assigns the material to the body.
+
+## D25 - Ehrlicher Leistungsvergleich: Original-beso, alte Workbench, neue Workbench
+
+Gefragt war, ob die alte und die neue Workbench **gleich performen** - auch gegenueber dem
+**originalen beso** von GitHub.  Dafuer wurde `github.com/calculix/beso` frisch geklont
+(HEAD `5056d30` - genau der Stand, auf dem unser Fork aufsetzt) und gegen die beiden
+Kopien gestellt, die es gibt: `vendor/beso` der alten Workbench und das gebuendelte beso
+des Addons.
+
+* Vorbereitung auf 84.395 Volumenelementen / 22,4 Mio. Nachbarpaaren
+  (`tests/vergleich_varianten.py`): Original 27,6 s, **Addon 26,8 s**, Prototyp 104,9 s.
+  Alle drei finden dieselbe mittlere Elementgroesse und dieselbe Paarzahl.
+* Kompletter Lauf auf einem echten Modell mit der Konfiguration der alten Workbench
+  (`tests/vergleich_lauf.py`, 58.871 Elemente, 3 Iterationen): Original 97,2 s,
+  Prototyp 95,2 s, Addon 95,7 s - **bit-identische Massen** in allen drei Staenden.
+* Ergebnis: die neue Workbench rechnet **genau wie das Original-Makro** und genauso
+  schnell; unsere drei Fixes kosten keine Rechenzeit.  Der Umbau der alten Workbench
+  bringt keinen Vorteil, beim grossen 3D-Netz ist er 3,8x langsamer.
