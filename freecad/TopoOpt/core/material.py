@@ -100,6 +100,28 @@ def streckgrenze(materialien, elsets, aus_inp=None):
     return ergebnis
 
 
+def fehlende_werte(materialien):
+    """Welche Werkstoffwerte fehlen, die CalculiX zum Rechnen braucht.
+
+    ``materialien`` ist eine Liste von ``(Name, Werte-Dict)`` (siehe
+    ``materialien_finden``).  FreeCADs Eingabedatei-Schreiber bricht ohne E-Modul
+    mit einem nackten ``KeyError: 'YoungsModulus'`` ab und laesst dabei eine
+    halbfertige ``.inp`` zurueck.  Damit das vorher auffaellt, meldet diese
+    Funktion je Material, was fehlt.
+
+    Returns ``{"<materialname>": ["YoungsModulus", ...]}``
+    """
+    fehlt = {}
+    for name, werte in materialien:
+        if not isinstance(werte, dict):
+            continue
+        offen = [schluessel for schluessel in ("YoungsModulus", "PoissonRatio")
+                 if schluessel not in werte]
+        if offen:
+            fehlt[name] = offen
+    return fehlt
+
+
 def materialien_finden(analyse):
     """Die Materialobjekte des Modells als [(Name, Werte-Dict), ...].
 

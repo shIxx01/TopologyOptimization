@@ -239,6 +239,24 @@ try:
     pruefe(panel.hinweis_inp.isHidden(),
            "mit vollstaendiger Datei verschwindet der Hinweis")
 
+    # Material ohne E-Modul -> Hinweis mit Materialnamen (FreeCAD wuerde abbrechen)
+    material_probe = doc.getObject("MaterialSolid")
+    werte_probe = dict(material_probe.Material)
+    ohne_e = dict(werte_probe)
+    ohne_e.pop("YoungsModulus", None)
+    material_probe.Material = ohne_e
+    doc.recompute()
+    panel._fuelle_tabelle()
+    pruefe(not panel.hinweis_inp.isHidden() and "MaterialSolid" in panel.hinweis_inp.text()
+           and "YoungsModulus" in panel.hinweis_inp.text(),
+           "ein Material ohne E-Modul wird mit Namen gemeldet (%s)"
+           % panel.hinweis_inp.text()[:90])
+    material_probe.Material = werte_probe
+    doc.recompute()
+    panel._fuelle_tabelle()
+    pruefe(panel.hinweis_inp.isHidden(),
+           "nach dem Ergaenzen der Werte verschwindet der Hinweis")
+
     # Filter: Standard ist besos [["simple", "auto"]]
     pruefe(len(panel.filter_zeilen) == 1,
            "Standard: eine Filterzeile (%d)" % len(panel.filter_zeilen))

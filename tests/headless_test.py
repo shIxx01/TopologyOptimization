@@ -530,6 +530,16 @@ pruefe(bericht2["fehlende_karten"] == [], "eine vollstaendige .inp meldet keine 
 pruefe(bericht2["ohne_material"] == ["Set2"],
        "nur das Set ohne Section-Karte wird genannt (%s)" % bericht2["ohne_material"])
 
+# Ein Material ohne E-Modul laesst FreeCAD beim Schreiben der .inp abbrechen
+fehlend = material_modul.fehlende_werte(
+    [("Vollstaendig", {"YoungsModulus": "210000 MPa", "PoissonRatio": "0.3"}),
+     ("Leer", {"Density": "7.9e-06 kg/mm^3"}),
+     ("OhneNu", {"YoungsModulus": "210000 MPa"})])
+pruefe(fehlend == {"Leer": ["YoungsModulus", "PoissonRatio"], "OhneNu": ["PoissonRatio"]},
+       "fehlende Werkstoffwerte werden je Material gemeldet (%s)" % fehlend)
+pruefe(material_modul.fehlende_werte([("A", {"YoungsModulus": "x", "PoissonRatio": "y"})]) == {},
+       "ein vollstaendiges Material wird nicht gemeldet")
+
 # --- VTK-Iterationen lesen (resulting_states.vtk) ------------------------------
 from freecad.TopoOpt.core import vtk as vtk_modul  # noqa: E402
 

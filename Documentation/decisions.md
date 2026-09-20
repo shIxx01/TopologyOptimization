@@ -504,6 +504,17 @@ Testmodell der Testsuite hat keine).  Gemessen: `tests/headless_test.py` prueft 
 Datei, die Datei mit einem Set ohne Section und den unauffaelligen Fall (138 Pruefungen);
 `tests/panel_test.py` prueft, dass der Hinweis erscheint und wieder verschwindet (127).
 
+**Nachtrag - die Ursache des Abbruchs selbst:** Ein Material mit der Karte `Default` hatte nur
+eine Dichte, aber **keinen E-Modul**.  FreeCADs Schreiber bricht dann mit
+`KeyError: 'YoungsModulus'` ab und laesst genau so eine halbfertige Datei zurueck (im Panel stand
+nur "Die Eingabedatei konnte nicht erzeugt werden: 'YoungsModulus'").  Deshalb prueft
+`material.fehlende_werte()` alle Materialien der Analyse auf `YoungsModulus` und `PoissonRatio`,
+und `AssistantPanel._pruefe_inp()` nennt sie im selben roten Hinweis:
+"Diesen Materialien fehlen Werte, die CalculiX braucht: <Material> (YoungsModulus) - bitte im
+Material-Editor ergaenzen."  Gemessen: headless 140 Pruefungen (Material ohne E-Modul, Material
+ohne Querkontraktion, vollstaendiges Material), Assistent 129 (Hinweis nennt Material und Wert,
+verschwindet nach dem Ergaenzen).
+
 ## D28 - Das Optimierungsobjekt hat kein schaltbares Auge im Baum
 
 Sichtbarkeit ist keine Eigenschaft des Objekts, sondern des Szenengraphen seines ViewProviders.

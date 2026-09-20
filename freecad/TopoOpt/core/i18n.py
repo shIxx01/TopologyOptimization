@@ -110,6 +110,10 @@ DEUTSCH = {
         "Arbeitsverzeichnis \u00f6ffnen",
     "No .inp file yet.":
         "Keine .inp vorhanden.",
+    "These materials are missing values CalculiX needs: %s - complete them in the "
+    "material editor.":
+        "Diesen Materialien fehlen Werte, die CalculiX braucht: %s - bitte im "
+        "Material-Editor erg\u00e4nzen.",
     "The input file is incomplete (%s missing) - write it again.":
         "Die Eingabedatei ist unvollst\u00e4ndig (es fehlt %s) - bitte neu erzeugen.",
     "CalculiX has no material for these element sets (no section card): %s - their "

@@ -1176,6 +1176,14 @@ class AssistantPanel:
             teile.append(uebersetze("CalculiX has no material for these element sets (no section "
                                     "card): %s - their elements are left out of the calculation.")
                          % ", ".join(ergebnis["ohne_material"]))
+        # Material ohne E-Modul: FreeCAD bricht beim Schreiben ab und laesst eine
+        # halbfertige .inp zurueck - das muss vorher auffallen, nicht als KeyError
+        fehlend = material_modul.fehlende_werte(material_modul.materialien_finden(self.analyse))
+        if fehlend:
+            teile.append(uebersetze("These materials are missing values CalculiX needs: %s - "
+                                    "complete them in the material editor.")
+                         % ", ".join("%s (%s)" % (name, ", ".join(werte))
+                                     for name, werte in sorted(fehlend.items())))
         self.hinweis_inp.setText(" ".join(teile))
         self.hinweis_inp.setVisible(bool(teile))
 
