@@ -479,6 +479,20 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D31 - Kein RecursionError mehr, wenn ein Lauf mit Fehler endet
+
+Nach einem Lauf, der mit einem Fehlercode endet, lief die Oberflaeche in eine Endlosrekursion:
+`_lauf_aktualisieren()` klappte im Fehlerfall das Detailfeld auf (`knopf_detail.setChecked(True)`
+und `_detail_umschalten()`), und `_detail_umschalten()` ruft bei sichtbarem Detail wieder
+`_lauf_aktualisieren()` - das den Fehlerfall erneut erreicht.  FreeCADs Konsole fuellte sich mit
+`RecursionError: maximum recursion depth exceeded while calling a Python object`.
+
+Behoben: das Fuellen des Detailtextes steckt jetzt in `_detail_fuellen()`.  Der Fehlerfall setzt
+Sichtbarkeit und Pfeil direkt und ruft `_detail_fuellen()` **einmal** auf - ohne den Umweg ueber
+`_detail_umschalten()`, der zurueckruft.  Gemessen: `tests/panel_test.py` stellt den Fehlerfall
+nach (Lauf vorbei, Detail zugeklappt) und prueft, dass der Aufruf zurueckkommt und das Feld offen
+ist (132 Pruefungen).
+
 ## D30 - Der Failure-Index braucht in jeder Domain eine zulaessige Spannung
 
 Ein Lauf mit einer Domain ohne sigma brach mit `KeyError: 27004` ab (`beso_lib.save_FI`).

@@ -992,6 +992,7 @@ class AssistantPanel:
         self.knopf_detail.setArrowType(QtCore.Qt.DownArrow if sichtbar
                                        else QtCore.Qt.RightArrow)
         if sichtbar:
+            self._detail_fuellen()
             self._lauf_aktualisieren()
 
     # ------------------------------------------------------------ der Lauf
@@ -1089,10 +1090,7 @@ class AssistantPanel:
         self.lauf_status.setVisible(bool(teile))
 
         if self.detail.isVisible():
-            text = logdatei.verlauf_lesen(self._lauf_log)["text"]
-            self.detail.setPlainText("\n".join(text.splitlines()[-40:]))
-            leiste = self.detail.verticalScrollBar()
-            leiste.setValue(leiste.maximum())
+            self._detail_fuellen()
 
         if not laeuft:
             self.lauf_timer.stop()
@@ -1112,8 +1110,23 @@ class AssistantPanel:
             else:
                 self._setze_status(uebersetze("The run ended (code %s) - open the details.")
                                    % code, "fehler")
-                self.knopf_detail.setChecked(True)
-                self._detail_umschalten()
+                # aufklappen und den Text EINMAL fuellen: ein Aufruf von
+                # _detail_umschalten() wuerde von dort wieder _lauf_aktualisieren()
+                # aufrufen und im Fehlerfall endlos kreisen (RecursionError)
+                if not self.knopf_detail.isChecked():
+                    self.knopf_detail.setChecked(True)
+                    self.detail.setVisible(True)
+                    self.knopf_detail.setArrowType(QtCore.Qt.DownArrow)
+                self._detail_fuellen()
+
+    def _detail_fuellen(self):
+        """Die letzten Zeilen des eigenen Protokolls ins Detailfeld schreiben."""
+        if not self._lauf_log:
+            return
+        text = logdatei.verlauf_lesen(self._lauf_log)["text"]
+        self.detail.setPlainText("\n".join(text.splitlines()[-40:]))
+        leiste = self.detail.verticalScrollBar()
+        leiste.setValue(leiste.maximum())
 
     def _inp_bereich(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("CalculiX input file (.inp)"))

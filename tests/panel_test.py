@@ -417,6 +417,21 @@ try:
            "die Zielmasse im Verlauf ist gesetzt (%.1f)" % (panel2.verlauf.zielmasse or -1))
     pruefe(panel2.balken.value() > 0,
            "der Fortschrittsbalken ist gewandert (%d %%)" % panel2.balken.value())
+
+    # Fehlerfall im Lauf-Update: Lauf vorbei, Detail zugeklappt.  Das Aufklappen darf
+    # sich nicht selbst aufrufen - das war ein RecursionError (995 <-> 1116).
+    panel2.lauf_timer.stop()
+    panel2._lauf_prozess = None
+    panel2.knopf_detail.setChecked(False)
+    panel2.detail.setVisible(False)
+    try:
+        panel2._lauf_aktualisieren()
+        zurueck = True
+    except RecursionError:
+        zurueck = False
+    pruefe(zurueck, "der Fehlerfall im Lauf-Update kreist nicht in einer Rekursion")
+    pruefe(not panel2.detail.isHidden(),
+           "dabei klappt das Detailfeld auf und zeigt den Log-Auszug")
     pruefe(panel2.balken.value() < 100,
            "der Balken springt am Ende nicht auf 100 %% - die Zielmasse war nicht erreicht "
            "(%d %%)" % panel2.balken.value())
