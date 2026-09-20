@@ -110,6 +110,10 @@ DEUTSCH = {
         "Arbeitsverzeichnis \u00f6ffnen",
     "No .inp file yet.":
         "Keine .inp vorhanden.",
+    "The failure index needs an allowable stress in EVERY domain - still missing in: "
+    "%s. The run stops without it.":
+        "Der Failure-Index braucht in JEDER Domain eine zul\u00e4ssige Spannung - sie "
+        "fehlt noch bei: %s. Ohne sie bricht der Lauf ab.",
     "These materials are missing values CalculiX needs: %s - complete them in the "
     "material editor.":
         "Diesen Materialien fehlen Werte, die CalculiX braucht: %s - bitte im "

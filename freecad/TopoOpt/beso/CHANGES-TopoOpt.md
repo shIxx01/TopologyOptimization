@@ -42,6 +42,15 @@ offered upstream as a pull request (calculix/beso#57, #58, #59, #60):
    with `filter_list = [["casting", "auto", (0, 0, 1)]]`: before the fix beso stopped after
    after 0.7 s without a single iteration, afterwards it runs with the automatic filter range.
    Offered upstream as calculix/beso#60.
+5. **`beso_lib.py`, `save_FI`** - an element without a failure criterion stops the run with
+   `KeyError: <element number>`.  The other two places that read `criteria_elm` guard against
+   a missing entry (`if en in criteria_elm`), this one did not; it now uses
+   `criteria_elm.get(en, [])`.  Measured with two domains of which only one has an allowable
+   stress: before, the run stopped with `KeyError: 27004`, afterwards it reports what beso
+   actually needs ("Check if each domain contains at least one failure criterion").  Not
+   offered upstream - the four pull requests #57...#60 are enough for now, and the case is
+   rare there (the original dialog writes a criterion for every domain as soon as one value
+   is entered).
 
 Licence note: beso is LGPL-3.0-or-later, this addon is LGPL-3.0-or-later as well, and the
 changes are listed here and marked in the sources - the conditions for redistributing a

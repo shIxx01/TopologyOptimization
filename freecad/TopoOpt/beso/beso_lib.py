@@ -680,7 +680,7 @@ def import_FI_int_pt(reference_value, file_nameW, domains, criteria, domain_FI, 
         FI_step[sn][en] = []
         for FIn in range(len(criteria)):
             FI_step[sn][en].append(None)
-            if FIn in criteria_elm[en]:
+            if FIn in criteria_elm.get(en, []):
                 if reference_value == "max":
                     FI_step[sn][en][FIn] = max(FI_int_pt[FIn])
                 elif reference_value == "average":

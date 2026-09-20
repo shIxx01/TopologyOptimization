@@ -133,7 +133,19 @@ def _conf_fuer(modell, einstellungen, ordner, beso_ordner):
             fh.write(dicke_zeile)
         fh.write("mass_goal_ratio = %r\n" % einstellungen["zielmasse"])
         fh.write("filter_list = %r\n" % (filter_liste,))
-        fh.write("optimization_base = 'stiffness'\n")
+        fh.write("optimization_base = %r\n" % einstellungen.get("basis", "stiffness"))
+        # zulaessige Spannung je Domain - eine Domain darf bewusst keine haben
+        for dn, wert in (einstellungen.get("sigma") or {}).items():
+            zeile = ("domain_FI[%r] = [[('stress_von_Mises', %r)], "
+                     "[('stress_von_Mises', %r)]]\n") % (dn, wert * 1e6, wert * 1e6)
+            fh.write(zeile)
+        # eine zweite Domain: berechnet, aber nicht optimiert
+        zweite = einstellungen.get("zweite_domain")
+        if zweite:
+            fh.write("domain_optimized[%r] = False\n" % zweite)
+            fh.write("domain_density[%r] = [1e-6, 1.0]\n" % zweite)
+            fh.write(("domain_material[%r] = ['*ELASTIC" + chr(92) + "n0.21, 0.3', "
+                      "'*ELASTIC" + chr(92) + "n70000, 0.33']") % zweite + chr(10))
         fh.write("mass_addition_ratio = 0.015\n")
         fh.write("mass_removal_ratio = 0.03\n")
         fh.write("ratio_type = 'relative'\n")
@@ -274,6 +286,7 @@ def fehlerfaelle():
 MODELL_3D = os.path.join(MODELLE, "modell_3d_hex.inp")
 MODELL_2D = os.path.join(MODELLE, "modell_2d_schale.inp")
 MODELL_2D_OHNE = os.path.join(MODELLE, "modell_2d_ohne_dicke.inp")
+MODELL_2SETS = os.path.join(MODELLE, "modell_2sets.inp")
 
 # Szenarien, bei denen unser beso absichtlich anders reagiert als das Original
 BEKANNTE_ABWEICHUNGEN = ("2D Schale casting auto", "3D simple 1.5 (Radius zu klein)",
@@ -290,6 +303,10 @@ MATRIX = [
                                      "iterationen": "2", "dicken_modus": "auto"}),
     ("3D simple manuell 1.0", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", 1.0]],
                                          "iterationen": "2", "dicken_modus": "auto"}),
+    ("3D zwei Sets, eines ohne sigma", MODELL_2SETS,
+     {"zielmasse": 0.6, "filter": [["simple", "auto"]], "iterationen": "2",
+      "dicken_modus": "auto", "basis": "failure_index",
+      "sigma": {"SetA": 235.0}, "zweite_domain": "SetB"}),
     ("3D casting auto", MODELL_3D, {"zielmasse": 0.6,
                                     "filter": [["casting", 1.5, (0, 0, 1)]],
                                     "iterationen": "2", "dicken_modus": "auto"}),

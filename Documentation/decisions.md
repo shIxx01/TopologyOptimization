@@ -479,6 +479,32 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D30 - Der Failure-Index braucht in jeder Domain eine zulaessige Spannung
+
+Ein Lauf mit einer Domain ohne sigma brach mit `KeyError: 27004` ab (`beso_lib.save_FI`).
+Nachgemessen: `criteria_elm` wird nur aus `domain_FI` gefuellt (also nur fuer Domains **mit**
+Spannung), und `save_FI` griff - anders als die beiden anderen Stellen, die `if en in
+criteria_elm` pruefen - ungeprueft zu.  Mit `criteria_elm.get(en, [])` laeuft es weiter, und beso
+meldet danach, was es wirklich braucht: "FI_max computing failed. Check if each domain contains at
+least one failure criterion."
+
+Das ist beso-Logik und bleibt so: der Failure-Index wird **je Domain** gebildet, also braucht jede
+Domain ein Kriterium, sobald ueberhaupt eines gesetzt ist.  Die zulaessige Spannung ist bei uns
+**optional** (D27) - deshalb neu:
+
+* Panel: **rot**, wenn sigma nur bei einem Teil der Domains gesetzt ist ("Der Failure-Index braucht
+  in JEDER Domain eine zulaessige Spannung - sie fehlt noch bei: ...") und wie bisher orange,
+  wenn gar keines gesetzt ist.  Rot, weil der Lauf sonst abbricht.
+* **Fix 5** im gebuendelten beso: ein Element ohne Kriterium wird uebersprungen statt mit
+  `KeyError` abzustuerzen.  **Nicht** upstream angeboten - die vier PRs #57...#60 genuegen, und
+  die Original-GUI schreibt ein Kriterium nur dort, wo der Nutzer einen Wert eintraegt
+  (nachgemessen: `beso_fc_gui.py:836 if von_mises:`), der Fall ist dort also moeglich, aber
+  seltener.
+* Testfall: `tests/szenarien/modell_2sets.inp` (zwei Element-Sets mit eigenem Material) und das
+  Szenario "3D zwei Sets, eines ohne sigma".  Gemessen: 17 Szenarien, 14 identisch, die drei
+  Abweichungen sind die bekannten Fixes; der neue Fall bricht bei beiden beso-Staenden ab,
+  unseres mit der klaren Meldung.
+
 ## D29 - Die Eingabedatei wird geprueft, bevor der Lauf startet
 
 Ein Lauf mit zwei Materialien und zwei Element-Sets endete mit

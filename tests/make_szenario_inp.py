@@ -18,8 +18,12 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 ZIEL = os.path.join(HIER, "szenarien")
 
 
-def hexaeder_modell(kanten=20.0, teile=2):
-    """Wuerfel aus Hexaedern, unten fest, Zug nach unten oben."""
+def hexaeder_modell(kanten=20.0, teile=2, zwei_sets=False):
+    """Wuerfel aus Hexaedern, unten fest, Zug nach unten oben.
+
+    Mit ``zwei_sets`` entstehen zwei Element-Sets mit je eigenem Material -
+    der Fall "eine Domain ohne zulaessige Spannung".
+    """
     schritt = kanten / teile
     knoten = {}
     zeilen = ["*NODE"]
@@ -31,8 +35,12 @@ def hexaeder_modell(kanten=20.0, teile=2):
                 knoten[(i, j, k)] = nummer
                 zeilen.append("%d, %.6f, %.6f, %.6f"
                               % (nummer, i * schritt, j * schritt, k * schritt))
-    elemente = ["*ELEMENT, TYPE=C3D8, ELSET=MaterialSolidSolid"]
+    gesamt = teile ** 3
+    haelfte = gesamt // 2
+    erster = "SetA" if zwei_sets else "MaterialSolidSolid"
+    elemente = ["*ELEMENT, TYPE=C3D8, ELSET=%s" % erster]
     nummer = 0
+    zweite_zeilen = []
     for k in range(teile):
         for j in range(teile):
             for i in range(teile):
@@ -41,17 +49,45 @@ def hexaeder_modell(kanten=20.0, teile=2):
                      knoten[(i + 1, j + 1, k)], knoten[(i, j + 1, k)],
                      knoten[(i, j, k + 1)], knoten[(i + 1, j, k + 1)],
                      knoten[(i + 1, j + 1, k + 1)], knoten[(i, j + 1, k + 1)]]
-                elemente.append("%d, %s" % (nummer, ", ".join(str(x) for x in e)))
+                zeile = "%d, %s" % (nummer, ", ".join(str(x) for x in e))
+                if zwei_sets and nummer > haelfte:
+                    zweite_zeilen.append(zeile)
+                else:
+                    elemente.append(zeile)
+    if zwei_sets:
+        elemente.append("*ELEMENT, TYPE=C3D8, ELSET=SetB")
+        elemente += zweite_zeilen
     unten = [knoten[(i, j, 0)] for i in range(teile + 1) for j in range(teile + 1)]
     oben = [knoten[(i, j, teile)] for i in range(teile + 1) for j in range(teile + 1)]
-    return "\n".join(zeilen + elemente + [
-        "*ELSET, ELSET=Eall",
-        "MaterialSolidSolid",
-        "*MATERIAL, NAME=MaterialSolid",
-        "*ELASTIC",
-        "210000, 0.3",
-        "*DENSITY",
-        "7.9e-09",
+    if zwei_sets:
+        kopf = [
+            "*ELSET, ELSET=Eall",
+            "SetA",
+            "SetB",
+            "*MATERIAL, NAME=MaterialSolid",
+            "*ELASTIC",
+            "210000, 0.3",
+            "*DENSITY",
+            "7.9e-09",
+            "*MATERIAL, NAME=MaterialSolid001",
+            "*ELASTIC",
+            "70000, 0.33",
+            "*DENSITY",
+            "2.7e-09",
+            "*SOLID SECTION, ELSET=SetA, MATERIAL=MaterialSolid",
+            "*SOLID SECTION, ELSET=SetB, MATERIAL=MaterialSolid001",
+        ]
+    else:
+        kopf = [
+            "*ELSET, ELSET=Eall",
+            "MaterialSolidSolid",
+            "*MATERIAL, NAME=MaterialSolid",
+            "*ELASTIC",
+            "210000, 0.3",
+            "*DENSITY",
+            "7.9e-09",
+        ]
+    return "\n".join(zeilen + elemente + kopf + [
         "*BOUNDARY",
         "\n".join("%d, 1, 3, 0.0" % n for n in unten),
         "*STEP",
@@ -112,6 +148,7 @@ def main():
         os.makedirs(ZIEL)
     dateien = {
         "modell_3d_hex.inp": hexaeder_modell(),
+        "modell_2sets.inp": hexaeder_modell(zwei_sets=True),
         "modell_2d_schale.inp": schalen_modell(),
         "modell_2d_ohne_dicke.inp": schalen_modell(mit_dicke=False),
     }

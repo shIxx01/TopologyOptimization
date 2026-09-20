@@ -221,6 +221,20 @@ try:
     panel._fuelle_tabelle()
     doc.recompute()
 
+    # sigma nur bei einem Teil der Domains -> rote Warnung (beso bricht sonst ab)
+    panel.elsets["ZweitesSet"] = 100
+    panel.stress = {erster: 235.0}
+    panel._zeige_stress_hinweis()
+    pruefe(not panel.hinweis_stress.isHidden()
+           and "ZweitesSet" in panel.hinweis_stress.text()
+           and "#b04040" in panel.hinweis_stress.styleSheet(),
+           "sigma nur teilweise gesetzt wird rot gemeldet (%s)"
+           % panel.hinweis_stress.text()[:80])
+    del panel.elsets["ZweitesSet"]
+    panel.stress = {}
+    panel.stress_aus = set()
+    panel._fuelle_tabelle()
+
     # Eingabedatei ohne Section-Karte fuer ein Set -> roter Hinweis in Schritt 1
     quelle = panel.obj.InpFile
     kaputt = os.path.join(tempfile.gettempdir(), "TopoOpt_PanelKaputt.inp")

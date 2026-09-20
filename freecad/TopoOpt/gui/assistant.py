@@ -1222,6 +1222,19 @@ class AssistantPanel:
         if not ohne:
             self.hinweis_stress.setVisible(False)
             return
+        mit = [name for name in sorted(self.elsets) if name in self.stress]
+        if mit:
+            # beso bildet je Domain ein FI_max und bricht ab, wenn eine Domain kein
+            # Kriterium hat - sobald irgendwo eine zulaessige Spannung steht, brauchen
+            # sie alle.  Das ist ein Abbruchgrund, deshalb rot.
+            self.hinweis_stress.setText(
+                uebersetze("The failure index needs an allowable stress in EVERY domain - "
+                           "still missing in: %s. The run stops without it.")
+                % ", ".join(ohne))
+            self.hinweis_stress.setStyleSheet("color: %s;" % FARBE_FEHLER)
+            self.hinweis_stress.setVisible(True)
+            return
+        self.hinweis_stress.setStyleSheet("color: %s;" % FARBE_HINWEIS)
         text = uebersetze("Without an allowable stress (sigma) no failure index is computed.")
         moeglich = getattr(self, "stress_moeglich", {}) or {}
         werte = ["%s = %g MPa" % (name, moeglich[name]) for name in ohne if name in moeglich]
