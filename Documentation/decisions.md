@@ -479,6 +479,21 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D28 - Das Optimierungsobjekt hat kein schaltbares Auge im Baum
+
+Sichtbarkeit ist keine Eigenschaft des Objekts, sondern des Szenengraphen seines ViewProviders.
+Unser Provider liefert Icon, Doppelklick und Werkzeugtip und zeichnet nichts in die 3D-Ansicht -
+deshalb graut FreeCAD das Augensymbol aus.  Die anderen FEM-Objekte haben es, weil Material,
+Solver und Netz etwas zeichnen (gemessen im Dokument: `MaterialSolid` und `SolverCalculiX` mit
+FreeCAD-eigenen Providern, unser Objekt mit `TopologyViewProvider`).
+
+Das ist beabsichtigt: das Objekt ist ein **Steuerobjekt**, die Ergebnisse liegen als eigene
+Objekte im Baum (VTK-Iterationen, Ergebnisnetz) und haben dort ihr eigenes Auge.
+
+Verworfen: das Auge mit der letzten Iteration verbinden (doppelte Darstellung neben den
+Ergebnisobjekten) und das Auge mit einem leeren Knoten nur schaltbar machen (sichtbar wie bei
+anderen Objekten, aber ohne Wirkung).
+
 ## D27 - Die Spalte sigma bleibt leer, ein Hinweis erklaert den Failure-Index (loest D20 ab)
 
 Bis hierher (D20) wurde die zulaessige Spannung automatisch aus dem Material gefuellt, wenn dort
