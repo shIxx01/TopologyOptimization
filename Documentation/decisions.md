@@ -479,6 +479,16 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D36 - Der Lauf-Status teilt sich die Zeile, ohne umzubrechen
+
+Der Status ("Iteration 2 | Masse 57836, Ziel 36319") steht neben dem ausklappbaren "Details" - er
+lief aber auf zwei Zeilen um, obwohl rechts Platz war.  Ursache war das Layout: vor dem Label stand
+`addStretch(1)`, das Umbruch-Label bekam dadurch nur seine (kleine) Wunschbreite und brach um.
+
+Jetzt bekommt das Label den Rest der Zeile (`addWidget(self.lauf_status, 1)`), der Dehnungs-Platz
+davor entfaellt.  Gemessen im Panel-Test bei 560 px Panelbreite: Label **447 px** bei 193 px
+Textbreite, Hoehe 25 px - also **eine** Zeile (Zeilenhoehe 16 px).  Assistent 135/135.
+
 ## D35 - Neue Element-Sets sind von Haus aus Design-Raum
 
 Beim Bauen mit zwei Materialien fiel auf: die Domainliste stand komplett auf "ignorieren" - nur

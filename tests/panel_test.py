@@ -471,6 +471,26 @@ try:
            "der Lauf-Status teilt sich die Zeile mit 'Details' (keine leere Zeile)")
     pruefe(panel2.lauf_status.text() != "",
            "der Status ist gefuellt (%s)" % panel2.lauf_status.text())
+
+    # Der Status teilt sich die Zeile mit "Details", bekommt aber den Rest der Breite.
+    # Vorher stand davor ein Dehnungs-Platz: das Umbruch-Label bekam nur seine
+    # Wunschbreite und der Text lief auf zwei Zeilen um.
+    from PySide import QtWidgets as _Qt  # noqa: E402
+    panel2.form.resize(560, 760)
+    panel2.form.show()
+    _Qt.QApplication.processEvents()
+    panel2.lauf_status.setText("Iteration 2 | Masse 57836, Ziel 36319")
+    _Qt.QApplication.processEvents()
+    _masse = panel2.lauf_status.fontMetrics()
+    _text = _masse.horizontalAdvance(panel2.lauf_status.text())
+    _breite = panel2.lauf_status.width()
+    _hoehe = panel2.lauf_status.height()
+    pruefe(_breite >= _text,
+           "der Status hat Platz fuer eine Zeile (Label %d px, Text %d px)" % (_breite, _text))
+    pruefe(_hoehe <= _masse.height() * 1.7,
+           "der Status steht in einer Zeile (%d px hoch, Zeilenhoehe %d px)"
+           % (_hoehe, _masse.height()))
+    panel2.form.hide()
     pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit laeuft mit (%s)"
            % panel2.lauf_zeit.text())
     pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),

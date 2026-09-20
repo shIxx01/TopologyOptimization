@@ -703,10 +703,11 @@ class AssistantPanel:
         self.knopf_detail.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.knopf_detail.clicked.connect(self._detail_umschalten)
         kopf_zeile.addWidget(self.knopf_detail)
-        kopf_zeile.addStretch(1)
         self.lauf_status = _label_wrap("")
         self.lauf_status.setStyleSheet("color: gray;")
-        kopf_zeile.addWidget(self.lauf_status)
+        # dem Label den Rest der Zeile geben: sonst bekommt es nur seine (kleine)
+        # Wunschbreite, obwohl rechts Platz ist, und bricht auf zwei Zeilen um
+        kopf_zeile.addWidget(self.lauf_status, 1)
         lauf.addLayout(kopf_zeile)
 
         self.detail = QtWidgets.QPlainTextEdit()
