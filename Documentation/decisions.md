@@ -479,6 +479,25 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D34 - Der Lauf startet ungepuffert (-u)
+
+Balken und Diagramme lesen besos Iterationstabelle aus `<mesh>.log`; das Detailfeld zeigt dagegen
+unsere Logdatei `<mesh>_topoopt.log`, in die die Ausgabe des Laufs umgeleitet wird.  Der Lauf wurde
+ohne `-u` und ohne `PYTHONUNBUFFERED` gestartet - Pythons stdout ist dann **blockgepuffert**, die
+Datei blieb also leer, bis der Prozess endete.  Symptom: waehrend der Rechnung stand im Detailfeld
+nichts, erst nach dem Job die letzten Iterationen.
+
+Gemessen an einem Kindprozess, der fuenf Zeilen mit je 0,4 s Pause schreibt: ohne `-u` bleibt die
+Logdatei bei **0 Bytes** und enthaelt alles erst nach dem Prozessende; mit `-u` waechst sie
+schrittweise mit (9, 18, 18, 27, 36, 45 Bytes).
+
+`conf.starte()` startet den Lauf jetzt mit `-u` und `PYTHONUNBUFFERED=1` in der Umgebung
+(`PYTHONUTF8` bleibt gesetzt, falls nicht schon vorhanden).  Der **Fortschrittsbalken** war von der
+Ursache aus D33 betroffen und ist damit mitbehoben - Beleg: ein bei Iteration 3 bzw. 7
+abgeschnittenes Log ergibt 14,7 % bzw. 28,5 %, am Ende 100 %.
+
+headless 145/145 (der neue Test prueft die Argumente des Prozessstarts).
+
 ## D33 - Die Diagramme lesen besos Tabelle ueber die Kopfzeile
 
 besos Iterationstabelle aendert ihre Spaltenzahl mit dem Modell.  Mit Failure Index bekommt sie je

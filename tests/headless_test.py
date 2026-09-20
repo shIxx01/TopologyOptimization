@@ -339,6 +339,40 @@ pruefe(os.path.isfile(os.path.join(ziel4, "beso_main.py")), "beso_main.py liegt 
 pruefe(os.path.isfile(os.path.join(ziel4, "beso_conf_vorlage.py")),
        "die beso-Vorlage liegt unveraendert daneben")
 
+# --- der Lauf wird ungepuffert gestartet --------------------------------------
+# Ohne -u/PYTHONUNBUFFERED puffert das Kind blockweise: die Logdatei bleibt leer,
+# bis der Lauf endet, und das Detailfeld im Panel zeigt waehrend des Laufs nichts
+# (gemessen: 0 Bytes bis zum Prozessende).
+_echter_popen = conf_modul.subprocess.Popen
+_aufrufe = []
+
+
+class _FakeProzess(object):
+    returncode = None
+
+
+def _fake_popen(args, **kwargs):
+    _aufrufe.append((args, kwargs))
+    return _FakeProzess()
+
+
+_conf_testordner = _tempfile.mkdtemp(prefix="topoopt_start_")
+_inp5 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "beispiel.inp")
+conf_modul.subprocess.Popen = _fake_popen
+try:
+    prozess5, log5, conf5 = conf_modul.starte(obj5, _inp5, domains4, _conf_testordner)
+finally:
+    conf_modul.subprocess.Popen = _echter_popen
+if _aufrufe:
+    _args, _kwargs = _aufrufe[0]
+    pruefe("-u" in _args, "der Lauf startet ungepuffert (-u): %s" % _args)
+    pruefe(_kwargs.get("env", {}).get("PYTHONUNBUFFERED") == "1",
+           "PYTHONUNBUFFERED steht in der Umgebung des Laufs")
+    pruefe(_kwargs.get("env", {}).get("PYTHONUTF8") == "1",
+           "PYTHONUTF8 steht in der Umgebung des Laufs")
+else:
+    pruefe(False, "der Lauf wird gestartet (Popen wurde aufgerufen)")
+
 # --- zulaessige Spannung -> Failure Index -------------------------------------
 limits = dom.parse_stress(["SetA|235.0", "SetB|", "SetC|kaputt", "SetD|0"])
 pruefe(limits == {"SetA": 235.0},

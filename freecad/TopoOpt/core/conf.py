@@ -224,8 +224,15 @@ def starte(obj, inp_pfad, domains, arbeit_ordner):
         fh.write("beso log   : %s\n\n" % beso_log_pfad(inp_pfad))
     # CREATE_NO_WINDOW: sonst blitzt auf Windows ein Konsolenfenster auf
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
-    prozess = subprocess.Popen([python_pfad(), os.path.join(ziel, "beso_main.py")],
-                               cwd=arbeit_ordner, creationflags=flags,
+    # -u / PYTHONUNBUFFERED: ohne das puffert das Kind seine Ausgabe blockweise und
+    # die Logdatei bleibt leer, bis der Puffer voll ist oder der Lauf endet - das
+    # Detailfeld haette dann erst nach dem Job etwas zu lesen (gemessen: 0 Bytes
+    # waehrend des Laufs, alles erst am Ende)
+    umgebung = dict(os.environ)
+    umgebung["PYTHONUNBUFFERED"] = "1"
+    umgebung.setdefault("PYTHONUTF8", "1")
+    prozess = subprocess.Popen([python_pfad(), "-u", os.path.join(ziel, "beso_main.py")],
+                               cwd=arbeit_ordner, creationflags=flags, env=umgebung,
                                stdout=open(log, "a", encoding="utf8"),
                                stderr=subprocess.STDOUT)
     return prozess, log, conf
