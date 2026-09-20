@@ -223,6 +223,7 @@ try:
 
     # sigma nur bei einem Teil der Domains -> rote Warnung (beso bricht sonst ab)
     panel.elsets["ZweitesSet"] = 100
+    panel.domains["ZweitesSet"] = dom.DESIGN      # gehoert zur Optimierung
     panel.stress = {erster: 235.0}
     panel._zeige_stress_hinweis()
     pruefe(not panel.hinweis_stress.isHidden()
@@ -231,8 +232,20 @@ try:
            "sigma nur teilweise gesetzt wird rot gemeldet (%s)"
            % panel.hinweis_stress.text()[:80])
     del panel.elsets["ZweitesSet"]
+    del panel.domains["ZweitesSet"]
     panel.stress = {}
     panel.stress_aus = set()
+    panel._fuelle_tabelle()
+
+    # ein ignoriertes Set braucht keine zulaessige Spannung
+    panel.elsets["IgnoriertSet"] = 50
+    panel.domains["IgnoriertSet"] = dom.IGNORE
+    panel.stress = {}
+    panel._zeige_stress_hinweis()
+    pruefe("IgnoriertSet" not in panel.hinweis_stress.text(),
+           "ein ignoriertes Set verlangt kein sigma (%s)" % panel.hinweis_stress.text()[:60])
+    del panel.elsets["IgnoriertSet"]
+    del panel.domains["IgnoriertSet"]
     panel._fuelle_tabelle()
 
     # Eingabedatei ohne Section-Karte fuer ein Set -> roter Hinweis in Schritt 1

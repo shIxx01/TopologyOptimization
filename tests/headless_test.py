@@ -318,6 +318,17 @@ pruefe("{'SetA': True, 'SetB': False}" in text,
 pruefe("['simple', 4.85]" in text,
        "der robuste Radius wird als Zahl geschrieben (kein 'robust' fuer beso)")
 pruefe("_mpl.use('Agg')" in text, "ohne Fenster am Ende (beso_main ruft plt.show)")
+
+# "ignore" heisst: das Set kommt in der Optimierung nicht vor - kein Design-,
+# kein Nicht-Design-Raum, und es braucht auch keine zulaessige Spannung
+domains_ignore = {"SetA": "design", "SetB": "non_design", "SetC": "ignore"}
+text_ignore = conf_modul.conf_text(obj5, os.path.join("C:", os.sep, "tmp", "Mesh.inp"),
+                                   domains_ignore, os.path.join("C:", os.sep, "tmp"))
+zeile_opt = [z for z in text_ignore.splitlines() if z.startswith("domain_optimized")][0]
+pruefe("SetC" not in zeile_opt and "SetA" in zeile_opt,
+       "domain_optimized enthaelt kein ignoriertes Set (%s)" % zeile_opt)
+pruefe("SetC" not in text_ignore,
+       "ein ignoriertes Set kommt in der Konfiguration nicht vor")
 pruefe("beso_conf_vorlage.py" in text, "die Vorlage von beso wird als Grundlage gelesen")
 
 ordner4 = _tempfile.mkdtemp(prefix="topoopt_conf_")

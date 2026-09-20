@@ -23,6 +23,16 @@ LABEL_ROLES = {label: role for role, label in ROLE_LABELS.items()}
 SAMMELSETS = ("eall", "all_available", "evolumes", "efaces", "eedges", "enodes")
 
 
+def aktive(domains):
+    """Die Domains, die in der Optimierung vorkommen.
+
+    "ignore" heisst: diese Elemente spielen fuer die Optimierung keine Rolle.
+    Solche Sets kommen nicht in die beso-Konfiguration - sie brauchen dann auch
+    keine zulaessige Spannung und werden nicht ausgewertet.
+    """
+    return {name: rolle for name, rolle in (domains or {}).items() if rolle != IGNORE}
+
+
 def parse_domains(werte):
     """["set|design", ...] -> {"set": "design"}."""
     ergebnis = {}

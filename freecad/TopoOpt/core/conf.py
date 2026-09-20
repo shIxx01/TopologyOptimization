@@ -65,7 +65,10 @@ def _filter_liste(obj):
 def conf_text(obj, inp_pfad, domains, arbeit_ordner):
     """Der Inhalt von beso_conf.py für diesen Lauf."""
     from . import params as params_modul
-    design = [name for name, rolle in domains.items() if rolle == "design"]
+    # "ignore" kommt hier gar nicht vor - solche Sets spielen fuer die Optimierung
+    # keine Rolle (kein Design-, kein Nicht-Design-Raum)
+    domains = dom.aktive(domains)
+    design = [name for name, rolle in domains.items() if rolle == dom.DESIGN]
     mass_add, mass_remove = params_modul.mass_ratios(getattr(obj, "MassChange", "normal"))
     stress = {name: wert for name, wert in
               dom.parse_stress(getattr(obj, "StressLimits", [])).items() if name in domains}

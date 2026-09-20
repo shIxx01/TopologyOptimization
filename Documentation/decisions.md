@@ -479,6 +479,27 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D32 - "ignore" heisst wirklich: das Set kommt in der Optimierung nicht vor
+
+Beim Bauen mit zwei Materialien fiel auf: eine Domain auf "ignorieren" landete trotzdem in der
+beso-Konfiguration (`domain_optimized = {name: (name in design) for name in domains}` nahm
+**alle** Sets) - fuer beso also dasselbe wie Nicht-Design: mitgerechnet, ausgewertet, und damit
+auch mit Anspruch auf eine zulaessige Spannung.  Gefragt, ob ein Set "gar nicht vorkommen" soll,
+hiess das also faktisch "wie Nicht-Design".
+
+Jetzt filtert `domains.aktive()` die ignorierten Sets heraus, bevor die Konfiguration entsteht:
+
+* `core/conf.py` schreibt nur noch Design- und Nicht-Design-Domains (`domain_optimized`,
+  `domain_density`, `domain_material`, `domain_thickness`),
+* der Hinweis auf fehlende zulaessige Spannungen im Panel ueberspringt ignorierte Sets - sie
+  brauchen keine,
+* die Materialpruefung der Eingabedatei (D29) gilt weiterhin fuer **alle** Sets: CalculiX rechnet
+  jedes Element im Modell, auch das eines ignorierten Sets, und braucht dafuer ein Material.
+
+Gemessen: `tests/headless_test.py` prueft, dass ein ignoriertes Set weder in `domain_optimized`
+noch sonst in der Konfiguration steht (142 Pruefungen), `tests/panel_test.py` prueft, dass es
+keine Spannung verlangt (132).
+
 ## D31 - Kein RecursionError mehr, wenn ein Lauf mit Fehler endet
 
 Nach einem Lauf, der mit einem Fehlercode endet, lief die Oberflaeche in eine Endlosrekursion:

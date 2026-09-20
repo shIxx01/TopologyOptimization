@@ -1231,11 +1231,16 @@ class AssistantPanel:
         """Rot/orange unter der Liste: ohne σ kein Failure-Index."""
         if not hasattr(self, "hinweis_stress"):
             return
-        ohne = [name for name in sorted(self.elsets) if name not in self.stress]
+        # ignorierte Sets spielen fuer die Optimierung keine Rolle - sie brauchen
+        # auch keine zulaessige Spannung und werden hier nicht gemeldet
+        aktiv = dom.aktive(self.domains)
+        ohne = [name for name in sorted(self.elsets)
+                if name in aktiv and name not in self.stress]
         if not ohne:
             self.hinweis_stress.setVisible(False)
             return
-        mit = [name for name in sorted(self.elsets) if name in self.stress]
+        mit = [name for name in sorted(self.elsets)
+               if name in aktiv and name in self.stress]
         if mit:
             # beso bildet je Domain ein FI_max und bricht ab, wenn eine Domain kein
             # Kriterium hat - sobald irgendwo eine zulaessige Spannung steht, brauchen
@@ -1364,7 +1369,8 @@ class AssistantPanel:
         eintraegt, rechnet ohne Failure-Index (und soll das bewusst tun).  Damit
         die Zahl trotzdem zur Hand ist, steht sie im Hinweis unter der Liste.
         """
-        fehlend = [name for name in self.elsets if name not in self.stress]
+        fehlend = [name for name in self.elsets
+                   if name in dom.aktive(self.domains) and name not in self.stress]
         self.stress_moeglich = {}
         if fehlend:
             werte = material_modul.streckgrenze(
