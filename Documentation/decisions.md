@@ -479,6 +479,23 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D33 - Die Diagramme lesen besos Tabelle ueber die Kopfzeile
+
+besos Iterationstabelle aendert ihre Spaltenzahl mit dem Modell.  Mit Failure Index bekommt sie je
+Domain eine Spalte FI_violated und FI_max - bei mehr als einer Domain zusaetzlich eine
+Sammelspalte "all" - sowie FI_mean und FI_mean_without_state0.  Unser Leser erwartete **genau vier**
+Zusatzspalten und verankerte den Treffer am Zeilenende.  Sobald ein Lauf eine zulaessige Spannung
+hatte - also genau der Fall, fuer den der Failure Index gedacht ist - passte keine Zeile mehr:
+Diagramme und Fortschrittsbalken blieben leer, waehrend der Lauf selbst einwandfrei weiterlief.
+
+`tabelle_lesen()` liest die Spaltenpositionen jetzt aus der Kopfzeile der Tabelle (beso schreibt je
+Spalte genau ein Token) und holt die Werte ueber ihren Namen.  Damit stimmt jede Variante:
+3 Spalten ohne Failure Index, 4 mit Failure Index und einer Domain, 6 bzw. 8 mit mehreren Domains.
+
+Gemessen: `tests/data/beso_beispiel.log` (zwei Tabellen, eine mit Failure Index) liefert weiterhin
+6 Zeilen und 11,12 % Fortschritt; ein laufender Lauf mit zwei Domains liefert 34 Punkte samt
+FI-Werten.  headless 142/142, Assistent 133/133.
+
 ## D32 - "ignore" heisst wirklich: das Set kommt in der Optimierung nicht vor
 
 Beim Bauen mit zwei Materialien fiel auf: eine Domain auf "ignorieren" landete trotzdem in der
