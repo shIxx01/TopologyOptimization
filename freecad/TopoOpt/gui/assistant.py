@@ -1353,9 +1353,11 @@ class AssistantPanel:
         self.stress = dom.parse_stress(getattr(self.obj, "StressLimits", []))
         self.stress_aus = dom.aus_stress(getattr(self.obj, "StressLimits", []))
         if gespeichert:
-            self.domains = {name: gespeichert.get(name, dom.IGNORE) for name in self.elsets}
+            # neue Sets (nach einer Modellaenderung) sind wieder Design-Raum -
+            # "ignorieren" ist die Ausnahme, die man bewusst setzt
+            self.domains = dom.rollen_fuer(self.elsets, gespeichert)
         else:
-            self.domains = dom.vorschlag(self.elsets)
+            self.domains = dom.rollen_fuer(self.elsets)
             self._speichere_domains()
         self._fuelle_tabelle()
         self._vorschlag_aus_material()

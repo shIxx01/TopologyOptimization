@@ -106,16 +106,24 @@ pruefe(len(sichtbar) == 4, "vier Sets werden angeboten")
 
 vorschlag = dom.vorschlag(gelesen)
 pruefe(vorschlag.get("Eall") is None, "Sammelset bekommt keine Rolle")
-pruefe(set(vorschlag.values()) == {dom.IGNORE}, "bei mehreren Sets ist nichts vorbelegt")
+pruefe(set(vorschlag.values()) == {dom.DESIGN},
+       "ohne Vorbelegung ist jedes Set Design-Raum (nicht 'ignorieren')")
 
 vorschlag_eins = dom.vorschlag({"MaterialSolidSolid": 4, "Eall": 4})
 pruefe(vorschlag_eins.get("MaterialSolidSolid") == dom.DESIGN,
-       "bei genau einem Set wird der Design-Raum vorbelegt")
+       "auch ein einzelnes Set ist Design-Raum")
 
 gespeichert = dom.format_domains({"B": dom.NON_DESIGN, "A": dom.DESIGN})
 pruefe(gespeichert == ["A|design", "B|non_design"], "Rollen werden stabil formatiert")
 zurueck = dom.parse_domains(gespeichert)
 pruefe(zurueck == {"A": dom.DESIGN, "B": dom.NON_DESIGN}, "Rollen werden wieder eingelesen")
+
+rollen = dom.rollen_fuer({"A": 10, "B": 10, "Neu": 10}, zurueck)
+pruefe(rollen == {"A": dom.DESIGN, "B": dom.NON_DESIGN, "Neu": dom.DESIGN},
+       "Gespeichertes gilt weiter, ein neues Set ist Design-Raum (%s)" % rollen)
+rollen_leer = dom.rollen_fuer({"A": 10, "B": 10})
+pruefe(set(rollen_leer.values()) == {dom.DESIGN},
+       "ohne Vorbelegung ist alles Design-Raum")
 
 # --- Eingabedatei finden (Suchreihenfolge) ---------------------------------
 import shutil as _shutil  # noqa: E402

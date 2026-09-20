@@ -98,19 +98,29 @@ def aus_stress(werte):
 def vorschlag(elsets):
     """A first suggestion for the incoming sets.
 
-    Every set starts as "ignore".  If there is exactly one ordinary set, it is
-    suggested as design space - that is the usual single body model.  Sets that
-    only collect everything (Eall) are not offered at all.
+    Every set starts as design space - that is what a user means when a model is
+    built and nothing has been decided yet.  Areas that must be kept (bearings,
+    screws, ...) are set to "non-design", areas that should not take part at all to
+    "ignore".  Sets that only collect everything (Eall) are not offered at all.
     """
     vorschlaege = {}
     for name in elsets:
         if name.lower() in SAMMELSETS:
             continue
-        vorschlaege[name] = IGNORE
-    offen = [n for n in vorschlaege if vorschlaege[n] == IGNORE]
-    if len(offen) == 1:
-        vorschlaege[offen[0]] = DESIGN
+        vorschlaege[name] = DESIGN
     return vorschlaege
+
+
+def rollen_fuer(elsets, gespeichert=None):
+    """Die Rollen der angebotenen Sets.
+
+    Was im Objekt gespeichert ist, gilt weiter.  Alles Neue - etwa ein Set, das
+    erst nach einer Modellaenderung dazugekommen ist - ist **Design-Raum**:
+    "ignorieren" ist die Ausnahme, die man bewusst setzt.
+    """
+    if not gespeichert:
+        return vorschlag(elsets)
+    return {name: gespeichert.get(name, DESIGN) for name in elsets}
 
 
 def zeige_elsets(elsets):

@@ -479,6 +479,21 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D35 - Neue Element-Sets sind von Haus aus Design-Raum
+
+Beim Bauen mit zwei Materialien fiel auf: die Domainliste stand komplett auf "ignorieren" - nur
+wenn genau **ein** Set uebrig blieb, wurde es als Design-Raum vorbelegt.  Bei mehreren Sets war
+damit zunaechst alles ausgeschlossen, und der Lauf endete in "kein Design-Raum markiert".
+
+Jetzt ist der Design-Raum der Standard: `domains.vorschlag()` setzt jedes angebotene Set auf
+Design-Raum, und `domains.rollen_fuer()` gibt einem Set, das erst nach einer Modellaenderung
+dazukommt, ebenfalls Design-Raum.  Gespeicherte Rollen gelten unveraendert weiter - "Nicht-Design"
+(Bereich bleibt erhalten) und "ignorieren" (kommt in der Optimierung nicht vor) sind
+Entscheidungen, die man bewusst setzt.
+
+headless prueft, dass ohne Vorbelegung alle Sets Design-Raum sind und dass ein neu dazugekommenes
+Set Design-Raum bekommt, waehrend Gespeichertes gilt.
+
 ## D34 - Der Lauf startet ungepuffert (-u)
 
 Balken und Diagramme lesen besos Iterationstabelle aus `<mesh>.log`; das Detailfeld zeigt dagegen
