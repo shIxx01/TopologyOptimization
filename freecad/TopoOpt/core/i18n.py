@@ -301,7 +301,11 @@ DEUTSCH = {
     "No result file yet - it is written when the run is finished.":
         "Noch keine Ergebnisdatei – sie entsteht am Ende des Laufs.",
     "resulting_states.vtk is there - 'Show iterations' reads it.":
-        "resulting_states.vtk ist vorhanden – 'Iterationen anzeigen' liest sie ein.",
+        "resulting_states.vtk ist da - 'Iterationen anzeigen' liest sie ein.",
+    "Interim result of iteration %d - 'Show iterations' reads it. "
+    "The complete result is written when the run is finished.":
+        "Zwischenstand der Iteration %d - 'Iterationen anzeigen' liest ihn ein. "
+        "Das vollständige Ergebnis entsteht am Ende des Laufs.",
     "No resulting_states.vtk in the working directory yet.":
         "Im Arbeitsordner liegt noch keine resulting_states.vtk.",
     "The result file could not be read: %s":

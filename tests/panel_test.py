@@ -491,6 +491,35 @@ try:
            "der Status steht in einer Zeile (%d px hoch, Zeilenhoehe %d px)"
            % (_hoehe, _masse.height()))
     panel2.form.hide()
+
+    # Waehrend des Laufs zeigt "Iterationen anzeigen" den letzten Zwischenstand: beso
+    # schreibt je gespeicherter Iteration eine fileNNN.vtk - gleiches Format, aber nur
+    # ein Teil der Zustaende.  resulting_states.vtk gibt es erst am Ende des Laufs.
+    _ordner_alt = panel2.obj.WorkingDir
+    _ordner = tempfile.mkdtemp(prefix="topoopt_zwischen_")
+    panel2.obj.WorkingDir = _ordner
+    _zw = os.path.join(_ordner, "file030.vtk")
+    with open(_zw, "w", encoding="utf8") as fh:
+        fh.write("# vtk DataFile Version 3.0\n")
+    pruefe(panel2._ergebnis_pfad() == _zw,
+           "waehrend des Laufs gilt der Zwischenstand (%s)" % panel2._ergebnis_pfad())
+    pruefe(not panel2._ist_endstand(_zw), "eine fileNNN.vtk ist kein Endstand")
+    pruefe(panel2._ergebnis_iteration(_zw) == 30,
+           "die Iteration kommt aus dem Dateinamen (%d)" % panel2._ergebnis_iteration(_zw))
+    panel2.spieler = None
+    panel2.ergebnis_info.setText("")
+    panel2._ergebnisse_aktualisieren()
+    pruefe(panel2.knopf_ergebnis.isEnabled(),
+           "'Iterationen anzeigen' ist schon mit einem Zwischenstand aktiv")
+    pruefe("30" in panel2.ergebnis_info.text(),
+           "der Hinweis nennt die Iteration (%s)" % panel2.ergebnis_info.text())
+    _end = os.path.join(_ordner, "resulting_states.vtk")
+    with open(_end, "w", encoding="utf8") as fh:
+        fh.write("# vtk DataFile Version 3.0\n")
+    pruefe(panel2._ergebnis_pfad() == _end, "der Endstand hat Vorrang")
+    pruefe(panel2._ist_endstand(_end), "resulting_states.vtk gilt als Endstand")
+    panel2.obj.WorkingDir = _ordner_alt
+    shutil.rmtree(_ordner, ignore_errors=True)
     pruefe("min" in panel2.lauf_zeit.text(), "die Laufzeit laeuft mit (%s)"
            % panel2.lauf_zeit.text())
     pruefe(panel2.lauf_zeit.parent() is panel2.knopf_lauf.parent(),

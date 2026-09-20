@@ -824,9 +824,36 @@ class AssistantPanel:
         return fenster
 
     def _ergebnis_pfad(self):
-        """Die Datei mit den Iterationen liegt im Arbeitsordner des Laufs."""
+        """Die Datei mit den Iterationen im Arbeitsordner des Laufs.
+
+        Ist der Lauf fertig, liegt dort ``resulting_states.vtk`` mit **allen**
+        Iterationen.  Waehrend des Laufs schreibt beso je gespeicherter Iteration ein
+        ``fileNNN.vtk`` (jedes mit einem Teil der Zustaende) - die neueste davon zeigt
+        den aktuellen Zwischenstand.  Sortiert wird nach Aenderungszeit, nicht
+        alphabetisch: sonst gewinnt die hoechste Nummer eines frueheren Laufs.
+        """
         ordner = getattr(self.obj, "WorkingDir", "")
-        return os.path.join(ordner, "resulting_states.vtk") if ordner else ""
+        if not ordner:
+            return ""
+        fertig = os.path.join(ordner, "resulting_states.vtk")
+        if os.path.isfile(fertig):
+            return fertig
+        vorhanden = [os.path.join(ordner, name) for name in os.listdir(ordner)
+                     if name.startswith("file") and name.endswith(".vtk")]
+        if not vorhanden:
+            return ""
+        return max(vorhanden, key=os.path.getmtime)
+
+    @staticmethod
+    def _ist_endstand(pfad):
+        """True, wenn es das vollstaendige Ergebnis ist (nicht eine Zwischenstufe)."""
+        return os.path.basename(pfad) == "resulting_states.vtk"
+
+    @staticmethod
+    def _ergebnis_iteration(pfad):
+        """Die Iterationsnummer aus dem Dateinamen (file030.vtk -> 30, sonst 0)."""
+        ziffern = "".join(z for z in os.path.basename(pfad) if z.isdigit())
+        return int(ziffern) if ziffern else 0
 
     def _ergebnisse_aktualisieren(self):
         """Ist schon ein Ergebnis da?  Dann den Knopf freigeben und den Zustand zeigen."""
@@ -840,8 +867,16 @@ class AssistantPanel:
                                                  "the run is finished."))
             return
         if self.spieler is None and not self.ergebnis_info.text():
-            self.ergebnis_info.setText(uebersetze("resulting_states.vtk is there - "
-                                                 "'Show iterations' reads it."))
+            if self._ist_endstand(pfad):
+                self.ergebnis_info.setText(uebersetze("resulting_states.vtk is there - "
+                                                     "'Show iterations' reads it."))
+            else:
+                # Zwischenstand: waehrend des Laufs schreibt beso je gespeicherter
+                # Iteration eine eigene Datei mit einem Teil der Zustaende
+                self.ergebnis_info.setText(
+                    uebersetze("Interim result of iteration %d - 'Show iterations' reads it. "
+                               "The complete result is written when the run is finished.")
+                    % self._ergebnis_iteration(pfad))
 
     def _ergebnisnetz_laden(self):
         """Das echte Ergebnisnetz der letzten Iteration als FEM-Netz laden.
@@ -1089,6 +1124,12 @@ class AssistantPanel:
             self.lauf_status.setText(" | ".join(teile))
         # leere Statuszeile kostet nur Platz
         self.lauf_status.setVisible(bool(teile))
+
+        # waehrend des Laufs den letzten Zwischenstand freigeben: beso schreibt alle
+        # paar Iterationen ein fileNNN.vtk - der Ergebnis-Knopf muss nicht bis zum
+        # Ende des Laufs warten
+        if laeuft:
+            self._ergebnisse_aktualisieren()
 
         if self.detail.isVisible():
             self._detail_fuellen()

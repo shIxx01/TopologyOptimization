@@ -479,6 +479,24 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D37 - "Iterationen anzeigen" zeigt schon waehrend des Laufs den Zwischenstand
+
+Der Knopf war bis zum Ende des Laufs ausgegraut, weil er auf `resulting_states.vtk` wartete - die
+schreibt beso erst ganz am Schluss.  Waehrend des Laufs gibt es aber Zwischenstaende: beso schreibt
+je gespeicherter Iteration ein `fileNNN.vtk` (gemessen an einem Lauf mit 38 Iterationen:
+`file010.vtk` bis `file038.vtk`).  Sie haben **dasselbe Format** wie das Endergebnis, nur mit
+weniger Zustaenden (gemessen: `file030.vtk` 5 Bloecke gegen `resulting_states.vtk` 38).
+
+`_ergebnis_pfad()` liefert jetzt den Endstand, wenn es ihn gibt, sonst die **neueste**
+`fileNNN.vtk` nach Aenderungszeit (nicht alphabetisch - sonst gewinnt die hoechste Nummer eines
+frueheren Laufs).  Der Hinweis unter dem Knopf nennt in dem Fall die Iteration ("Zwischenstand der
+Iteration 30 - ... das vollstaendige Ergebnis entsteht am Ende des Laufs."), und
+`_lauf_aktualisieren()` gibt den Knopf waehrend des Laufs frei, sobald die erste Zwischenstufe da
+ist.
+
+Gemessen: `tests/panel_test.py` legt eine `file030.vtk` an und prueft, dass der Knopf aktiv ist,
+die Iteration aus dem Namen gelesen wird und der Endstand Vorrang hat.
+
 ## D36 - Der Lauf-Status teilt sich die Zeile, ohne umzubrechen
 
 Der Status ("Iteration 2 | Masse 57836, Ziel 36319") steht neben dem ausklappbaren "Details" - er
