@@ -221,6 +221,24 @@ try:
     panel._fuelle_tabelle()
     doc.recompute()
 
+    # Eingabedatei ohne Section-Karte fuer ein Set -> roter Hinweis in Schritt 1
+    quelle = panel.obj.InpFile
+    kaputt = os.path.join(tempfile.gettempdir(), "TopoOpt_PanelKaputt.inp")
+    with open(quelle, encoding="utf8", errors="ignore") as rein, \
+            open(kaputt, "w", encoding="utf8") as raus:
+        for zeile in rein:
+            if zeile.upper().startswith("*SOLID SECTION"):
+                continue                     # Section-Karte unterschlagen
+            raus.write(zeile)
+    panel._uebernehme_inp(kaputt, "")
+    pruefe(not panel.hinweis_inp.isHidden() and erster in panel.hinweis_inp.text(),
+           "ohne Section-Karte warnt das Panel (%s)" % panel.hinweis_inp.text()[:80])
+    pruefe("section" in panel.hinweis_inp.text().lower(),
+           "der Hinweis nennt die fehlende Karte")
+    panel._uebernehme_inp(quelle, "")
+    pruefe(panel.hinweis_inp.isHidden(),
+           "mit vollstaendiger Datei verschwindet der Hinweis")
+
     # Filter: Standard ist besos [["simple", "auto"]]
     pruefe(len(panel.filter_zeilen) == 1,
            "Standard: eine Filterzeile (%d)" % len(panel.filter_zeilen))

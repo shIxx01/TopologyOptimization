@@ -505,6 +505,31 @@ ohne_inp = material_modul.streckgrenze(
 pruefe(ohne_inp == {"MaterialSolidSolid": 235.0},
        "ohne Zuordnung in der .inp greift der Namensanfang (%s)" % (ohne_inp,))
 
+# Eine abgebrochene Eingabedatei und ein Set ohne Materialzuordnung muessen auffallen
+kaputt = os.path.join(tempfile.gettempdir(), "topoopt_kaputt.inp")
+with open(kaputt, "w", encoding="utf8") as fh:
+    fh.write("*NODE\n1, 0, 0, 0\n2, 1, 0, 0\n"
+             "*ELEMENT, TYPE=C3D10, ELSET=Set1\n1, 1,2\n"
+             "*MATERIAL, NAME=M1\n*ELASTIC\n210000, 0.3\n")
+bericht = elset_reader.pruefe_inp(kaputt, ["Set1"])
+pruefe(bericht["fehlende_karten"] == ["*STEP"],
+       "eine abgebrochene .inp wird erkannt (es fehlt %s)" % bericht["fehlende_karten"])
+pruefe(bericht["ohne_material"] == ["Set1"],
+       "dazu faellt das Set ohne Section-Karte auf (%s)" % bericht["ohne_material"])
+
+ganz = os.path.join(tempfile.gettempdir(), "topoopt_ganz.inp")
+with open(ganz, "w", encoding="utf8") as fh:
+    fh.write("*NODE\n1, 0, 0, 0\n2, 1, 0, 0\n3, 0, 1, 0\n4, 0, 0, 1\n5, 1, 1, 0\n"
+             "*ELEMENT, TYPE=C3D10, ELSET=Set1\n1, 1,2,3,4,5\n"
+             "*ELSET, ELSET=Set2\n1\n"
+             "*MATERIAL, NAME=M1\n*ELASTIC\n210000, 0.3\n"
+             "*SOLID SECTION, ELSET=Set1, MATERIAL=M1\n"
+             "*STEP\n*STATIC\n*BOUNDARY\n1, 1, 3, 0.0\n*END STEP\n")
+bericht2 = elset_reader.pruefe_inp(ganz, ["Set1", "Set2"])
+pruefe(bericht2["fehlende_karten"] == [], "eine vollstaendige .inp meldet keine fehlende Karte")
+pruefe(bericht2["ohne_material"] == ["Set2"],
+       "nur das Set ohne Section-Karte wird genannt (%s)" % bericht2["ohne_material"])
+
 # --- VTK-Iterationen lesen (resulting_states.vtk) ------------------------------
 from freecad.TopoOpt.core import vtk as vtk_modul  # noqa: E402
 

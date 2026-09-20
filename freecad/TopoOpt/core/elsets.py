@@ -182,6 +182,54 @@ def read_section_materials(inp_path):
     return zuordnung
 
 
+def pruefe_inp(inp_path, sets=None):
+    """Ist die Eingabedatei vollstaendig - und hat jedes Element-Set ein Material?
+
+    Eine Datei, die mitten im Schreiben abgebrochen ist, faellt nicht immer auf:
+    FreeCAD schreibt Knoten, Elemente und Materialien und dann erst die
+    Section-Karten, den ``*STEP`` und die Randbedingungen.  CalculiX rechnet dann
+    nichts, die Ergebnisdatei bleibt leer, und beso meldet nur "CalculiX results
+    not found" - ohne zu sagen, woran es liegt.
+
+    Ausserdem braucht jedes Element-Set, das die Optimierung kennt, eine
+    Section-Karte (``*SOLID SECTION``/``*SHELL SECTION``).  Fehlt sie, gehoert das
+    Set zu keiner Koerper-Material-Zuordnung (typisch: ein Material wurde auf
+    Flaechen gelegt) und CalculiX laesst die Elemente weg.
+
+    Returns ``{"vorhanden": bool, "fehlende_karten": [Karte, ...],
+    "ohne_material": [set, ...]}``
+    """
+    ergebnis = {"vorhanden": False, "fehlende_karten": [], "ohne_material": []}
+    if not inp_path or not os.path.isfile(inp_path):
+        return ergebnis
+    ergebnis["vorhanden"] = True
+    karten = {"*STEP": False, "*MATERIAL": False}
+    section_sets = set()
+    try:
+        with open(inp_path, "r", encoding="utf8", errors="ignore") as fh:
+            for zeile in fh:
+                if not zeile.startswith("*"):
+                    continue
+                hoch = zeile.strip().upper()
+                for name in karten:
+                    if hoch.startswith(name):
+                        karten[name] = True
+                if hoch.startswith("*SOLID SECTION") or hoch.startswith("*SHELL SECTION"):
+                    elset = _attribute(zeile).get("ELSET")
+                    if elset:
+                        section_sets.add(elset)
+    except OSError:
+        return ergebnis
+    # *MATERIAL und *STEP stehen in der zweiten Haelfte: fehlt eines, ist die Datei
+    # beim Schreiben abgebrochen (Randbedingungen sind absichtlich NICHT geprueft -
+    # ein Modell kann auch ohne sie geschrieben werden)
+    ergebnis["fehlende_karten"] = [name for name in ("*MATERIAL", "*STEP")
+                                   if not karten[name]]
+    if sets:
+        ergebnis["ohne_material"] = sorted(name for name in sets if name not in section_sets)
+    return ergebnis
+
+
 def gesamt_elemente(inp_path):
     """Number of elements in the mesh (from the *ELEMENT cards)."""
     roh = _rohdaten(inp_path)

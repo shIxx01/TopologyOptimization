@@ -110,6 +110,12 @@ DEUTSCH = {
         "Arbeitsverzeichnis \u00f6ffnen",
     "No .inp file yet.":
         "Keine .inp vorhanden.",
+    "The input file is incomplete (%s missing) - write it again.":
+        "Die Eingabedatei ist unvollst\u00e4ndig (es fehlt %s) - bitte neu erzeugen.",
+    "CalculiX has no material for these element sets (no section card): %s - their "
+    "elements are left out of the calculation.":
+        "F\u00fcr diese Element-Sets fehlt die Materialzuordnung (keine Section-Karte): "
+        "%s - ihre Elemente werden nicht mitgerechnet.",
     "Without an allowable stress (sigma) no failure index is computed.":
         "Ohne zulässige Spannung (σ) wird kein Failure-Index berechnet.",
     "From the material: %s - enter it in the sigma column if you want the utilisation.":

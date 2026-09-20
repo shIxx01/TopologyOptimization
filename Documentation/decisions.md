@@ -479,6 +479,31 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D29 - Die Eingabedatei wird geprueft, bevor der Lauf startet
+
+Ein Lauf mit zwei Materialien und zwei Element-Sets endete mit
+`AssertionError: CalculiX results not found`, obwohl beso korrekt arbeitete.  Nachgemessen an
+den Dateien: Die `.inp` war beim Schreiben **abgebrochen** - sie endete nach dem ersten
+`*MATERIAL`, es fehlten `*SOLID SECTION`, `*STEP`, `*BOUNDARY` und `*CLOAD`.  CalculiX rechnete
+deshalb nichts (Ergebnisdatei 0 Bytes) und beso meldete voellig richtig, dass es keine Ergebnisse
+gibt.  Ein zweiter Fall: ein Element-Set hatte **keine** Section-Karte, weil sein Material auf
+vier **Flaechen einer Fase** lag statt auf einem Koerper - daraus schreibt FreeCAD kein
+Volumen-Set, und CalculiX laesst diese Elemente ohne Material weg.
+
+Beides faellt erst spaet und mit unverstaendlicher Meldung auf.  Deshalb prueft
+`elsets.pruefe_inp()` die Datei jetzt in Schritt 1, und `AssistantPanel._pruefe_inp()` zeigt das
+Ergebnis in Rot ueber der Domainliste:
+
+* fehlende Karten (`*MATERIAL` oder `*STEP`) - "Die Eingabedatei ist unvollstaendig (es fehlt
+  `*STEP`) - bitte neu erzeugen."
+* Element-Sets ohne Section-Karte - "Fuer diese Element-Sets fehlt die Materialzuordnung (keine
+  Section-Karte): ... - ihre Elemente werden nicht mitgerechnet."
+
+Randbedingungen werden **nicht** geprueft: ein Modell kann auch ohne sie geschrieben werden (das
+Testmodell der Testsuite hat keine).  Gemessen: `tests/headless_test.py` prueft die abgebrochene
+Datei, die Datei mit einem Set ohne Section und den unauffaelligen Fall (138 Pruefungen);
+`tests/panel_test.py` prueft, dass der Hinweis erscheint und wieder verschwindet (127).
+
 ## D28 - Das Optimierungsobjekt hat kein schaltbares Auge im Baum
 
 Sichtbarkeit ist keine Eigenschaft des Objekts, sondern des Szenengraphen seines ViewProviders.

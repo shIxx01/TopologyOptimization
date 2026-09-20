@@ -1145,8 +1145,39 @@ class AssistantPanel:
         self.status = QtWidgets.QLabel("")
         self.status.setWordWrap(True)
         layout.addWidget(self.status, 2, 1)
+
+        # row 3: what is wrong with the file itself (incomplete, set without material)
+        self.hinweis_inp = QtWidgets.QLabel("")
+        self.hinweis_inp.setWordWrap(True)
+        self.hinweis_inp.setStyleSheet("color: %s;" % FARBE_FEHLER)
+        self.hinweis_inp.setVisible(False)
+        layout.addWidget(self.hinweis_inp, 3, 0, 1, 2)
         layout.setColumnStretch(1, 1)
         return rahmen
+
+    def _pruefe_inp(self):
+        """Klar melden, wenn mit der Eingabedatei nicht gerechnet werden kann.
+
+        Zwei Faelle, die sonst erst beso meldet - und dort unverstaendlich
+        ("CalculiX results not found"):
+
+        * die Datei ist beim Schreiben abgebrochen (kein *MATERIAL/*STEP/*BOUNDARY),
+        * ein Element-Set hat keine Section-Karte, CalculiX rechnet seine Elemente
+          also ohne Material und laesst sie weg.
+        """
+        if not hasattr(self, "hinweis_inp"):
+            return
+        ergebnis = elset_reader.pruefe_inp(getattr(self.obj, "InpFile", ""), sorted(self.elsets))
+        teile = []
+        if ergebnis["fehlende_karten"]:
+            teile.append(uebersetze("The input file is incomplete (%s missing) - write it again.")
+                         % ", ".join(ergebnis["fehlende_karten"]))
+        if ergebnis["ohne_material"]:
+            teile.append(uebersetze("CalculiX has no material for these element sets (no section "
+                                    "card): %s - their elements are left out of the calculation.")
+                         % ", ".join(ergebnis["ohne_material"]))
+        self.hinweis_inp.setText(" ".join(teile))
+        self.hinweis_inp.setVisible(bool(teile))
 
     def _domain_tabelle(self):
         rahmen = QtWidgets.QGroupBox(uebersetze("Domains - roles of the elements"))
@@ -1352,6 +1383,7 @@ class AssistantPanel:
             self.felder_stress[name] = sigma
         self._fuelle_laeuft = False
         self._zeige_stress_hinweis()
+        self._pruefe_inp()
         self._tabelle_hoehe_anpassen()
 
     def _tabelle_hoehe_anpassen(self):
