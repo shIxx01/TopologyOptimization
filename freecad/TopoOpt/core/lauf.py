@@ -25,10 +25,31 @@ START = re.compile(r"initial optimization domains mass\s+([0-9.eE+-]+)")
 ITERATION = re.compile(r"new iteration number\s+(\d+)")
 MASSE = re.compile(r"^mass\s*=\s*([0-9.eE+-]+)", re.MULTILINE)
 
-# die Iterationstabelle: i, mass, ener_dens_mean und - mit Failure Index - vier weitere
-TABELLE = re.compile(
-    r"^\s*(\d+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)"
-    r"(?:\s+(\d+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+))?\s*$")
+# Die Iterationstabelle hat je nach Modell unterschiedlich viele Spalten: der Kopf
+# beginnt mit "i  mass  ener_dens_mean" (oder heat_flux_mean) und bekommt mit
+# Failure Index weitere: FI_violated je Domain (nur bei mehr als einer Domain
+# zusaetzlich "all"), FI_mean, FI_mean_without_state0 und FI_max je Domain
+# (ebenfalls mit "all").  Gemessen: 3 Spalten, 4 mit FI und einer Domain, 8 mit FI
+# und zwei Domains - deshalb werden die Spalten ueber den Kopf zugeordnet.
+KOPF_MERKMALE = {"mass": "mass", "ener_dens_mean": "ener", "heat_flux_mean": "ener",
+                 "FI_mean": "fi_mean", "_without_state0": "fi_mean_ohne"}
+
+
+def _kopf_positionen(zeile):
+    """Positionen der bekannten Spalten aus der Kopfzeile der Iterationstabelle."""
+    tokens = zeile.split()
+    positionen = {}
+    for nummer, token in enumerate(tokens):
+        for merkmal, name in KOPF_MERKMALE.items():
+            if token == merkmal or (merkmal.startswith("FI_") and token.startswith(merkmal)):
+                positionen[name] = nummer
+    if "fi_mean" in positionen:
+        # die Sammelspalte "all" steht direkt vor FI_mean, sonst die einzige Domain
+        positionen["fi_violated"] = positionen["fi_mean"] - 1
+    if positionen.get("fi_mean"):
+        # FI_max: die letzte Spalte der Tabelle ist "all" (bzw. die einzige Domain)
+        positionen["fi_max"] = len(tokens) - 1
+    return positionen
 
 
 def tabelle_lesen(beso_log):
@@ -40,22 +61,31 @@ def tabelle_lesen(beso_log):
     ergebnis = []
     if not beso_log or not os.path.isfile(beso_log):
         return ergebnis
+    positionen = {}
     try:
         with open(beso_log, encoding="utf8", errors="replace") as fh:
             for zeile in fh:
-                treffer = TABELLE.match(zeile)
-                if not treffer:
+                if "mass" in zeile and ("ener_dens_mean" in zeile or "heat_flux_mean" in zeile):
+                    positionen = _kopf_positionen(zeile)
+                    continue
+                if not positionen:
+                    continue
+                felder = zeile.split()
+                if len(felder) <= max(positionen.values()):
+                    continue
+                if not felder[0].isdigit():
                     continue
                 try:
-                    werte = {"mass": float(treffer.group(2)), "ener": float(treffer.group(3))}
-                    if treffer.group(4) is not None:
-                        werte["fi_violated"] = int(treffer.group(4))
-                        werte["fi_mean"] = float(treffer.group(5))
-                        werte["fi_mean_ohne"] = float(treffer.group(6))
-                        werte["fi_max"] = float(treffer.group(7))
-                except (TypeError, ValueError):
+                    werte = {"mass": float(felder[positionen["mass"]]),
+                             "ener": float(felder[positionen["ener"]])}
+                    for name in ("fi_violated", "fi_mean", "fi_mean_ohne", "fi_max"):
+                        if name in positionen:
+                            werte[name] = float(felder[positionen[name]])
+                    if "fi_violated" in werte:
+                        werte["fi_violated"] = int(werte["fi_violated"])
+                except (TypeError, ValueError, IndexError):
                     continue
-                ergebnis.append((int(treffer.group(1)), werte))
+                ergebnis.append((int(felder[0]), werte))
     except OSError:
         return []
     return ergebnis
