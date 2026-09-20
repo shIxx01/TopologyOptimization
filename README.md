@@ -106,8 +106,11 @@ The addon itself adds two things on top:
 * **robust filter range** - asks beso's own functions for the smallest range in which every
   element of the design space still has a neighbour, instead of always using "two times the
   average element size",
-* **shell thickness from the input file** - `*SHELL SECTION` is read per element set, so 2D
-  models are computed with their real thickness instead of beso's template value of 1 mm.
+* **shell thickness from the input file** - the `*SHELL SECTION` cards are read per element set, so
+  a 2D model runs with the thickness FreeCAD wrote into the input file.  The original beso dialog
+  had a thickness field per domain as well (a `ElementGeometry2D` object plus a value whose tooltip
+  says it *overwrites the thickness defined in FreeCAD*); the addon does not ask a second time and
+  uses what the analysis already contains.
 
 ## Tests
 

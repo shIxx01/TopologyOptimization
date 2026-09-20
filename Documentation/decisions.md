@@ -551,6 +551,19 @@ faellt nur dann auf den Namensanfang zurueck, wenn die Eingabedatei noch nichts 
 Die Schalendicke kommt weiterhin ausschliesslich aus der Eingabedatei (D20-Familie,
 Commit `4e7d261`).
 
+**Nachtrag (nachgemessen in `beso-original/beso_fc_gui.py`):** Die originale beso-GUI konnte das
+sehr wohl - sie hatte **pro Domain** eine Materialauswahl *und* eine Dickenauswahl: ein Auswahlfeld
+der `ElementGeometry2D`-Objekte (`combo0t`…`combo2t`, Zeile 125 ff., "Thickness object to specify
+if domain is for shells") plus ein Zahlenfeld, dessen Tooltip sagt *"Thickness [mm] of shell
+elements in the domain. This value overwrites thickness defined in FreeCAD"* (Zeile 149 ff.).  Aus
+Materialname und Dickenobjekt baut sie den Elset-Namen zusammen (Zeile 612).  Der 1-mm-Wert in der
+Konfigurationsvorlage ist also nur ein Beispielwert, nicht das Verhalten der GUI.
+
+Warum das Addon trotzdem nichts auswaehlen laesst: die Zuordnung ist mit der Section-Karte
+eindeutig und liegt schon in der Datei, mit der CalculiX rechnet (D26).  Wer bewusst **anders**
+rechnen will als das Modell sagt, aendert die Dicke im Modell (bzw. das `ElementGeometry2D`-Objekt)
+und schreibt die Eingabedatei neu - dann stimmen Modell, Rechnung und Optimierung wieder ueberein.
+
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
