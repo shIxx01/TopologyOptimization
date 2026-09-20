@@ -26,28 +26,30 @@ Everything is in English in the source and translated to German when FreeCAD run
 ## How it looks
 
 The assistant opens inside FreeCAD next to the model, and the optimization history is drawn in
-a window of its own:
+a window of its own - here after a short run on the test model:
 
-![The assistant and the history window in FreeCAD](Documentation/images/overview.png)
+<img src="Documentation/images/overview.png" width="700">
 
-The three steps:
+<br>
 
-**1. Initialize** - pick up the input file (or write it) and set the role of every element set:
+The three steps <br>
+*Initialize* - pick up the input file (or write it) and set the role of every element set. <br>
+*Parameters* - mass goal, optimization base, filters and their range, saved iterations. <br>
+*Calculation* - start the run, watch the progress and load the result; the picture shows the
+step right after a run.
 
-![Step 1: Initialize](Documentation/images/step1_initialize.png)
-
-**2. Parameters** - mass goal, optimization base, filters and their range, saved iterations:
-
-![Step 2: Parameters](Documentation/images/step2_parameters.png)
-
-**3. Calculation** - start the run and watch the progress:
-
-![Step 3: Calculation](Documentation/images/step3_calculation.png)
-
-When the run is done the step shows the iterations, the mass, and the buttons for the result -
-result mesh, history, full log, working directory:
-
-![Step 3: Results](Documentation/images/step3_results.png)
+<table>
+<tr>
+<td><img src="Documentation/images/step1_initialize.png" width="220"></td>
+<td><img src="Documentation/images/step2_parameters.png" width="220"></td>
+<td><img src="Documentation/images/step3_results.png" width="220"></td>
+</tr>
+<tr>
+<td align="center">1 - Initialize</td>
+<td align="center">2 - Parameters</td>
+<td align="center">3 - Calculation (after a run)</td>
+</tr>
+</table>
 
 ## Requirements
 
