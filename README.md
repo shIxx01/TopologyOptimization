@@ -23,6 +23,32 @@ where they are, the optimization object lives inside the analysis and reads from
 
 Everything is in English in the source and translated to German when FreeCAD runs in German.
 
+## How it looks
+
+The assistant opens inside FreeCAD next to the model, and the optimization history is drawn in
+a window of its own:
+
+![The assistant and the history window in FreeCAD](Documentation/images/overview.png)
+
+The three steps:
+
+**1. Initialize** - pick up the input file (or write it) and set the role of every element set:
+
+![Step 1: Initialize](Documentation/images/step1_initialize.png)
+
+**2. Parameters** - mass goal, optimization base, filters and their range, saved iterations:
+
+![Step 2: Parameters](Documentation/images/step2_parameters.png)
+
+**3. Calculation** - start the run and watch the progress:
+
+![Step 3: Calculation](Documentation/images/step3_calculation.png)
+
+When the run is done the step shows the iterations, the mass, and the buttons for the result -
+result mesh, history, full log, working directory:
+
+![Step 3: Results](Documentation/images/step3_results.png)
+
 ## Requirements
 
 * FreeCAD 1.0 or newer (developed and tested with 26.3)
