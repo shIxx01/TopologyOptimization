@@ -26,9 +26,10 @@ Everything is in English in the source and translated to German when FreeCAD run
 ## How it looks
 
 The assistant opens inside FreeCAD next to the model, and the optimization history is drawn in
-a window of its own - here after a short run on the test model:
+a window of its own.  The animation shows a short run on the test model, one step every other
+iteration:
 
-<img src="Documentation/images/overview.png" width="700">
+<img src="Documentation/images/overview.gif" width="700">
 
 <br>
 
