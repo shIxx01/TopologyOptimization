@@ -1,7 +1,8 @@
 # Decisions
 
 Short records of decisions that are not obvious from the code. Each one names the evidence
-if it was measured.
+if it was measured.  Interface texts are quoted as they appear in the interface - German on a
+German FreeCAD; the English source strings are in `core/i18n.py`.
 
 ## D1 - The optimization object belongs to the FEM analysis
 
@@ -396,11 +397,14 @@ height and scrolls inside itself, otherwise a model with many element sets would
 * The running time (`lauf_zeit`, gray) sits **right next to the start button** instead of in its
   own line; the status line below the progress bar hides itself while it has no text.
 * The four result buttons form a **2x2 grid**:
-  `Ergebnisnetz laden | Diagramme anzeigen` over `Vollständiges Log | Arbeitsverzeichnis öffnen`.
+  `Load result network | Show diagrams` over `Full log | Open working directory` (on a German
+  FreeCAD these read `Ergebnisnetz laden | Diagramme anzeigen` and `Vollständiges Log |
+  Arbeitsverzeichnis öffnen`).
   "Iterationen anzeigen" moved into the row with the slider.
 * The running time sits **right next to the start button** in the "Berechnen" group.  An
   attempt to put it into the panel's top line (next to the step bar) was wrong - 
-  "warum ist die zeit wieder irgendwo wo sie nicht dazugehört".  The time belongs to the run, not
+  "warum ist die zeit wieder irgendwo wo sie nicht dazugehört" (German: "why is the time suddenly
+  somewhere it does not belong").  The time belongs to the run, not
   to the frame of the panel.
 * The **slider got its own row** with the full width (measured 640 px in a 640 px panel).
 * The **play speed** sits in the row of the control buttons :
@@ -441,379 +445,375 @@ missing.  He was right, and it was the dangerous kind of mistake:
 * Cost of the comparison: the 3D case with 84,395 volume elements needed **232 s** for one
   iteration (surface 12.8 MB `.inp`), the 2D case 6 s - a factor of about 39.
 
-## D24 - Szenario-Matrix: Fehlerfaelle, Filter, 2D/3D und der Vergleich mit Original-beso
+## D24 - Scenario matrix: error cases, filters, 2D/3D and the comparison with original beso
 
-`tests/make_szenario_inp.py` erzeugt drei winzige Modelle (8 Hexaeder, 4 Dreiecke, dasselbe ohne
-`*SHELL SECTION`) mit echten Lasten; `tests/szenario_test.py` rechnet daraus 15 Szenarien - Filter
-(simple mit auto/robust/manuell, casting, alle sieben Morphologie-Filter), Zielmassen (60/30 %),
-2D-Schale und 3D-Volumen - **und dasselbe noch einmal mit dem originalen beso von GitHub**
-(`vendor/beso`, ohne unsere Fixes).
+`tests/make_szenario_inp.py` creates three tiny models (8 hexahedra, 4 triangles, the same without
+`*SHELL SECTION`) with real loads; `tests/szenario_test.py` computes 15 scenarios from them - filter
+(simple with auto/robust/manual, casting, all seven morphology filters), target masses (60/30 %),
+2D shell and 3D volume - **and the same once more with the original beso from GitHub**
+(`vendor/beso`, without our fixes).
 
-Ergebnis (gemessen):
+Result (measured):
 
-| Fall | gebuendeltes beso | originales beso |
+| Case | bundled beso | original beso |
 |---|---|---|
-| 3D simple auto / robust / casting / Zielmasse 30 % | code 0, Massen 8000 -> 7000 | identisch |
-| 3D alle sieben Morphologie-Filter | code 0, Massen 8000 -> 7000 | identisch |
-| 2D Schale simple | code 0, Massen 1000 -> 750 | identisch |
-| 3D simple 1.5 und simple manuell 1.0 (Radius < Elementabstand) | **code 1**, klare Meldung | code 0 (rechnet still weiter) |
-| 2D ohne Schalendicke | **code 1**, klare Meldung "domain_thickness is missing" | code 1 (IndexError) |
-| 2D casting mit "auto" | code 0, Massen 1000 -> 750 | code 1, `NameError: filtered_dn` |
+| 3D simple auto / robust / casting / target mass 30 % | code 0, masses 8000 -> 7000 | identical |
+| 3D all seven morphology filters | code 0, masses 8000 -> 7000 | identical |
+| 2D shell simple | code 0, masses 1000 -> 750 | identical |
+| 3D simple 1.5 and simple manual 1.0 (radius < element distance) | **code 1**, clear message | code 0 (keeps computing silently) |
+| 2D without shell thickness | **code 1**, clear message "domain_thickness is missing" | code 1 (IndexError) |
+| 2D casting with "auto" | code 0, masses 1000 -> 750 | code 1, `NameError: filtered_dn` |
 
-* **13 von 16 Szenarien liefern identische Massen** - die Fixes aendern die Rechnung also nicht,
-  sie machen nur Fehler sichtbar.
-* Die drei Abweichungen sind genau die beabsichtigten Fixes: zu kleiner Filterradius und fehlende
-  Schalendicke fuehren beim gebuendelten beso zu einer **klaren Meldung** (statt stillem
-  Weiterrechnen mit Division durch 0), und casting mit "auto" **laeuft** mit ihm, waehrend das
-  Original dort mit `NameError` abbricht.
-* **Fix 4 (behoben):** `filter_list = [["casting", "auto", vektor]]` brach in beso mit
-  `NameError: name 'filtered_dn' is not defined` ab - `beso_main.py` benutzt `filtered_dn` in
-  `get_filter_range(...)`, setzt die Variable im casting-Zweig ohne Domain-Liste aber nie. Eine
-  Zeile `filtered_dn = domains_from_config` (genau wie im Zweig darunter fuer die anderen Filter)
-  behebt es; dokumentiert in `beso/CHANGES-TopoOpt.md` als Fix 4. Gemessen mit dem Szenario
-  `2D Schale casting auto`: vorher code 1 nach 0,7 s, jetzt code 0 mit Massen 1000 -> 750 -> 750,
-  waehrend das Original-beso dort weiterhin abbricht.  Der Fix liegt im Fork `shIxx01/beso`
-  (Branch `fix/casting-auto-filter-range`, auch auf `master`) und ist upstream als
-  calculix/beso#60 angeboten.  Gegengeprueft mit der Szenario-Matrix gegen den Fork:
-  **16 von 16 Szenarien identisch** (vorher 13 von 16, weil dort nur noch der casting-Fall abwich).
-* Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
-  jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
+* **13 of 16 scenarios deliver identical masses** - so the fixes do not change the computation,
+  they only make errors visible.
+* The three deviations are exactly the intended fixes: too small filter range and missing
+  shell thickness lead to a **clear message** with the bundled beso (instead of silent
+  continued computation with division by 0), and casting with "auto" **runs** with it, while the
+  original aborts there with `NameError`.
+* **Fix 4 (fixed):** `filter_list = [["casting", "auto", vektor]]` aborted in beso with
+  `NameError: name 'filtered_dn' is not defined` - `beso_main.py` uses `filtered_dn` in
+  `get_filter_range(...)`, but never sets the variable in the casting branch without a domain list.
+  One line `filtered_dn = domains_from_config` (exactly as in the branch below for the other filters)
+  fixes it; documented in `beso/CHANGES-TopoOpt.md` as Fix 4. Measured with the scenario
+  `2D shell casting auto`: before code 1 after 0.7 s, now code 0 with masses 1000 -> 750 -> 750,
+  while the original beso still aborts there.  The fix is in the fork `shIxx01/beso`
+  (branch `fix/casting-auto-filter-range`, also on `master`) and is offered upstream as
+  calculix/beso#60.  Counter-checked with the scenario matrix against the fork:
+  **16 of 16 scenarios identical** (before 13 of 16, because there only the casting case still
+  deviated).
+* The error cases of the assistant (without mesh, without solver, without .inp, without design space)
+  are now checked by `tests/panel_test.py`: the run does not start at all and the status names the
+  reason.
 
-*Nachtrag 22.09.2026:* Die Zahlen oben gelten fuer den Vergleich gegen den **Fork**.  Gegen das
-unveraenderte Original gerechnet, liefert die Szenario-Matrix mit 17 Szenarien **13 identische
-Ergebnisse und vier dokumentierte Abweichungen** - die zwei Radius-Faelle und beide
-2D-Schalen-Szenarien, weil das Original dort mit numpy 2 abbricht (siehe D40).  Gemessen mit
-FreeCAD 26.3 und numpy 2.4.
+*Addendum 22.09.2026:* The numbers above apply to the comparison against the **fork**.  Computed
+against the unchanged original, the scenario matrix with 17 scenarios delivers **13 identical
+results and four documented deviations** - the two radius cases and both 2D shell scenarios,
+because the original aborts there with numpy 2 (see D40).  Measured with FreeCAD 26.3 and numpy 2.4.
 
-## D38 - Die Testdaten liegen im Repository, die Suiten laufen von Anfang bis Ende
+## D38 - The test data live in the repository, the suites run from start to finish
 
-Woran lag es, dass `tests/headless_test.py` aus einem frischen Klon abbrach (22.09.2026)?
+What caused `tests/headless_test.py` to abort from a fresh clone (22.09.2026)?
 
-* `.gitignore` schloss mit `tests/data/*.log` die zwei Mitschnitte aus, die der Test als Eingang
-  braucht: besos Iterationstabelle (`beso_beispiel.log`) und das eigene Laufprotokoll
-  (`lauf_beispiel.log`).  Im Klon fehlten sie, `tabelle_lesen`/`verlauf_lesen` lieferten leere
-  Werte, und die Tabelle ist jetzt aus dem Format von beso selbst nachgebaut (Kopfzeile wie
-  `beso_main.py`, Zeilen mit denselben Spaltenbreiten).  Beide Dateien sind mit `!`-Ausnahmen
-  wieder aufgenommen - Testeingaenge gehoeren ins Repository, Ausgaben nicht.
-* Zwei Pruefungen rechneten mit `f["masse"]`/`f["ziel"]` weiter, ohne auf `None` zu pruefen.
-  Statt Fehlermeldungen gab es einen `TypeError` - gemessen brach die Suite bei Pruefung 98 von
-  152 ab, die VTK- und State-Pruefungen danach liefen nie.  Jetzt meldet eine fehlende Datei
-  ihren Namen, und die Pruefungen laufen weiter.
-* Gemessen im Flatpak (FreeCAD 26.3): **152 Pruefungen, 0 Fehler**, exit 0.
+* `.gitignore` excluded with `tests/data/*.log` the two recordings that the test needs as input:
+  beso's iteration table (`beso_beispiel.log`) and its own run log (`lauf_beispiel.log`).  They were
+  missing in the clone, `tabelle_lesen`/`verlauf_lesen` returned empty values, and the table is now
+  rebuilt from beso's own format (header like `beso_main.py`, rows with the same column widths).
+  Both files are re-included with `!` exceptions - test inputs belong in the repository, outputs do
+  not.
+* Two checks continued with `f["masse"]`/`f["ziel"]` without checking for `None`.  Instead of error
+  messages there was a `TypeError` - measured, the suite aborted at check 98 of 152, the VTK and
+  state checks after it never ran.  Now a missing file reports its name, and the checks continue.
+* Measured in the Flatpak (FreeCAD 26.3): **152 checks, 0 errors**, exit 0.
 
-## D39 - Python und ccx werden robust gesucht (Flatpak)
+## D39 - Python and ccx are searched for robustly (Flatpak)
 
-Laeuft der Start von beso auch, wenn FreeCAD als Flatpak installiert ist?
+Does the start of beso also work when FreeCAD is installed as a Flatpak?
 
-* Im Flatpak ist `sys.executable` = `/app/bin/FreeCADCmd`, `sys.prefix` = `/usr`, und FreeCAD hat
-  kein `__file__` (einkompiliert).  Die alte `python_pfad()` fand damit kein Python und gab
-  `sys.executable` zurueck - also **FreeCAD selbst**.
-* Gemessen: `conf.starte()` uebergibt `-u` (unbuffered).  An FreeCADCmd ist `-u` FreeCADs eigene
-  Option (Nutzer-Parameterdatei) - die Datei wurde **ueberschrieben** (ein Testskript enthielt
-  danach ein XML-Parameterdokument) und der Lauf scheiterte.
-* Neue Reihenfolge: `sys.executable` nur, wenn "python" im Namen steht, dann `python3`/`python`/
-  `python.exe` daneben, dann `sys.prefix/bin`, zuletzt der Suchpfad des Systems (`shutil.which`).
-  `calculix_pfad()` schaut zuerst neben das FreeCAD-Programm (im Flatpak `/app/bin/ccx`).  Wird
-  kein Python gefunden, **lehnt `starte()` den Lauf ab** (klare Meldung, im Dialog uebersetzt),
-  statt einen falschen Prozess zu starten.
-* Gemessen im Flatpak: `python_pfad()` -> `/usr/bin/python3` (numpy 2.4.4, matplotlib 3.9.4),
-  `calculix_pfad()` -> `/app/bin/ccx`.  Der headless-Test prueft beides und zusaetzlich, dass der
-  Interpreter nie FreeCAD selbst ist.
+* In the Flatpak, `sys.executable` = `/app/bin/FreeCADCmd`, `sys.prefix` = `/usr`, and FreeCAD has
+  no `__file__` (compiled in).  The old `python_pfad()` therefore found no Python and returned
+  `sys.executable` - that is, **FreeCAD itself**.
+* Measured: `conf.starte()` passes `-u` (unbuffered).  To FreeCADCmd, `-u` is FreeCAD's own option
+  (user parameter file) - the file was **overwritten** (a test script then contained an XML
+  parameter document) and the run failed.
+* New order: `sys.executable` only if "python" is in the name, then `python3`/`python`/`python.exe`
+  next to it, then `sys.prefix/bin`, finally the search path of the system (`shutil.which`).
+  `calculix_pfad()` looks first next to the FreeCAD program (in the Flatpak `/app/bin/ccx`).  If no
+  Python is found, **`starte()` refuses the run** (clear message, translated in the dialog), instead
+  of starting a wrong process.
+* Measured in the Flatpak: `python_pfad()` -> `/usr/bin/python3` (numpy 2.4.4, matplotlib 3.9.4),
+  `calculix_pfad()` -> `/app/bin/ccx`.  The headless test checks both and additionally that the
+  interpreter is never FreeCAD itself.
 
-## D40 - beso: np.linalg.linalg durch np.linalg.norm ersetzt (numpy 2)
+## D40 - beso: np.linalg.linalg replaced by np.linalg.norm (numpy 2)
 
-Warum brach jedes 2D-Modell (Schale) im Flatpak vor der ersten Iteration ab?
+Why did every 2D model (shell) abort in the Flatpak before the first iteration?
 
-* Gemessen mit numpy 2.4.4: `2D Schale simple auto` und `2D Schale casting auto` endeten mit
-  `AttributeError: module 'numpy.linalg' has no attribute 'linalg'`.  Die Stelle ist
-  `beso_lib.elm_volume_cg` -> `tria_area_cg`, also die Flaechen- und Massenberechnung der
-  Dreieckselemente; `np.linalg.linalg` wurde in numpy 2.0 entfernt.  Dieselbe Zeile steht im
-  Original-beso, **2D-Modelle rechnen dort mit aktuellem numpy gar nicht**.
-* Fix: ein Wort.  Gemessen danach: `2D Schale simple auto` code 0, Massen 1000 -> 750;
-  `2D Schale casting auto` code 0, Massen 1000 -> 750 -> 750 - waehrend das unveraenderte Original
-  an dieser Stelle weiterhin abbricht.  Die erwartete Abweichungsmenge der Szenario-Matrix waechst
-  damit von 3 auf 4 Eintraege (siehe `BEKANNTE_ABWEICHUNGEN`).
-* deshalb steht in `beso_lib.py` jetzt ein `TopoOpt:`-Kommentar an der Zeile - und ebenso an jeder
-  anderen Aenderung: `tests/vergleiche_beso_kopie.py` vergleicht die gebuendelte Kopie mit dem
-  Original und **scheitert, wenn ein Unterschied keinen solchen Kommentar traegt**.
+* Measured with numpy 2.4.4: `2D shell simple auto` and `2D shell casting auto` ended with
+  `AttributeError: module 'numpy.linalg' has no attribute 'linalg'`.  The place is
+  `beso_lib.elm_volume_cg` -> `tria_area_cg`, that is the area and mass computation of the
+  triangle elements; `np.linalg.linalg` was removed in numpy 2.0.  The same line is in the
+  original beso, **2D models do not compute there at all with current numpy**.
+* Fix: one word.  Measured afterwards: `2D shell simple auto` code 0, masses 1000 -> 750;
+  `2D shell casting auto` code 0, masses 1000 -> 750 -> 750 - while the unchanged original
+  still aborts at this place.  The expected deviation count of the scenario matrix thus grows
+  from 3 to 4 entries (see `BEKANNTE_ABWEICHUNGEN`).
+* therefore `beso_lib.py` now carries a `TopoOpt:` comment at the line - and likewise at every
+  other change: `tests/vergleiche_beso_kopie.py` compares the bundled copy with the original and
+  **fails when a difference carries no such comment**.
 
-## D41 - Automatischer Testlauf bei jedem Push
+## D41 - Automatic test run on every push
 
-Die Suiten liefen nur, wenn sie jemand von Hand startete; die abgebrochene Suite (D38) blieb
-deshalb unbemerkt.  `.github/workflows/tests.yml` laeuft jetzt bei jedem Push und jedem
-Pull Request in zwei Auftraegen:
+The suites ran only when someone started them by hand; the aborted suite (D38) therefore went
+unnoticed.  `.github/workflows/tests.yml` now runs on every push and every pull request in two jobs:
 
-* **headless** - FreeCAD als Flatpak installieren (dieselbe FreeCAD auf jeder Distribution, mit
-  `ccx` und `gmsh`), das Addon in FreeCADs `Mod`-Ordner kopieren (der Ordner wird bei FreeCAD
-  erfragt, er ist versionsabhaengig), Syntaxpruefung aller Python-Dateien und dann
-  `tests/headless_test.py`.
-* **beso-copy** - Original-beso klonen und pruefen, dass jeder Unterschied der Kopie dokumentiert
-  ist.  Aendert upstream etwas, faellt es hier auf.
+* **headless** - install FreeCAD as a Flatpak (the same FreeCAD on every distribution, with
+  `ccx` and `gmsh`), copy the addon into FreeCAD's `Mod` folder (the folder is queried from FreeCAD,
+  it is version-dependent), syntax check of all Python files and then `tests/headless_test.py`.
+* **beso-copy** - clone the original beso and check that every difference of the copy is documented.
+  If upstream changes something, it shows up here.
 
-Die Szenario-Matrix bleibt Handarbeit: sie rechnet mit dem unveraenderten beso von GitHub und
-soll nicht bei jeder Aenderung von upstream rot werden.
+The scenario matrix remains manual work: it computes with the unchanged beso from GitHub and
+should not turn red on every change from upstream.
 
-## D37 - "Iterationen anzeigen" zeigt schon waehrend des Laufs den Zwischenstand
+## D37 - "Show iterations" already shows the intermediate state during the run
 
-Der Knopf war bis zum Ende des Laufs ausgegraut, weil er auf `resulting_states.vtk` wartete - die
-schreibt beso erst ganz am Schluss.  Waehrend des Laufs gibt es aber Zwischenstaende: beso schreibt
-je gespeicherter Iteration ein `fileNNN.vtk` (gemessen an einem Lauf mit 38 Iterationen:
-`file010.vtk` bis `file038.vtk`).  Sie haben **dasselbe Format** wie das Endergebnis, nur mit
-weniger Zustaenden (gemessen: `file030.vtk` 5 Bloecke gegen `resulting_states.vtk` 38).
+The button was greyed out until the end of the run, because it waited for `resulting_states.vtk` - which
+beso writes only at the very end.  During the run, however, there are intermediate states: beso writes
+a `fileNNN.vtk` per saved iteration (measured on a run with 38 iterations:
+`file010.vtk` through `file038.vtk`).  They have **the same format** as the final result, only with
+fewer states (measured: `file030.vtk` 5 blocks versus `resulting_states.vtk` 38).
 
-`_ergebnis_pfad()` liefert jetzt den Endstand, wenn es ihn gibt, sonst die **neueste**
-`fileNNN.vtk` nach Aenderungszeit (nicht alphabetisch - sonst gewinnt die hoechste Nummer eines
-frueheren Laufs).  Der Hinweis unter dem Knopf nennt in dem Fall die Iteration ("Zwischenstand der
-Iteration 30 - ... das vollstaendige Ergebnis entsteht am Ende des Laufs."), und
-`_lauf_aktualisieren()` gibt den Knopf waehrend des Laufs frei, sobald die erste Zwischenstufe da
-ist.
+`_ergebnis_pfad()` now returns the final state if it exists, otherwise the **newest**
+`fileNNN.vtk` by modification time (not alphabetically - otherwise the highest number of an
+earlier run wins).  The hint under the button names the iteration in that case ("intermediate state of
+iteration 30 - ... the complete result is created at the end of the run."), and
+`_lauf_aktualisieren()` releases the button during the run as soon as the first intermediate stage is
+there.
 
-Gemessen: `tests/panel_test.py` legt eine `file030.vtk` an und prueft, dass der Knopf aktiv ist,
-die Iteration aus dem Namen gelesen wird und der Endstand Vorrang hat.
+Measured: `tests/panel_test.py` creates a `file030.vtk` and checks that the button is active,
+that the iteration is read from the name, and that the final state takes precedence.
 
-## D36 - Der Lauf-Status teilt sich die Zeile, ohne umzubrechen
+## D36 - The run status shares the line without wrapping
 
-Der Status ("Iteration 2 | Masse 57836, Ziel 36319") steht neben dem ausklappbaren "Details" - er
-lief aber auf zwei Zeilen um, obwohl rechts Platz war.  Ursache war das Layout: vor dem Label stand
-`addStretch(1)`, das Umbruch-Label bekam dadurch nur seine (kleine) Wunschbreite und brach um.
+The status ("Iteration 2 | Mass 57836, target 36319") sits next to the expandable "Details" - but it
+wrapped onto two lines, although there was room on the right.  The cause was the layout: before the label
+there was `addStretch(1)`, which gave the wrapping label only its (small) preferred width, and it wrapped.
 
-Jetzt bekommt das Label den Rest der Zeile (`addWidget(self.lauf_status, 1)`), der Dehnungs-Platz
-davor entfaellt.  Gemessen im Panel-Test bei 560 px Panelbreite: Label **447 px** bei 193 px
-Textbreite, Hoehe 25 px - also **eine** Zeile (Zeilenhoehe 16 px).  Assistent 135/135.
+Now the label gets the rest of the line (`addWidget(self.lauf_status, 1)`), the stretch space
+in front of it is dropped.  Measured in the panel test at 560 px panel width: label **447 px** at 193 px
+text width, height 25 px - thus **one** line (line height 16 px).  Assistant 135/135.
 
-## D35 - Neue Element-Sets sind von Haus aus Design-Raum
+## D35 - New element sets are design space by default
 
-Beim Bauen mit zwei Materialien fiel auf: die Domainliste stand komplett auf "ignorieren" - nur
-wenn genau **ein** Set uebrig blieb, wurde es als Design-Raum vorbelegt.  Bei mehreren Sets war
-damit zunaechst alles ausgeschlossen, und der Lauf endete in "kein Design-Raum markiert".
+When building with two materials it stood out: the domain list was completely on "ignore" - only
+when exactly **one** set remained was it defaulted as design space.  With several sets
+everything was thus initially excluded, and the run ended in "no design space marked".
 
-Jetzt ist der Design-Raum der Standard: `domains.vorschlag()` setzt jedes angebotene Set auf
-Design-Raum, und `domains.rollen_fuer()` gibt einem Set, das erst nach einer Modellaenderung
-dazukommt, ebenfalls Design-Raum.  Gespeicherte Rollen gelten unveraendert weiter - "Nicht-Design"
-(Bereich bleibt erhalten) und "ignorieren" (kommt in der Optimierung nicht vor) sind
-Entscheidungen, die man bewusst setzt.
+Now the design space is the default: `domains.vorschlag()` sets every offered set to
+design space, and `domains.rollen_fuer()` likewise gives design space to a set that only comes in
+after a model change.  Stored roles continue to apply unchanged - "non-design"
+(region is retained) and "ignore" (does not appear in the optimization) are
+decisions that one sets deliberately.
 
-headless prueft, dass ohne Vorbelegung alle Sets Design-Raum sind und dass ein neu dazugekommenes
-Set Design-Raum bekommt, waehrend Gespeichertes gilt.
+headless checks that without a default all sets are design space and that a newly added
+set gets design space, while stored values apply.
 
-## D34 - Der Lauf startet ungepuffert (-u)
+## D34 - The run starts unbuffered (-u)
 
-Balken und Diagramme lesen besos Iterationstabelle aus `<mesh>.log`; das Detailfeld zeigt dagegen
-unsere Logdatei `<mesh>_topoopt.log`, in die die Ausgabe des Laufs umgeleitet wird.  Der Lauf wurde
-ohne `-u` und ohne `PYTHONUNBUFFERED` gestartet - Pythons stdout ist dann **blockgepuffert**, die
-Datei blieb also leer, bis der Prozess endete.  Symptom: waehrend der Rechnung stand im Detailfeld
-nichts, erst nach dem Job die letzten Iterationen.
+Bars and diagrams read beso's iteration table from `<mesh>.log`; the detail field, in contrast, shows
+our log file `<mesh>_topoopt.log`, into which the output of the run is redirected.  The run was
+started without `-u` and without `PYTHONUNBUFFERED` - Python's stdout is then **block-buffered**, so the
+file stayed empty until the process ended.  Symptom: during the computation the detail field showed
+nothing, only after the job the last iterations.
 
-Gemessen an einem Kindprozess, der fuenf Zeilen mit je 0,4 s Pause schreibt: ohne `-u` bleibt die
-Logdatei bei **0 Bytes** und enthaelt alles erst nach dem Prozessende; mit `-u` waechst sie
-schrittweise mit (9, 18, 18, 27, 36, 45 Bytes).
+Measured on a child process that writes five lines with 0.4 s pause each: without `-u` the
+log file stays at **0 bytes** and contains everything only after the process ends; with `-u` it
+grows step by step (9, 18, 18, 27, 36, 45 bytes).
 
-`conf.starte()` startet den Lauf jetzt mit `-u` und `PYTHONUNBUFFERED=1` in der Umgebung
-(`PYTHONUTF8` bleibt gesetzt, falls nicht schon vorhanden).  Der **Fortschrittsbalken** war von der
-Ursache aus D33 betroffen und ist damit mitbehoben - Beleg: ein bei Iteration 3 bzw. 7
-abgeschnittenes Log ergibt 14,7 % bzw. 28,5 %, am Ende 100 %.
+`conf.starte()` now starts the run with `-u` and `PYTHONUNBUFFERED=1` in the environment
+(`PYTHONUTF8` stays set if not already present).  The **progress bar** was affected by the
+cause from D33 and is thus fixed at the same time - evidence: a log cut off at iteration 3 or 7
+yields 14.7 % or 28.5 %, at the end 100 %.
 
-headless 145/145 (der neue Test prueft die Argumente des Prozessstarts).
+headless 145/145 (the new test checks the arguments of the process start).
 
-## D33 - Die Diagramme lesen besos Tabelle ueber die Kopfzeile
+## D33 - The diagrams read beso's table via the header row
 
-besos Iterationstabelle aendert ihre Spaltenzahl mit dem Modell.  Mit Failure Index bekommt sie je
-Domain eine Spalte FI_violated und FI_max - bei mehr als einer Domain zusaetzlich eine
-Sammelspalte "all" - sowie FI_mean und FI_mean_without_state0.  Unser Leser erwartete **genau vier**
-Zusatzspalten und verankerte den Treffer am Zeilenende.  Sobald ein Lauf eine zulaessige Spannung
-hatte - also genau der Fall, fuer den der Failure Index gedacht ist - passte keine Zeile mehr:
-Diagramme und Fortschrittsbalken blieben leer, waehrend der Lauf selbst einwandfrei weiterlief.
+beso's iteration table changes its number of columns with the model.  With Failure Index it gets one
+column FI_violated and FI_max per domain - with more than one domain additionally an
+aggregate column "all" - as well as FI_mean and FI_mean_without_state0.  Our reader expected **exactly
+four** extra columns and anchored the match at the end of the row.  As soon as a run had an
+allowable stress - thus exactly the case for which the Failure Index is intended - no row matched any
+more: diagrams and progress bar stayed empty, while the run itself continued flawlessly.
 
-`tabelle_lesen()` liest die Spaltenpositionen jetzt aus der Kopfzeile der Tabelle (beso schreibt je
-Spalte genau ein Token) und holt die Werte ueber ihren Namen.  Damit stimmt jede Variante:
-3 Spalten ohne Failure Index, 4 mit Failure Index und einer Domain, 6 bzw. 8 mit mehreren Domains.
+`tabelle_lesen()` now reads the column positions from the header row of the table (beso writes exactly
+one token per column) and fetches the values via their name.  Every variant thus matches:
+3 columns without Failure Index, 4 with Failure Index and one domain, 6 or 8 with several domains.
 
-Gemessen: `tests/data/beso_beispiel.log` (zwei Tabellen, eine mit Failure Index) liefert weiterhin
-6 Zeilen und 11,12 % Fortschritt; ein laufender Lauf mit zwei Domains liefert 34 Punkte samt
-FI-Werten.  headless 142/142, Assistent 133/133.
+Measured: `tests/data/beso_beispiel.log` (two tables, one with Failure Index) still yields
+6 rows and 11.12 % progress; a running run with two domains yields 34 points including
+FI values.  headless 142/142, Assistant 133/133.
 
-## D32 - "ignore" heisst wirklich: das Set kommt in der Optimierung nicht vor
+## D32 - "ignore" really means: the set does not appear in the optimization
 
-Beim Bauen mit zwei Materialien fiel auf: eine Domain auf "ignorieren" landete trotzdem in der
-beso-Konfiguration (`domain_optimized = {name: (name in design) for name in domains}` nahm
-**alle** Sets) - fuer beso also dasselbe wie Nicht-Design: mitgerechnet, ausgewertet, und damit
-auch mit Anspruch auf eine zulaessige Spannung.  Gefragt, ob ein Set "gar nicht vorkommen" soll,
-hiess das also faktisch "wie Nicht-Design".
+When building with two materials it stood out: a domain on "ignore" still ended up in the
+beso configuration (`domain_optimized = {name: (name in design) for name in domains}` took
+**all** sets) - thus for beso the same as non-design: included in the computation, evaluated, and therefore
+also with a claim to an allowable stress.  Asked whether a set should "not occur at all",
+this thus in fact meant "like non-design".
 
-Jetzt filtert `domains.aktive()` die ignorierten Sets heraus, bevor die Konfiguration entsteht:
+Now `domains.aktive()` filters out the ignored sets before the configuration is created:
 
-* `core/conf.py` schreibt nur noch Design- und Nicht-Design-Domains (`domain_optimized`,
+* `core/conf.py` now writes only design and non-design domains (`domain_optimized`,
   `domain_density`, `domain_material`, `domain_thickness`),
-* der Hinweis auf fehlende zulaessige Spannungen im Panel ueberspringt ignorierte Sets - sie
-  brauchen keine,
-* die Materialpruefung der Eingabedatei (D29) gilt weiterhin fuer **alle** Sets: CalculiX rechnet
-  jedes Element im Modell, auch das eines ignorierten Sets, und braucht dafuer ein Material.
+* the hint about missing allowable stresses in the panel skips ignored sets - they
+  do not need any,
+* the material check of the input file (D29) still applies to **all** sets: CalculiX computes
+  every element in the model, also that of an ignored set, and needs a material for it.
 
-Gemessen: `tests/headless_test.py` prueft, dass ein ignoriertes Set weder in `domain_optimized`
-noch sonst in der Konfiguration steht (142 Pruefungen), `tests/panel_test.py` prueft, dass es
-keine Spannung verlangt (132).
+Measured: `tests/headless_test.py` checks that an ignored set appears neither in `domain_optimized`
+nor elsewhere in the configuration (142 checks), `tests/panel_test.py` checks that it
+does not require a stress (132).
 
-## D31 - Kein RecursionError mehr, wenn ein Lauf mit Fehler endet
+## D31 - No more RecursionError when a run ends with an error
 
-Nach einem Lauf, der mit einem Fehlercode endet, lief die Oberflaeche in eine Endlosrekursion:
-`_lauf_aktualisieren()` klappte im Fehlerfall das Detailfeld auf (`knopf_detail.setChecked(True)`
-und `_detail_umschalten()`), und `_detail_umschalten()` ruft bei sichtbarem Detail wieder
-`_lauf_aktualisieren()` - das den Fehlerfall erneut erreicht.  FreeCADs Konsole fuellte sich mit
+After a run that ends with an error code, the user interface ran into an endless recursion:
+`_lauf_aktualisieren()` expanded the detail field in the error case (`knopf_detail.setChecked(True)`
+and `_detail_umschalten()`), and `_detail_umschalten()` calls `_lauf_aktualisieren()` again when the detail is visible -
+which reaches the error case again.  FreeCAD's console filled with
 `RecursionError: maximum recursion depth exceeded while calling a Python object`.
 
-Behoben: das Fuellen des Detailtextes steckt jetzt in `_detail_fuellen()`.  Der Fehlerfall setzt
-Sichtbarkeit und Pfeil direkt und ruft `_detail_fuellen()` **einmal** auf - ohne den Umweg ueber
-`_detail_umschalten()`, der zurueckruft.  Gemessen: `tests/panel_test.py` stellt den Fehlerfall
-nach (Lauf vorbei, Detail zugeklappt) und prueft, dass der Aufruf zurueckkommt und das Feld offen
-ist (132 Pruefungen).
+Fixed: the filling of the detail text is now in `_detail_fuellen()`.  The error case sets
+visibility and arrow directly and calls `_detail_fuellen()` **once** - without the detour via
+`_detail_umschalten()`, which calls back.  Measured: `tests/panel_test.py` reproduces the error case
+(run over, detail collapsed) and checks that the call returns and the field is open
+(132 checks).
 
-## D30 - Der Failure-Index braucht in jeder Domain eine zulaessige Spannung
+## D30 - The failure index needs an allowable stress in every domain
 
-Ein Lauf mit einer Domain ohne sigma brach mit `KeyError: 27004` ab (`beso_lib.save_FI`).
-Nachgemessen: `criteria_elm` wird nur aus `domain_FI` gefuellt (also nur fuer Domains **mit**
-Spannung), und `save_FI` griff - anders als die beiden anderen Stellen, die `if en in
-criteria_elm` pruefen - ungeprueft zu.  Mit `criteria_elm.get(en, [])` laeuft es weiter, und beso
-meldet danach, was es wirklich braucht: "FI_max computing failed. Check if each domain contains at
+A run with a domain without sigma aborted with `KeyError: 27004` (`beso_lib.save_FI`).
+Re-measured: `criteria_elm` is filled only from `domain_FI` (thus only for domains **with**
+stress), and `save_FI` accessed it - unlike the two other places, which check `if en in
+criteria_elm` - without a check.  With `criteria_elm.get(en, [])` it continues, and beso
+then reports what it really needs: "FI_max computing failed. Check if each domain contains at
 least one failure criterion."
 
-Das ist beso-Logik und bleibt so: der Failure-Index wird **je Domain** gebildet, also braucht jede
-Domain ein Kriterium, sobald ueberhaupt eines gesetzt ist.  Die zulaessige Spannung ist bei uns
-**optional** (D27) - deshalb neu:
+That is beso logic and stays so: the failure index is formed **per domain**, so every
+domain needs a criterion as soon as one is set at all.  The allowable stress is with us
+**optional** (D27) - therefore new:
 
-* Panel: **rot**, wenn sigma nur bei einem Teil der Domains gesetzt ist ("Der Failure-Index braucht
-  in JEDER Domain eine zulaessige Spannung - sie fehlt noch bei: ...") und wie bisher orange,
-  wenn gar keines gesetzt ist.  Rot, weil der Lauf sonst abbricht.
-* **Fix 5** im gebuendelten beso: ein Element ohne Kriterium wird uebersprungen statt mit
-  `KeyError` abzustuerzen.  **Nicht** upstream angeboten - die vier PRs #57...#60 genuegen, und
-  die Original-GUI schreibt ein Kriterium nur dort, wo der Nutzer einen Wert eintraegt
-  (nachgemessen: `beso_fc_gui.py:836 if von_mises:`), der Fall ist dort also moeglich, aber
-  seltener.
-* Testfall: `tests/szenarien/modell_2sets.inp` (zwei Element-Sets mit eigenem Material) und das
-  Szenario "3D zwei Sets, eines ohne sigma".  Gemessen: 17 Szenarien, 14 identisch, die drei
-  Abweichungen sind die bekannten Fixes; der neue Fall bricht bei beiden beso-Staenden ab,
-  unseres mit der klaren Meldung.
+* Panel: **red** when sigma is set for only part of the domains ("The failure index needs
+  an allowable stress in EVERY domain - it is still missing for: ...") and, as before, orange,
+  when none is set at all.  Red, because the run aborts otherwise.
+* **Fix 5** in the bundled beso: an element without a criterion is skipped instead of
+  crashing with `KeyError`.  **Not** offered upstream - the four PRs #57...#60 suffice, and
+  the original GUI writes a criterion only where the user enters a value
+  (re-measured: `beso_fc_gui.py:836 if von_mises:`), the case is thus possible there too, but
+  rarer.
+* Test case: `tests/szenarien/modell_2sets.inp` (two element sets with their own material) and the
+  scenario "3D two sets, one without sigma".  Measured: 17 scenarios, 14 identical, the three
+  deviations are the known fixes; the new case aborts with both beso versions,
+  ours with the clear message.
+## D29 - The input file is checked before the run starts
 
-## D29 - Die Eingabedatei wird geprueft, bevor der Lauf startet
+A run with two materials and two element sets ended with
+`AssertionError: CalculiX results not found`, although beso worked correctly.  Re-measured on
+the files: the `.inp` was **truncated** while writing - it ended after the first
+`*MATERIAL`, `*SOLID SECTION`, `*STEP`, `*BOUNDARY` and `*CLOAD` were missing.  CalculiX therefore
+computed nothing (result file 0 bytes) and beso reported completely correctly that there are no
+results.  A second case: an element set had **no** section card, because its material lay on
+four **faces of a chamfer** instead of on a solid - from that FreeCAD writes no
+volume set, and CalculiX omits these elements without material.
 
-Ein Lauf mit zwei Materialien und zwei Element-Sets endete mit
-`AssertionError: CalculiX results not found`, obwohl beso korrekt arbeitete.  Nachgemessen an
-den Dateien: Die `.inp` war beim Schreiben **abgebrochen** - sie endete nach dem ersten
-`*MATERIAL`, es fehlten `*SOLID SECTION`, `*STEP`, `*BOUNDARY` und `*CLOAD`.  CalculiX rechnete
-deshalb nichts (Ergebnisdatei 0 Bytes) und beso meldete voellig richtig, dass es keine Ergebnisse
-gibt.  Ein zweiter Fall: ein Element-Set hatte **keine** Section-Karte, weil sein Material auf
-vier **Flaechen einer Fase** lag statt auf einem Koerper - daraus schreibt FreeCAD kein
-Volumen-Set, und CalculiX laesst diese Elemente ohne Material weg.
+Both become apparent only late and with an incomprehensible message.  Therefore
+`elsets.pruefe_inp()` now checks the file in step 1, and `AssistantPanel._pruefe_inp()` shows the
+result in red above the domain list:
 
-Beides faellt erst spaet und mit unverstaendlicher Meldung auf.  Deshalb prueft
-`elsets.pruefe_inp()` die Datei jetzt in Schritt 1, und `AssistantPanel._pruefe_inp()` zeigt das
-Ergebnis in Rot ueber der Domainliste:
+* missing cards (`*MATERIAL` or `*STEP`) - "The input file is incomplete (`*STEP` is missing) -
+  please regenerate it."
+* element sets without a section card - "For these element sets the material assignment is missing
+  (no section card): ... - their elements are not included in the computation."
 
-* fehlende Karten (`*MATERIAL` oder `*STEP`) - "Die Eingabedatei ist unvollstaendig (es fehlt
-  `*STEP`) - bitte neu erzeugen."
-* Element-Sets ohne Section-Karte - "Fuer diese Element-Sets fehlt die Materialzuordnung (keine
-  Section-Karte): ... - ihre Elemente werden nicht mitgerechnet."
+Boundary conditions are **not** checked: a model can also be written without them (the
+test model of the test suite has none).  Measured: `tests/headless_test.py` checks the truncated
+file, the file with a set without section and the inconspicuous case (138 checks);
+`tests/panel_test.py` checks that the hint appears and disappears again (127).
 
-Randbedingungen werden **nicht** geprueft: ein Modell kann auch ohne sie geschrieben werden (das
-Testmodell der Testsuite hat keine).  Gemessen: `tests/headless_test.py` prueft die abgebrochene
-Datei, die Datei mit einem Set ohne Section und den unauffaelligen Fall (138 Pruefungen);
-`tests/panel_test.py` prueft, dass der Hinweis erscheint und wieder verschwindet (127).
+**Addendum - the cause of the truncation itself:** A material with the card `Default` had only
+a density, but **no** Young's modulus.  FreeCAD's writer then aborts with
+`KeyError: 'YoungsModulus'` and leaves exactly such a half-finished file behind (the panel showed
+only "The input file could not be generated: 'YoungsModulus'").  Therefore
+`material.fehlende_werte()` checks all materials of the analysis for `YoungsModulus` and `PoissonRatio`,
+and `AssistantPanel._pruefe_inp()` names them in the same red hint:
+"These materials are missing values that CalculiX needs: <Material> (YoungsModulus) - please add
+them in the material editor."  Measured: headless 140 checks (material without Young's modulus,
+material without Poisson's ratio, complete material), assistant 129 (hint names material and value,
+disappears after the values are added).
 
-**Nachtrag - die Ursache des Abbruchs selbst:** Ein Material mit der Karte `Default` hatte nur
-eine Dichte, aber **keinen E-Modul**.  FreeCADs Schreiber bricht dann mit
-`KeyError: 'YoungsModulus'` ab und laesst genau so eine halbfertige Datei zurueck (im Panel stand
-nur "Die Eingabedatei konnte nicht erzeugt werden: 'YoungsModulus'").  Deshalb prueft
-`material.fehlende_werte()` alle Materialien der Analyse auf `YoungsModulus` und `PoissonRatio`,
-und `AssistantPanel._pruefe_inp()` nennt sie im selben roten Hinweis:
-"Diesen Materialien fehlen Werte, die CalculiX braucht: <Material> (YoungsModulus) - bitte im
-Material-Editor ergaenzen."  Gemessen: headless 140 Pruefungen (Material ohne E-Modul, Material
-ohne Querkontraktion, vollstaendiges Material), Assistent 129 (Hinweis nennt Material und Wert,
-verschwindet nach dem Ergaenzen).
+## D28 - The optimization object has no switchable eye in the tree
 
-## D28 - Das Optimierungsobjekt hat kein schaltbares Auge im Baum
+Visibility is not a property of the object, but of the scene graph of its view provider.
+Our provider supplies icon, double click and tooltip and draws nothing into the 3D view -
+therefore FreeCAD greys out the eye symbol.  The other FEM objects have it, because material,
+solver and mesh draw something (measured in the document: `MaterialSolid` and `SolverCalculiX` with
+FreeCAD's own providers, our object with `TopologyViewProvider`).
 
-Sichtbarkeit ist keine Eigenschaft des Objekts, sondern des Szenengraphen seines ViewProviders.
-Unser Provider liefert Icon, Doppelklick und Werkzeugtip und zeichnet nichts in die 3D-Ansicht -
-deshalb graut FreeCAD das Augensymbol aus.  Die anderen FEM-Objekte haben es, weil Material,
-Solver und Netz etwas zeichnen (gemessen im Dokument: `MaterialSolid` und `SolverCalculiX` mit
-FreeCAD-eigenen Providern, unser Objekt mit `TopologyViewProvider`).
+This is intentional: the object is a **control object**, the results lie as their own
+objects in the tree (VTK iterations, result mesh) and have their own eye there.
 
-Das ist beabsichtigt: das Objekt ist ein **Steuerobjekt**, die Ergebnisse liegen als eigene
-Objekte im Baum (VTK-Iterationen, Ergebnisnetz) und haben dort ihr eigenes Auge.
+Rejected: linking the eye to the last iteration (duplicate representation next to the
+result objects) and making the eye switchable with an empty node only (visible as with
+other objects, but without effect).
 
-Verworfen: das Auge mit der letzten Iteration verbinden (doppelte Darstellung neben den
-Ergebnisobjekten) und das Auge mit einem leeren Knoten nur schaltbar machen (sichtbar wie bei
-anderen Objekten, aber ohne Wirkung).
+## D27 - The sigma column stays empty, a hint explains the failure index (replaces D20)
 
-## D27 - Die Spalte sigma bleibt leer, ein Hinweis erklaert den Failure-Index (loest D20 ab)
+Up to here (D20) the allowable stress was filled automatically from the material when a
+yield strength was given there.  That is superseded: the column stays **empty** by default, and
+under the list there is a hint in orange.
 
-Bis hierher (D20) wurde die zulaessige Spannung automatisch aus dem Material gefuellt, wenn dort
-eine Streckgrenze stand.  Das ist abgeloest: die Spalte bleibt von Haus aus **leer**, und unter
-der Liste steht ein Hinweis in Orange.
+Reasoning:
 
-Begruendung:
+* The **yield strength** of a material card (e.g. Aluminum-6061-T6 = 276 MPa, measured in the
+  cards of FreeCAD 26.3) is a material property.  The **allowable** stress is a
+  decision (safety factor, load case).  An automatically entered value looks like
+  a dimensioning, but is not one - and one does not notice that it still has to be made.
+* Of the 208 material cards in FreeCAD 26.3, only **125** bring a yield strength; the
+  simple cards (CalculiX-Steel, Steel, Aluminum) have none.  In the test model there is
+  therefore none - the 235 in a domain list was a value stored in the object
+  (`StressLimits`), not a value from the material.
+* The failure index is an additional evaluation: without a value beso simply computes without FI.
 
-* Die **Streckgrenze** einer Materialkarte (z.B. Aluminum-6061-T6 = 276 MPa, gemessen in den
-  Karten von FreeCAD 26.3) ist eine Werkstoffkennzahl.  Die **zulaessige** Spannung ist eine
-  Entscheidung (Sicherheitsbeiwert, Lastfall).  Ein automatisch eingetragener Wert sieht aus wie
-  eine Auslegung, ist aber keine - und man merkt nicht, dass sie noch zu treffen ist.
-* Von den 208 Materialkarten in FreeCAD 26.3 bringen nur **125** eine Streckgrenze mit; die
-  einfachen Karten (CalculiX-Steel, Steel, Aluminum) haben keine.  Im Testmodell steht
-  deshalb keine - die 235 in einer Domainliste war ein im Objekt gespeicherter Wert
-  (`StressLimits`), kein Wert aus dem Material.
-* Der Failure-Index ist eine Zusatzauswertung: ohne Wert rechnet beso einfach ohne FI.
+Behavior now: column empty.  Under the list there is in orange "Without allowable stress (sigma)
+no failure index is computed."  If a value is stored in the material, the hint **names**
+it ("From the material: <set> = 315 MPa - enter the value into the sigma column if you want to see
+the utilization"), but does not enter it.  As soon as a value stands in the column,
+the hint disappears - also when the field was deliberately emptied, because exactly then "no
+FI" is the important information.  Where the named material value comes from is governed by D26
+(assignment from the input file).
 
-Verhalten jetzt: Spalte leer.  Unter der Liste steht in Orange "Ohne zulaessige Spannung (sigma)
-wird kein Failure-Index berechnet."  Ist im Material ein Wert hinterlegt, **nennt** der Hinweis
-ihn ("Aus dem Material: <set> = 315 MPa - trage den Wert in die Spalte sigma ein, wenn du die
-Auslastung sehen willst"), traegt ihn aber nicht ein.  Sobald ein Wert in der Spalte steht,
-verschwindet der Hinweis - auch wenn das Feld bewusst geleert wurde, denn gerade dann ist "kein
-FI" die wichtige Information.  Woher der genannte Materialwert kommt, regelt D26 (Zuordnung aus
-der Eingabedatei).
+## D26 - No material or thickness selection in the user interface
 
-## D26 - Keine Material- oder Dickenauswahl in der Oberflaeche
+The question (18.09.2026) was whether one should be able to select the **material** and the
+**shell thickness** per element set in the domain table - a model with two materials,
+but only one element set suggested that the assignment was missing.
 
-Gefragt war (18.09.2026), ob man in der Domaintabelle das **Material** und die
-**Schalendicke** je Element-Set auswaehlen koennen sollte - ein Modell mit zwei Materialien,
-aber nur einem Element-Set liess vermuten, dass die Zuordnung fehlt.
-
-Nachgesehen in der echten Eingabedatei: FreeCAD schreibt beides fertig hinein, z. B.
+Looked up in the real input file: FreeCAD writes both in completed form, e.g.
 
     *SOLID SECTION, ELSET=MaterialSolidSolid, MATERIAL=MaterialSolid
     *SHELL SECTION, ELSET=MaterialSolidElementGeometry2D, MATERIAL=MaterialSolid, OFFSET=0
     10
 
-Es gibt also nichts zuzuordnen - die Zuordnung entsteht schon in der FEM-Analyse, und
-CalculiX rechnet mit genau diesen Angaben.  Ein Modell mit zwei Materialien, von denen nur
-eines benutzt wird, hat nur fuer dieses eine eine Section-Karte und damit auch nur eine
-Domain.  Eine Auswahlliste in unserem Panel waere deshalb nicht nur ueberfluessig, sie
-koennte sogar etwas anderes behaupten als das, was CalculiX tatsaechlich rechnet.
+So there is nothing to assign - the assignment arises already in the FEM analysis, and
+CalculiX computes with exactly these specifications.  A model with two materials, of which only
+one is used, has a section card for this one only and thus also only one
+domain.  A selection list in our panel would therefore not only be superfluous, it
+could even claim something different from what CalculiX actually computes.
 
-**Was aber falsch war:** Der Vorschlag fuer die zulaessige Spannung holte das Material
-ueber den **Namensanfang** ('MaterialSolid' gehoert zu 'MaterialSolidSolid').  Das geht
-zufaellig auf, solange das Set nach seinem Material heisst - und liegt falsch, sobald in
-der Eingabedatei ein anderes Material eingetragen ist (`MATERIAL=MaterialSolid001` bei
-einem Set namens `MaterialSolidSolid` haette die Streckgrenze des falschen Materials
-geliefert).  Jetzt liest `elsets.read_section_materials` den Attributwert `MATERIAL` der
-`*SOLID SECTION`/`*SHELL SECTION`-Karten, `material.streckgrenze` nutzt ihn zuerst und
-faellt nur dann auf den Namensanfang zurueck, wenn die Eingabedatei noch nichts enthaelt
-(noch nicht erzeugt).  Gemessen: `tests/headless_test.py` prueft beides - mit Zuordnung
-276 MPa (MaterialSolid001), ohne Zuordnung 235 MPa (Namensanfang).
-Die Schalendicke kommt weiterhin ausschliesslich aus der Eingabedatei (D20-Familie,
-Commit `4e7d261`).
+**What was wrong, however:** The suggestion for the allowable stress fetched the material
+via the **name prefix** ('MaterialSolid' belongs to 'MaterialSolidSolid').  That works
+by coincidence as long as the set is named after its material - and is wrong as soon as in
+the input file a different material is entered (`MATERIAL=MaterialSolid001` with
+a set named `MaterialSolidSolid` would have delivered the yield strength of the wrong material).
+Now `elsets.read_section_materials` reads the attribute value `MATERIAL` of the
+`*SOLID SECTION`/`*SHELL SECTION` cards, `material.streckgrenze` uses it first and
+falls back to the name prefix only when the input file does not yet contain anything
+(not yet generated).  Measured: `tests/headless_test.py` checks both - with assignment
+276 MPa (MaterialSolid001), without assignment 235 MPa (name prefix).
+The shell thickness still comes exclusively from the input file (D20 family,
+commit `4e7d261`).
 
-**Nachtrag (nachgemessen in `beso-original/beso_fc_gui.py`):** Die originale beso-GUI konnte das
-sehr wohl - sie hatte **pro Domain** eine Materialauswahl *und* eine Dickenauswahl: ein Auswahlfeld
-der `ElementGeometry2D`-Objekte (`combo0t`…`combo2t`, Zeile 125 ff., "Thickness object to specify
-if domain is for shells") plus ein Zahlenfeld, dessen Tooltip sagt *"Thickness [mm] of shell
-elements in the domain. This value overwrites thickness defined in FreeCAD"* (Zeile 149 ff.).  Aus
-Materialname und Dickenobjekt baut sie den Elset-Namen zusammen (Zeile 612).  Der 1-mm-Wert in der
-Konfigurationsvorlage ist also nur ein Beispielwert, nicht das Verhalten der GUI.
+**Addendum (re-measured in `beso-original/beso_fc_gui.py`):** The original beso GUI could do that
+very well - it had **per domain** a material selection *and* a thickness selection: a selection field
+of the `ElementGeometry2D` objects (`combo0t`…`combo2t`, line 125 ff., "Thickness object to specify
+if domain is for shells") plus a number field whose tooltip says *"Thickness [mm] of shell
+elements in the domain. This value overwrites thickness defined in FreeCAD"* (line 149 ff.).  From
+material name and thickness object it builds the elset name (line 612).  The 1 mm value in the
+configuration template is therefore only an example value, not the behavior of the GUI.
 
-Warum das Addon trotzdem nichts auswaehlen laesst: die Zuordnung ist mit der Section-Karte
-eindeutig und liegt schon in der Datei, mit der CalculiX rechnet (D26).  Wer bewusst **anders**
-rechnen will als das Modell sagt, aendert die Dicke im Modell (bzw. das `ElementGeometry2D`-Objekt)
-und schreibt die Eingabedatei neu - dann stimmen Modell, Rechnung und Optimierung wieder ueberein.
-
+Why the addon nevertheless lets nothing be selected: the assignment is unique with the section card
+and already lies in the file with which CalculiX computes (D26).  Whoever deliberately wants to compute **differently**
+than the model says changes the thickness in the model (or the `ElementGeometry2D` object)
+and rewrites the input file - then model, computation and optimization match again.
 ## D9 - All tests use a self made test document
 
 `tests/make_test_document.py` creates a small FEM document (box, material, coarse gmsh mesh
@@ -825,18 +825,18 @@ differently. Found while switching: without a material *reference* (`References`
 solid) FreeCAD writes no material ELSET at all, so the domains table stays empty. The test
 document therefore assigns the material to the body.
 
-## D25 - Leistungsvergleich mit dem unveraenderten beso von GitHub
+## D25 - Performance comparison with the unchanged beso from GitHub
 
-Rechnet das gebuendelte beso so schnell wie das Original und liefert es dieselben Zahlen?
-`tests/vergleich_varianten.py` misst die Vorbereitungsarbeit beider Kopien auf demselben Modell,
-`tests/szenario_test.py` rechnet dieselben Szenarien mit beiden und vergleicht die Massen.
+Does the bundled beso compute as fast as the original and does it deliver the same numbers?
+`tests/vergleich_varianten.py` measures the preparation work of both copies on the same model,
+`tests/szenario_test.py` computes the same scenarios with both and compares the masses.
 
-* Vorbereitung auf 84.395 Volumenelementen / 22,5 Mio. Nachbarpaaren: Original 27,6 s,
-  **gebuendelt 26,8 s**.  Beide finden dieselbe mittlere Elementgroesse (1,3343 mm) und
-  dieselbe Zahl Nachbarpaare.
-* Kompletter Lauf auf einem Modell mit 58.871 Elementen (3 Iterationen): Original 97,2 s,
-  gebuendelt 95,7 s, mit **bit-identischen Massen** (5,233986579481923e-05,
-  5,076871505084876e-05, 5.0006983356593286e-05, 4.925693374653859e-05).
-* Ergebnis: das Addon rechnet **genau wie das Original-Makro** und genauso schnell.  Die vier
-  Fixes kosten keine Rechenzeit; sie aendern nur, was bei einem nicht rechenbaren Modell
-  passiert (siehe D24).
+* Preparation on 84,395 volume elements / 22.5 million neighbour pairs: original 27.6 s,
+  **bundled 26.8 s**.  Both find the same mean element size (1.3343 mm) and the same number of
+  neighbour pairs.
+* A complete run on a model with 58,871 elements (3 iterations): original 97.2 s,
+  bundled 95.7 s, with **bit-identical masses** (5.233986579481923e-05,
+  5.076871505084876e-05, 5.0006983356593286e-05, 4.925693374653859e-05).
+* Result: the addon computes **exactly like the original macro** and just as fast.  The four
+  fixes cost no computing time; they only change what happens with a model that cannot be
+  computed (see D24).
