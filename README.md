@@ -1,5 +1,7 @@
 # TopoOpt
 
+[![Tests](https://github.com/shIxx01/TopologyOptimization/actions/workflows/tests.yml/badge.svg)](https://github.com/shIxx01/TopologyOptimization/actions/workflows/tests.yml)
+
 Topology optimization for FreeCAD on top of a finished FEM analysis.  The optimization is
 computed by [beso](https://github.com/calculix/beso) (Bi-directional Evolutionary Structural
 Optimization, by František Löffelmann) and the CalculiX solver that ships with FreeCAD.  A
@@ -53,9 +55,12 @@ step right after a run.
 
 ## Requirements
 
-* FreeCAD 1.0 or newer (developed and tested with 26.3)
+* FreeCAD 1.0 or newer.  Developed and tested with **26.3** (the weekly build from the Flathub
+  beta repository, September 2026); the stable release on Flathub was 1.1.3 at that time.  The
+  headless test runs on every push against the current Flathub release.
 * the FEM workbench of FreeCAD with its CalculiX solver (`ccx`)
-* Python with `numpy` - both come with FreeCAD
+* Python with `numpy` - both come with FreeCAD.  **numpy 2 is fine**: the one place in the
+  bundled beso that still used a numpy 1 sub module is fixed (see below).
 
 ## Installation
 
@@ -89,9 +94,11 @@ Copy this folder into the `Mod` directory of your FreeCAD user directory, so tha
 
 ## What differs from beso upstream
 
-The bundled copy is upstream [calculix/beso](https://github.com/calculix/beso) plus four
-fixes and the findings below.  Every change is marked in the source and listed in
-[`freecad/TopoOpt/beso/CHANGES-TopoOpt.md`](freecad/TopoOpt/beso/CHANGES-TopoOpt.md):
+The bundled copy is upstream [calculix/beso](https://github.com/calculix/beso) plus six
+fixes and the findings below.  Every change carries a `TopoOpt:` comment in the source and is
+listed in [`freecad/TopoOpt/beso/CHANGES-TopoOpt.md`](freecad/TopoOpt/beso/CHANGES-TopoOpt.md);
+`tests/vergleiche_beso_kopie.py` compares the copy with upstream and fails when a difference is
+missing that comment:
 
 1. the grid key in `beso_filters.prepare2s` is built from integer cell indices instead of a
    rounded coordinate (a rounding border made the lookup miss and stopped the run with
@@ -99,7 +106,11 @@ fixes and the findings below.  Every change is marked in the source and listed i
 2. an element without a neighbour inside the filter range stops the run with a clear message
    instead of dividing by zero and quietly continuing,
 3. a shell element without a thickness gives a clear message instead of an `IndexError`,
-4. a casting filter with the range `"auto"` works instead of stopping with a `NameError`.
+4. a casting filter with the range `"auto"` works instead of stopping with a `NameError`,
+5. an element without a failure criterion gives a clear message instead of a `KeyError`,
+6. the area of a triangle (shell elements) is computed with `np.linalg.norm` instead of
+   `np.linalg.linalg.norm` - `numpy.linalg.linalg` was removed in numpy 2.0, so with the numpy
+   that ships with FreeCAD today **every 2D model stopped before the first iteration**.
 
 The addon itself adds two things on top:
 
@@ -116,20 +127,23 @@ The addon itself adds two things on top:
 
 | Test | What it covers | Result |
 |---|---|---|
-| `tests/headless_test.py` | core modules, configuration, radius, VTK/state readers | 134 checks |
+| `tests/headless_test.py` | core modules, configuration, radius, log/VTK/state readers, the search for Python and `ccx` | 152 checks |
 | `tests/panel_test.py` | the assistant in a real FreeCAD GUI - steps, buttons, error cases, one real mini run | 124 checks |
 | `tests/gui_test.py` | the workbench and its command in a running FreeCAD | 15 checks |
-| `tests/szenario_test.py` | 16 scenarios on purpose-built tiny models (2D shell, 3D solid, all filter types, missing thickness, missing objects) and the same scenarios with the unchanged beso from GitHub | 16 runs, no failed check |
+| `tests/szenario_test.py` | 17 scenarios on purpose-built tiny models (2D shell, 3D solid, all filter types, missing thickness, missing objects) and the same scenarios with the unchanged beso from GitHub | 17 runs, no failed check |
+| `tests/vergleiche_beso_kopie.py` | every difference between the bundled beso and upstream, and whether it is marked and documented | 0 undocumented differences |
 | `tests/vergleich_varianten.py` | preparation time of the bundled beso against the unchanged upstream beso | see below |
 
 Run them with FreeCAD's interpreters, see [`Documentation/development.md`](Documentation/development.md).
+`tests/headless_test.py` and `tests/vergleiche_beso_kopie.py` also run automatically on every
+push ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)).
 Measured on a mesh with 84,395 elements and 22.5 million neighbour pairs: preparation takes
 **26.8 s with the bundled beso and 27.6 s with upstream** - the fixes cost no computing time -
 and both find the same average element size (1.3343 mm) and the same number of neighbour
 pairs.  In the scenario matrix the bundled copy produces the same masses as upstream in 13 of
-16 scenarios; the three differences are exactly the intended fixes (upstream computes on with
-a division by zero where the addon stops with a message, and the casting filter with `"auto"`
-only runs here).
+17 scenarios; the four differences are exactly the intended fixes (upstream computes on with
+a division by zero where the addon stops with a message, and 2D shell models stop in upstream
+beso with numpy 2, which the bundled copy fixed).
 
 ## Documentation
 

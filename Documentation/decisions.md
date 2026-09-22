@@ -479,6 +479,74 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+## D38 - Die Testdaten liegen im Repository, die Suiten laufen von Anfang bis Ende
+
+Woran lag es, dass `tests/headless_test.py` aus einem frischen Klon abbrach (22.09.2026)?
+
+* `.gitignore` schloss mit `tests/data/*.log` die zwei Mitschnitte aus, die der Test als Eingang
+  braucht: besos Iterationstabelle (`beso_beispiel.log`) und das eigene Laufprotokoll
+  (`lauf_beispiel.log`).  Im Klon fehlten sie, `tabelle_lesen`/`verlauf_lesen` lieferten leere
+  Werte, und die Tabelle ist jetzt aus dem Format von beso selbst nachgebaut (Kopfzeile wie
+  `beso_main.py`, Zeilen mit denselben Spaltenbreiten).  Beide Dateien sind mit `!`-Ausnahmen
+  wieder aufgenommen - Testeingaenge gehoeren ins Repository, Ausgaben nicht.
+* Zwei Pruefungen rechneten mit `f["masse"]`/`f["ziel"]` weiter, ohne auf `None` zu pruefen.
+  Statt Fehlermeldungen gab es einen `TypeError` - gemessen brach die Suite bei Pruefung 98 von
+  152 ab, die VTK- und State-Pruefungen danach liefen nie.  Jetzt meldet eine fehlende Datei
+  ihren Namen, und die Pruefungen laufen weiter.
+* Gemessen im Flatpak (FreeCAD 26.3): **152 Pruefungen, 0 Fehler**, exit 0.
+
+## D39 - Python und ccx werden robust gesucht (Flatpak)
+
+Laeuft der Start von beso auch, wenn FreeCAD als Flatpak installiert ist?
+
+* Im Flatpak ist `sys.executable` = `/app/bin/FreeCADCmd`, `sys.prefix` = `/usr`, und FreeCAD hat
+  kein `__file__` (einkompiliert).  Die alte `python_pfad()` fand damit kein Python und gab
+  `sys.executable` zurueck - also **FreeCAD selbst**.
+* Gemessen: `conf.starte()` uebergibt `-u` (unbuffered).  An FreeCADCmd ist `-u` FreeCADs eigene
+  Option (Nutzer-Parameterdatei) - die Datei wurde **ueberschrieben** (ein Testskript enthielt
+  danach ein XML-Parameterdokument) und der Lauf scheiterte.
+* Neue Reihenfolge: `sys.executable` nur, wenn "python" im Namen steht, dann `python3`/`python`/
+  `python.exe` daneben, dann `sys.prefix/bin`, zuletzt der Suchpfad des Systems (`shutil.which`).
+  `calculix_pfad()` schaut zuerst neben das FreeCAD-Programm (im Flatpak `/app/bin/ccx`).  Wird
+  kein Python gefunden, **lehnt `starte()` den Lauf ab** (klare Meldung, im Dialog uebersetzt),
+  statt einen falschen Prozess zu starten.
+* Gemessen im Flatpak: `python_pfad()` -> `/usr/bin/python3` (numpy 2.4.4, matplotlib 3.9.4),
+  `calculix_pfad()` -> `/app/bin/ccx`.  Der headless-Test prueft beides und zusaetzlich, dass der
+  Interpreter nie FreeCAD selbst ist.
+
+## D40 - beso: np.linalg.linalg durch np.linalg.norm ersetzt (numpy 2)
+
+Warum brach jedes 2D-Modell (Schale) im Flatpak vor der ersten Iteration ab?
+
+* Gemessen mit numpy 2.4.4: `2D Schale simple auto` und `2D Schale casting auto` endeten mit
+  `AttributeError: module 'numpy.linalg' has no attribute 'linalg'`.  Die Stelle ist
+  `beso_lib.elm_volume_cg` -> `tria_area_cg`, also die Flaechen- und Massenberechnung der
+  Dreieckselemente; `np.linalg.linalg` wurde in numpy 2.0 entfernt.  Dieselbe Zeile steht im
+  Original-beso, **2D-Modelle rechnen dort mit aktuellem numpy gar nicht**.
+* Fix: ein Wort.  Gemessen danach: `2D Schale simple auto` code 0, Massen 1000 -> 750;
+  `2D Schale casting auto` code 0, Massen 1000 -> 750 -> 750 - waehrend das unveraenderte Original
+  an dieser Stelle weiterhin abbricht.  Die erwartete Abweichungsmenge der Szenario-Matrix waechst
+  damit von 3 auf 4 Eintraege (siehe `BEKANNTE_ABWEICHUNGEN`).
+* deshalb steht in `beso_lib.py` jetzt ein `TopoOpt:`-Kommentar an der Zeile - und ebenso an jeder
+  anderen Aenderung: `tests/vergleiche_beso_kopie.py` vergleicht die gebuendelte Kopie mit dem
+  Original und **scheitert, wenn ein Unterschied keinen solchen Kommentar traegt**.
+
+## D41 - Automatischer Testlauf bei jedem Push
+
+Die Suiten liefen nur, wenn sie jemand von Hand startete; die abgebrochene Suite (D38) blieb
+deshalb unbemerkt.  `.github/workflows/tests.yml` laeuft jetzt bei jedem Push und jedem
+Pull Request in zwei Auftraegen:
+
+* **headless** - FreeCAD als Flatpak installieren (dieselbe FreeCAD auf jeder Distribution, mit
+  `ccx` und `gmsh`), das Addon in FreeCADs `Mod`-Ordner kopieren (der Ordner wird bei FreeCAD
+  erfragt, er ist versionsabhaengig), Syntaxpruefung aller Python-Dateien und dann
+  `tests/headless_test.py`.
+* **beso-copy** - Original-beso klonen und pruefen, dass jeder Unterschied der Kopie dokumentiert
+  ist.  Aendert upstream etwas, faellt es hier auf.
+
+Die Szenario-Matrix bleibt Handarbeit: sie rechnet mit dem unveraenderten beso von GitHub und
+soll nicht bei jeder Aenderung von upstream rot werden.
+
 ## D37 - "Iterationen anzeigen" zeigt schon waehrend des Laufs den Zwischenstand
 
 Der Knopf war bis zum Ende des Laufs ausgegraut, weil er auf `resulting_states.vtk` wartete - die

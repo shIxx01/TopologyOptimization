@@ -35,7 +35,9 @@ special cases.
    and keep beso's names for beso's concepts (filters, casting, `mass_goal_ratio`).  The less
    of beso is duplicated, the less can drift apart.  The bundled copy is upstream plus the
    changes listed in `freecad/TopoOpt/beso/CHANGES-TopoOpt.md`; add a change only with a
-   measured case, mark it in the source and document it there.
+   measured case, mark it in the source (`# TopoOpt: ...`) and document it there.
+   `tests/vergleiche_beso_kopie.py` fails when a difference carries no such marker - it is not
+   a claim in the documentation, it is checked.
 3. **Keep the addon fast and silent at import time.**  No network, no heavy work when the
    module is loaded - do that when the user invokes a command.
 4. **SPDX header in every Python file**: `# SPDX-License-Identifier: LGPL-3.0-or-later`.
@@ -82,8 +84,12 @@ tests/                               the test suite (see Documentation/developme
 * Install for a test the way the Addon Manager does: copy the repository folder to
   `%APPDATA%\FreeCAD\<version>\Mod\TopologyOptimization` (without `.git`), remove
   `__pycache__` folders, then **restart FreeCAD** - the addon is loaded only at start.
+  On Linux the same with the FreeCAD Flatpak, commands in `Documentation/development.md`
+  (the Mod folder is `~/.var/app/org.freecad.FreeCAD/data/FreeCAD/<version>/Mod/`).
 * Test recipes (headless and GUI, including the traps of GUI FreeCAD) are in
-  `Documentation/development.md`.  Report real output.
+  `Documentation/development.md`.  Report real output.  Headless test and the check of the
+  beso copy run on every push (`.github/workflows/tests.yml`) - a red run is a finding, not
+  noise.
 * Tests must not use a document of a real project; `tests/make_test_document.py` builds one.
 
 ## Definition of done for a change
