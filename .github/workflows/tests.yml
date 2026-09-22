@@ -46,8 +46,17 @@ jobs:
 
       - name: Run the headless test
         run: |
+          # FreeCADCmd leaves exit code 0 when the script stops with an exception (measured), so
+          # the exit code alone would turn a broken run into a green build.  The run itself has to
+          # end with its summary line - that is what this step checks.
+          set -o pipefail
           flatpak run --command=FreeCADCmd org.freecad.FreeCAD \
-            "$MOD/Mod/TopologyOptimization/tests/headless_test.py"
+            "$MOD/Mod/TopologyOptimization/tests/headless_test.py" | tee /tmp/headless.txt
+          if ! grep -q "^Alle Pruefungen bestanden" /tmp/headless.txt; then
+            echo "::error::Der Lauf endete ohne Schlussmeldung - die Suite ist abgebrochen."
+            exit 1
+          fi
+          echo "Pruefungen OK: $(grep -c '^OK' /tmp/headless.txt)"
 
   # The bundled beso is upstream plus a few changes.  This job proves that the copy
   # carries no undocumented difference - a difference without a "TopoOpt:" comment is

@@ -6,7 +6,9 @@
 
 Exit code 0 = all checks passed.  The addon has to be installed in FreeCAD's Mod
 directory (see Documentation/development.md).
-"""
+
+A script that stops with an exception also leaves FreeCADCmd with exit code 0 (measured), so the
+closing line matters as much as the exit code - the CI checks both."""
 
 import os
 import sys

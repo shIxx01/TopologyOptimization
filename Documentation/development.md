@@ -186,7 +186,7 @@ everything else is unchanged.  It runs on every push as its own job in
 * Never wait on a `subprocess` pipe you do not read: beso writes a lot to stdout, and a full
   pipe buffer blocks it.  Redirect to a file instead (this cost an afternoon once).
 
-## Two traps of the FreeCAD script interpreter (measured)
+## Three traps of the FreeCAD script interpreter (measured)
 
 1. **`App.openDocument()` in a start script makes FreeCAD run the whole script a second
    time** (same process, milliseconds later).  A test that saves and reloads a document
@@ -196,6 +196,13 @@ everything else is unchanged.  It runs on every push as its own job in
 2. **`sys.exit()` output is lost when stdout is redirected** AND the script may be re-run:
    `print(..., flush=True)` and `os._exit(code)` at the end are the safe way (see
    `tests/headless_test.py`).
+3. **A script that stops with an exception leaves FreeCADCmd with exit code 0.**  Measured: a
+   script that raises after two lines prints `Exception while processing file: ...` and the
+   process still ends with status 0 - and because of trap 1 it runs a second time, so the output
+   appears twice and looks like a finished run.  A test that trusts the exit code alone reports
+   success for a run that never got to the end.  That is why `tests/headless_test.py` prints a
+   summary line at the end and the CI checks **that line as well as** the exit code
+   (`.github/workflows/tests.yml`).
 
 ## Test data must be unique per run
 
