@@ -288,9 +288,16 @@ MODELL_2D = os.path.join(MODELLE, "modell_2d_schale.inp")
 MODELL_2D_OHNE = os.path.join(MODELLE, "modell_2d_ohne_dicke.inp")
 MODELL_2SETS = os.path.join(MODELLE, "modell_2sets.inp")
 
-# Szenarien, bei denen unser beso absichtlich anders reagiert als das Original
-BEKANNTE_ABWEICHUNGEN = ("2D Schale casting auto", "3D simple 1.5 (Radius zu klein)",
-                         "3D simple manuell 1.0")
+# Szenarien, bei denen unser beso absichtlich anders reagiert als das Original:
+#   * zu kleiner Filterradius - das Original rechnet ohne Filter weiter und meldet am Ende
+#     Konvergenz, statt den Lauf zu beenden
+#   * fehlende Schalendicke bei 2D-Modellen - das Original rechnet still mit seinem Beispielwert
+#   * 2D-Schalenmodelle allgemein: das Original bricht mit numpy 2 ab, weil np.linalg.linalg
+#     dort entfernt wurde (gemessen mit numpy 2.4); casting mit "auto" bricht zusaetzlich mit
+#     NameError ab.  Unser beso rechnet in beiden Faellen.
+# Gemessen mit FreeCAD 26.3 (Flatpak) und numpy 2.4: 13 von 17 Szenarien identisch.
+BEKANNTE_ABWEICHUNGEN = ("2D Schale casting auto", "2D Schale simple auto",
+                         "3D simple 1.5 (Radius zu klein)", "3D simple manuell 1.0")
 
 MATRIX = [
     ("3D simple auto", MODELL_3D, {"zielmasse": 0.6, "filter": [["simple", "auto"]],
@@ -391,10 +398,10 @@ def vergleich_original():
     abweichend = sorted(a["name"].replace("neu_", "") for a, b in zip(neu, alt)
                         if [round(m, 6) for _, m in a["massen"]] != [round(m, 6) for _, m in b["massen"]])
     sag("Identische Ergebnisse: %d von %d" % (gleich, len(neu)))
-    # abweichen duerfen genau diese drei - das sind unsere Fixes:
-    #   zu kleiner Filterradius und casting mit "auto" (Original rechnet still falsch weiter
-    #   bzw. bricht mit NameError ab), fehlende Schalendicke
-    pruefe("genau unsere Fixes weichen ab (%s)" % ", ".join(BEKANNTE_ABWEICHUNGEN),
+    # abweichen duerfen genau die oben unter BEKANNTE_ABWEICHUNGEN begruendeten Faelle
+    pruefe("genau die dokumentierten Abweichungen (erwartet: %s - gemessen: %s)"
+           % (", ".join(sorted(BEKANNTE_ABWEICHUNGEN)) or "keine",
+              ", ".join(abweichend) or "keine"),
            abweichend == sorted(BEKANNTE_ABWEICHUNGEN))
     sag()
 

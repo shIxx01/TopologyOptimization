@@ -1,0 +1,37 @@
+beso - bi-directional evolutionary structural optimization, version 2.2
+
+beso settings
+path                     = /tmp/topoopt_test
+file_name                = beispiel
+path_calculix            = ccx
+cpu_cores                = 0
+mass_goal_ratio          = 0.6
+mass_addition_ratio      = 0.01
+mass_removal_ratio       = 0.02
+optimization_base        = stiffness
+filter_list              = [['simple', 'auto']]
+iterations_limit         = 2
+tolerance                = 0.001
+save_iteration_results   = 10
+
+reading file beispiel.inp
+domains: 1
+nodes  : 10
+elements: 6
+initial optimization domains mass 20000.0
+iterations_limit set automatically to 2
+
+new iteration number 1
+mass = 19369.413573798036
+  1000 elements: 100.00 % of the requested mass reached
+
+new iteration number 2
+mass = 19110.748316642857
+   500 elements: 100.00 % of the requested mass reached
+
+ Job finished
+
+ ________________________________________
+
+Total CalculiX Time: 6.00
+________________________________________

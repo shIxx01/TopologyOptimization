@@ -1,0 +1,55 @@
+beso - bi-directional evolutionary structural optimization, version 2.2
+
+beso settings
+path                     = /tmp/topoopt_test
+file_name                = beispiel
+path_calculix            = ccx
+cpu_cores                = 0
+mass_goal_ratio          = 0.6
+mass_addition_ratio      = 0.01
+mass_removal_ratio       = 0.02
+optimization_base        = stiffness
+filter_list              = [['simple', 'auto']]
+iterations_limit         = 'auto'
+tolerance                = 0.001
+save_iteration_results   = 10
+domain_optimized         = {'MaterialSolidSolid': True}
+
+new beso run
+reading file beispiel.inp
+domains: 1
+nodes  : 10
+elements: 6
+initial optimization domains mass 19999.99999999998
+iterations_limit set automatically to 3
+
+domain order: 
+0) MaterialSolidSolid
+
+   i              mass    ener_dens_mean
+   0 19999.99999999998                0.0
+   1 19369.413573798036                0.0
+   2 19110.748316642857                0.0
+
+Finished at 17.9.2026 12:48:31
+Total time                     6 s
+
+
+new beso run
+reading file beispiel.inp
+domains: 1
+nodes  : 10
+elements: 6
+initial optimization domains mass 19999.99999999998
+iterations_limit set automatically to 3
+
+domain order: 
+0) MaterialSolidSolid
+
+   i              mass    ener_dens_mean FI_violated_0)          FI_mean    _without_state0         FI_max_0)
+   0 19999.99999999998                0.0            0               0.9               0.95              0.95
+   1 19369.413573798036                0.0            0               1.0               1.05              1.05
+   2 19110.748316642857                0.0            3              1.05                1.1               1.1
+
+Finished at 17.9.2026 12:52:07
+Total time                     6 s

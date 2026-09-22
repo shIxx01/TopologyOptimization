@@ -12,6 +12,10 @@ venv/
 # test output
 tests/*_ausgabe.txt
 tests/data/*.log
+# ... but the two recorded logs are test inputs for headless_test.py and belong in git
+# (beso_beispiel.log = beso's iteration table, lauf_beispiel.log = our own run protocol)
+!tests/data/beso_beispiel.log
+!tests/data/lauf_beispiel.log
 
 # test reports
 tests/*_bericht.md

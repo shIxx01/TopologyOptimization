@@ -305,8 +305,32 @@ pruefe(conf_modul.UNTERORDNER == "topoopt_beso",
        "beso laeuft in einem Unterordner des Arbeitsordners (%s)" % conf_modul.UNTERORDNER)
 pruefe("ccx" in os.path.basename(conf_modul.calculix_pfad()).lower(),
        "CalculiX wird gefunden (%s)" % conf_modul.calculix_pfad())
-pruefe("python" in os.path.basename(conf_modul.python_pfad()).lower(),
+pruefe("python" in os.path.basename(conf_modul.python_pfad() or "").lower(),
        "ein Python fuer den Lauf wird gefunden (%s)" % conf_modul.python_pfad())
+# Der Interpreter darf nie FreeCAD selbst sein: an FreeCADCmd ist "-u" FreeCADs eigene
+# Option (Nutzer-Parameterdatei), beso_main.py wuerde ueberschrieben statt zu laufen
+# (im Flatpak gemessen - dort ist sys.executable die FreeCADCmd im App-Verzeichnis).
+pruefe(conf_modul.python_pfad() is None
+       or "freecad" not in os.path.basename(conf_modul.python_pfad()).lower(),
+       "der Interpreter ist nicht FreeCAD selbst (%s)" % conf_modul.python_pfad())
+pruefe(conf_modul.calculix_pfad() == "ccx" or os.path.isfile(conf_modul.calculix_pfad()),
+       "der gefundene Solver ist eine Datei (%s)" % conf_modul.calculix_pfad())
+pruefe(conf_modul.python_pfad() is None or os.path.isfile(conf_modul.python_pfad()),
+       "der gefundene Interpreter ist eine Datei (%s)" % conf_modul.python_pfad())
+# ohne Python gibt es keinen Lauf: klare Meldung statt Start eines falschen Prozesses,
+# und es wird nichts in den Arbeitsordner geschrieben
+_echter_pfad = conf_modul.python_pfad
+conf_modul.python_pfad = lambda: None
+try:
+    conf_modul.starte(None, None, {}, None)
+    pruefe(False, "ohne Python wird der Lauf abgelehnt")
+except RuntimeError as meldung:
+    pruefe("python" in str(meldung).lower(),
+           "ohne Python kommt eine klare Meldung (%s)" % meldung)
+except Exception as meldung:  # noqa: BLE001
+    pruefe(False, "ohne Python kommt ein RuntimeError, nicht %r" % meldung)
+finally:
+    conf_modul.python_pfad = _echter_pfad
 
 doc5 = App.newDocument("TopoOptConfTest")
 analyse5 = doc5.addObject("Fem::FemAnalysis", "Analyse")
@@ -427,6 +451,10 @@ from freecad.TopoOpt.core import lauf as lauf_modul  # noqa: E402
 # --- Schritt 3: beso's Iterationstabelle lesen ---------------------------------
 beso_beispiel = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",
                              "beso_beispiel.log")
+# Der Mitschnitt eines Laufs ist ein Testeingang und liegt im Repository.  Fehlt er, wird das
+# gemeldet - aber der Lauf bricht nicht ab: eine fehlende Datei darf die Pruefungen danach
+# (VTK- und State-Reader) nicht verschlucken.
+pruefe(os.path.isfile(beso_beispiel), "die Testdatei tests/data/beso_beispiel.log ist da")
 tabelle = lauf_modul.tabelle_lesen(beso_beispiel)
 pruefe(len(tabelle) == 6, "die Iterationstabelle wird gelesen (6 Zeilen, 2 Laeufe)")
 if len(tabelle) == 6:
@@ -441,10 +469,13 @@ if len(tabelle) == 6:
            "ohne Failure Index gibt es keine FI-Werte (nur Masse und Energiedichte)")
 
 f = lauf_modul.fortschritt(beso_beispiel, 0.6)
-pruefe(f["iteration"] == 2 and abs(f["masse"] - 19110.748316642857) < 1e-6,
-       "der Fortschritt kennt Iteration und Masse")
-pruefe(abs(f["ziel"] - 20000.0 * 0.6) < 1e-6,
-       "die Zielmasse ist der Anteil der Startmasse: %.0f" % f["ziel"])
+# ohne Tabelle sind iteration/masse/ziel None - die Pruefungen muessen das melden,
+# nicht mit einem TypeError abbrechen (sonst sieht man die Fehler danach nie)
+pruefe(f["iteration"] == 2 and f["masse"] is not None
+       and abs(f["masse"] - 19110.748316642857) < 1e-6,
+       "der Fortschritt kennt Iteration und Masse (%s, %s)" % (f["iteration"], f["masse"]))
+pruefe(f["ziel"] is not None and abs(f["ziel"] - 20000.0 * 0.6) < 1e-6,
+       "die Zielmasse ist der Anteil der Startmasse: %s" % f["ziel"])
 pruefe(abs(lauf_modul.anteil(f["start"], f["masse"], 0.6) - 11.12) < 0.1,
        "der Fortschritt in Prozent: %.1f %%" % lauf_modul.anteil(f["start"], f["masse"], 0.6))
 pruefe(lauf_modul.anteil(20000.0, 8000.0, 0.6) == 100.0,
