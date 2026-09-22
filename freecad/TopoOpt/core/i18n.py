@@ -363,6 +363,9 @@ DEUTSCH = {
         "Der Lauf endete (Code %s) - Details \u00f6ffnen.",
     "The run could not be started: %s":
         "Der Lauf konnte nicht gestartet werden: %s",
+    "No Python interpreter with numpy and matplotlib was found - TopoOpt needs the Python that ships with FreeCAD.":
+        "Es wurde kein Python mit numpy und matplotlib gefunden - TopoOpt braucht das Python, "
+        "das mit FreeCAD kommt.",
     "There is no input file yet - see step 1.":
         "Es gibt noch keine Eingabedatei - siehe Schritt 1.",
     "No design space is marked - see step 1.":

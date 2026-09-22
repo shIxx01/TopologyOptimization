@@ -135,34 +135,47 @@ def conf_text(obj, inp_pfad, domains, arbeit_ordner):
 
 
 def calculix_pfad():
-    """Der CalculiX-Solver, der mit FreeCAD kommt."""
+    """Der CalculiX-Solver (ccx), den FreeCAD mitbringt."""
     kandidaten = []
+    if sys.executable:
+        # ccx liegt neben dem FreeCAD-Programm - im Flatpak ist das /app/bin
+        for name in ("ccx", "ccx.exe"):
+            kandidaten.append(os.path.join(os.path.dirname(sys.executable), name))
     try:
         import FreeCAD
         kandidaten.append(os.path.join(os.path.dirname(os.path.abspath(FreeCAD.__file__)),
                                        "..", "bin", "ccx"))
     except Exception:
+        # FreeCAD ist einkompiliert (Flatpak) und hat dann keine __file__
         pass
-    for name in ("ccx.exe", "ccx"):
+    for name in ("ccx", "ccx.exe"):
         kandidaten.append(os.path.join(sys.prefix, "bin", name))
     for pfad in kandidaten:
         pfad = os.path.abspath(pfad)
         if os.path.isfile(pfad):
             return pfad
-    return "ccx"          # dann muss er im Suchpfad des Systems liegen
+    return shutil.which("ccx") or "ccx"     # zuletzt der Suchpfad des Systems
 
 
 def python_pfad():
-    """Ein Python mit numpy und matplotlib - das von FreeCAD."""
+    """Ein Python mit numpy und matplotlib - das von FreeCAD.
+
+    Returns None, wenn keins gefunden wird.  Der Lauf wird dann abgelehnt, statt einen
+    falschen Prozess zu starten: in FreeCADs Flatpak ist ``sys.executable`` FreeCADCmd,
+    und das an beso_main.py uebergebene ``-u`` waere dort FreeCADs eigene Option
+    (Nutzer-Parameterdatei) - die Datei wuerde ueberschrieben und der Lauf scheitern.
+    """
     kandidaten = []
     if sys.executable:
         kandidaten.append(sys.executable)
-        for name in ("python.exe", "python"):
+        for name in ("python3", "python", "python.exe"):
             kandidaten.append(os.path.join(os.path.dirname(sys.executable), name))
+    for name in ("python3", "python", "python.exe"):
+        kandidaten.append(os.path.join(sys.prefix, "bin", name))
     for pfad in kandidaten:
         if pfad and os.path.isfile(pfad) and "python" in os.path.basename(pfad).lower():
             return pfad
-    return sys.executable
+    return shutil.which("python3") or shutil.which("python")
 
 
 def schreibe_dateien(obj, inp_pfad, domains, arbeit_ordner):
@@ -214,6 +227,12 @@ def starte(obj, inp_pfad, domains, arbeit_ordner):
 
     Returns (process, path of our log file, path of beso_conf.py).
     """
+    # zuerst pruefen: ohne Python gibt es keinen Lauf, und es soll auch nichts
+    # geschrieben werden.  Die Meldung landet ueber den Aufrufer im Dialog.
+    interpreter = python_pfad()
+    if not interpreter:
+        raise RuntimeError("No Python interpreter with numpy and matplotlib was found - "
+                           "TopoOpt needs the Python that ships with FreeCAD.")
     ziel, conf = schreibe_dateien(obj, inp_pfad, domains, arbeit_ordner)
     _log_beiseite(inp_pfad)
     log = log_pfad(inp_pfad)
@@ -231,7 +250,7 @@ def starte(obj, inp_pfad, domains, arbeit_ordner):
     umgebung = dict(os.environ)
     umgebung["PYTHONUNBUFFERED"] = "1"
     umgebung.setdefault("PYTHONUTF8", "1")
-    prozess = subprocess.Popen([python_pfad(), "-u", os.path.join(ziel, "beso_main.py")],
+    prozess = subprocess.Popen([interpreter, "-u", os.path.join(ziel, "beso_main.py")],
                                cwd=arbeit_ordner, creationflags=flags, env=umgebung,
                                stdout=open(log, "a", encoding="utf8"),
                                stderr=subprocess.STDOUT)

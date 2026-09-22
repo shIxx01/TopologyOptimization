@@ -1056,7 +1056,9 @@ class AssistantPanel:
                                                    self.obj.WorkingDir or
                                                    os.path.dirname(self.obj.InpFile))
         except Exception as exc:
-            self._setze_status(uebersetze("The run could not be started: %s") % exc, "fehler")
+            # auch die Meldung des Fehlers uebersetzen - sie kommt aus dem core
+            self._setze_status(uebersetze("The run could not be started: %s")
+                               % uebersetze(str(exc)), "fehler")
             return
         self._lauf_prozess = prozess
         self._lauf_log = log
