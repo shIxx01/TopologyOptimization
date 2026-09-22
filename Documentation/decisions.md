@@ -479,6 +479,12 @@ Ergebnis (gemessen):
 * Die Fehlerfaelle des Assistenten (ohne Netz, ohne Solver, ohne .inp, ohne Design-Raum) pruefen
   jetzt `tests/panel_test.py`: der Lauf startet gar nicht und der Status nennt den Grund.
 
+*Nachtrag 22.09.2026:* Die Zahlen oben gelten fuer den Vergleich gegen den **Fork**.  Gegen das
+unveraenderte Original gerechnet, liefert die Szenario-Matrix mit 17 Szenarien **13 identische
+Ergebnisse und vier dokumentierte Abweichungen** - die zwei Radius-Faelle und beide
+2D-Schalen-Szenarien, weil das Original dort mit numpy 2 abbricht (siehe D40).  Gemessen mit
+FreeCAD 26.3 und numpy 2.4.
+
 ## D38 - Die Testdaten liegen im Repository, die Suiten laufen von Anfang bis Ende
 
 Woran lag es, dass `tests/headless_test.py` aus einem frischen Klon abbrach (22.09.2026)?

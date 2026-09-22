@@ -88,9 +88,14 @@ beso is a plain Python program (`beso_main.py` plus modules) driven by a configu
 which it `exec`s.  The addon therefore:
 
 * ships a reviewed copy of beso in `freecad/TopoOpt/beso/` - upstream plus the changes listed
-  in `CHANGES-TopoOpt.md`, so nothing has to be downloaded,
+  in `CHANGES-TopoOpt.md`, each marked with a `TopoOpt:` comment in the source and checked by
+  `tests/vergleiche_beso_kopie.py`, so nothing has to be downloaded,
 * writes `beso_conf.py` into the run folder,
-* starts `beso_main.py` with the interpreter of FreeCAD,
+* starts `beso_main.py` with FreeCAD's Python and `-u` (unbuffered, D34).  Neither the interpreter
+  nor `ccx` is assumed: both are searched next to the FreeCAD program, in `sys.prefix/bin` and
+  finally in the search path of the system.  In FreeCAD's Flatpak that is `/usr/bin/python3`
+  (with numpy and matplotlib) and `/app/bin/ccx`; when no Python is found the run is refused with
+  a message instead of starting the wrong program (D39),
 * reads the iteration log for progress and the result files for the final state.
 
 beso is LGPLv3; the copy keeps its license header and its README, and the changes are

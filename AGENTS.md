@@ -9,8 +9,9 @@ first, then the files in `Documentation/`.
 analysis.  The optimizer is [beso](https://github.com/calculix/beso) by František Löffelmann
 (LGPLv3), the solver is CalculiX, which ships with FreeCAD.  The addon is a **small front end
 for beso**: it collects the parameters, writes the beso configuration, starts the run and
-brings the result back into the document.  It is not a fork of beso and not a place for
-special cases.
+brings the result back into the document.  It ships a reviewed copy of beso, but it is **not a
+fork of beso**: the copy stays upstream plus the documented changes, and the addon is not a place
+for special cases that belong into beso.
 
 ## Rules for the code
 

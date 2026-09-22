@@ -74,7 +74,9 @@ cat tests/gui_test_ausgabe.txt
 **Important:** GUI FreeCAD writes nothing to stdout, so every GUI test writes its result into
 a file and is started in the background.  The script checks that `Gui.listWorkbenches()`
 contains `TopoOptWorkbench`, that the toolbar and menu exist, that the icon files are there,
-and that the command creates the object in the active analysis.  Reference: **15 checks**.
+and that the command creates the object in the active analysis.  Reference: **15 checks** - last
+measured on the maintainer's Windows installation; the GUI suites need a graphical session and
+were not re-run in the Linux/Flatpak environment yet.
 
 ## Test 3 - the assistant (GUI, needs the test document)
 
@@ -101,7 +103,8 @@ parameter fields and the filter rows behave, the radius button computes a value,
 stays empty while the note below the list explains it, and a real mini run is started and
 cancelled.  It also covers the four error cases: without mesh, without solver, without input
 file and without a design space the run must not start and the status must name the reason.
-Reference: **124 checks**.
+Reference: **124 checks** (last measured on the maintainer's Windows installation; needs a
+graphical session).
 
 ## Test 4 - scenario matrix and comparison with upstream beso
 

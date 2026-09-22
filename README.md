@@ -128,8 +128,8 @@ The addon itself adds two things on top:
 | Test | What it covers | Result |
 |---|---|---|
 | `tests/headless_test.py` | core modules, configuration, radius, log/VTK/state readers, the search for Python and `ccx` | 152 checks |
-| `tests/panel_test.py` | the assistant in a real FreeCAD GUI - steps, buttons, error cases, one real mini run | 124 checks |
-| `tests/gui_test.py` | the workbench and its command in a running FreeCAD | 15 checks |
+| `tests/panel_test.py` | the assistant in a real FreeCAD GUI - steps, buttons, error cases, one real mini run | 124 checks (GUI; last measured on Windows) |
+| `tests/gui_test.py` | the workbench and its command in a running FreeCAD | 15 checks (GUI; last measured on Windows) |
 | `tests/szenario_test.py` | 17 scenarios on purpose-built tiny models (2D shell, 3D solid, all filter types, missing thickness, missing objects) and the same scenarios with the unchanged beso from GitHub | 17 runs, no failed check |
 | `tests/vergleiche_beso_kopie.py` | every difference between the bundled beso and upstream, and whether it is marked and documented | 0 undocumented differences |
 | `tests/vergleich_varianten.py` | preparation time of the bundled beso against the unchanged upstream beso | see below |
