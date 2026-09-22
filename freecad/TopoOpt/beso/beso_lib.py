@@ -311,7 +311,9 @@ def elm_volume_cg(file_name, nodes, Elements):
         for i in [0, 1, 2]:  # denote x, y, z directions
             u[i] = nodes[nod[2]][i] - nodes[nod[1]][i]
             v[i] = nodes[nod[0]][i] - nodes[nod[1]][i]
-        area_tria = np.linalg.linalg.norm(np.cross(u, v)) / 2.0
+        # TopoOpt: numpy.linalg.linalg was removed in numpy 2 - with it every 2D (shell)
+        # model stopped here with AttributeError before the first iteration
+        area_tria = np.linalg.norm(np.cross(u, v)) / 2.0
         # compute centre of gravity
         x_cg = (nodes[nod[0]][0] + nodes[nod[1]][0] + nodes[nod[2]][0]) / 3.0
         y_cg = (nodes[nod[0]][1] + nodes[nod[1]][1] + nodes[nod[2]][1]) / 3.0
@@ -680,6 +682,8 @@ def import_FI_int_pt(reference_value, file_nameW, domains, criteria, domain_FI, 
         FI_step[sn][en] = []
         for FIn in range(len(criteria)):
             FI_step[sn][en].append(None)
+            # TopoOpt: an element without a criterion must not stop the run with KeyError -
+            # the two other places that read criteria_elm guard the same way
             if FIn in criteria_elm.get(en, []):
                 if reference_value == "max":
                     FI_step[sn][en][FIn] = max(FI_int_pt[FIn])

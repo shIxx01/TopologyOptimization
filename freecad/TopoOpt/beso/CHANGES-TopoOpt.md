@@ -19,9 +19,11 @@ addon takes its place.
 
 ## Changes compared to beso upstream
 
-The files were taken from the maintainer's beso fork, which fixes four defects of the
-upstream master.  Every change is marked in the source with a `TopoOpt:` comment and is
-offered upstream as a pull request (calculix/beso#57, #58, #59, #60):
+The files were taken from the maintainer's beso fork, which fixes defects of the upstream
+master.  **Every change is marked in the source with a `TopoOpt:` comment** - and that is
+checked, not just claimed: `tests/vergleiche_beso_kopie.py` compares this copy with a clone
+of upstream and fails when a difference carries no such comment.  Four of the changes are
+offered upstream as pull requests (calculix/beso#57, #58, #59, #60):
 
 1. **`beso_filters.py`, `prepare2s`** - the sector key of a grid cell is built from the
    integer cell index instead of a coordinate rounded to 6 significant digits.  At a
@@ -51,6 +53,17 @@ offered upstream as a pull request (calculix/beso#57, #58, #59, #60):
    offered upstream - the four pull requests #57...#60 are enough for now, and the case is
    rare there (the original dialog writes a criterion for every domain as soon as one value
    is entered).
+6. **`beso_lib.py`, `elm_volume_cg`/`tria_area_cg`** - the area of a triangle was computed
+   with `np.linalg.linalg.norm`.  `numpy.linalg.linalg` is a private sub module of numpy 1 and
+   was **removed in numpy 2.0**, so every 2D (shell) model stopped there with
+   `AttributeError: module 'numpy.linalg' has no attribute 'linalg'` before the first
+   iteration - with the numpy that ships with FreeCAD today.  Measured with numpy 2.4.4
+   (FreeCAD 26.3, Flatpak): the scenarios `2D Schale simple auto` and `2D Schale casting auto`
+   ended with exit code 1 and without a single iteration; after the change both run
+   (`1000 -> 750`, and `1000 -> 750 -> 750`), while the unchanged upstream copy still stops
+   there.  This is the change worth offering upstream first - it hits **every** 2D model, not
+   an edge case.  (In the same run the missing `domain_thickness` message above proved itself:
+   `2D ohne Dicke` ends with the clear message instead of an `IndexError`.)
 
 Licence note: beso is LGPL-3.0-or-later, this addon is LGPL-3.0-or-later as well, and the
 changes are listed here and marked in the sources - the conditions for redistributing a

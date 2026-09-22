@@ -168,8 +168,8 @@ for dn in domains_from_config:  # distinguishing shell elements and volume eleme
                                                        list(Elements.hexa8.keys()) + list(Elements.hexa20.keys()) +
                                                        list(Elements.penta6.keys()) + list(Elements.penta15.keys()))
 
-# a thickness must be defined for shell (2D) elements - without it the mass of such elements
-# cannot be computed and the evaluation below would stop with an unclear IndexError
+# TopoOpt: a thickness must be defined for shell (2D) elements - without it the mass of such
+# elements cannot be computed and the evaluation below would stop with an unclear IndexError
 for dn in domains_from_config:
     if domain_shells[dn] and len(domain_thickness.get(dn, [])) < len(domain_density[dn]):
         msg = ("\nERROR: domain_thickness is missing or too short for the domain '" + dn + "'. "
@@ -264,6 +264,9 @@ for ft in filter_list:
         if ft[0] == "casting":
             if len(ft) == 3:
                 domains_to_filter = list(opt_domains)
+                # TopoOpt: this assignment was missing here - get_filter_range() below uses
+                # filtered_dn, so the range "auto" stopped with NameError (the branch for the
+                # other filters a few lines down sets it, this one did not)
                 filtered_dn = domains_from_config
                 beso_filters.check_same_state(domain_same_state, domains_from_config, file_name)
             else:

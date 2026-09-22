@@ -1,3 +1,4 @@
+# TopoOpt: sys is used by the stop conditions further down - upstream continued silently
 import sys
 
 import numpy as np
@@ -389,6 +390,9 @@ def run1(file_name, sensitivity_number, weight_factor_node, M, weight_factor_dis
                    "run again. Continuing without filtering would hide the checkerboard effect.\n")
             print(msg)
             beso_lib.write_to_log(file_name, msg)
+            # TopoOpt: end the run here instead of continuing without a filter - upstream
+            # set filter_on_sensitivity = 0, returned the unfiltered values and reported
+            # convergence at the end, so the checkerboard effect stayed invisible
             sys.exit(1)
     return sensitivity_number_filtered
 
@@ -396,7 +400,7 @@ def run1(file_name, sensitivity_number, weight_factor_node, M, weight_factor_dis
 # function preparing values for filtering element rho to suppress checkerboard
 # uses sectoring to prevent computing distance of far points
 def prepare2s(cg, cg_min, cg_max, r_min, opt_domains, weight_factor2, near_elm):
-    # preparing the sectors - the key of a sector is the index of the grid cell
+    # TopoOpt: preparing the sectors - the key of a sector is the index of the grid cell
     # (integers), not a rounded coordinate: rounding to 6 significant digits gave
     # different keys for the same cell depending on how the value was computed, and
     # a cell that the loop over coordinates missed was not found at all (KeyError).
@@ -432,7 +436,9 @@ def prepare2s(cg, cg_min, cg_max, r_min, opt_domains, weight_factor2, near_elm):
                         near_elm[en].append(en2)
                         near_elm[en2].append(en)
     # finding near elements in neighbouring sectors by comparing distance with neighbouring sector elements
-    # the neighbouring sectors are addressed by the offsets of the cell indices (+-1 cell in each direction)
+    # TopoOpt: the neighbouring sectors are addressed by the offsets of the cell indices
+    # (+-1 cell in each direction) - with rounded coordinates the loop and the lookup could
+    # produce different keys, and a missing neighbour sector ended in a KeyError
     for position in list(sector_elm):
         kx, ky, kz = position
         # down level neighbouring sectors:
@@ -497,6 +503,9 @@ def run2(file_name, sensitivity_number, weight_factor2, near_elm, opt_domains):
                    "checkerboard effect and the run would not converge.\n")
             print(msg)
             beso_lib.write_to_log(file_name, msg)
+            # TopoOpt: end the run here instead of continuing without a filter - upstream
+            # set filter_on_sensitivity = 0, returned the unfiltered values and reported
+            # convergence at the end, so the checkerboard effect stayed invisible
             sys.exit(1)
     return sensitivity_number_filtered
 
