@@ -1,0 +1,58 @@
+# Tests on every push and pull request.
+#
+# The headless test needs FreeCAD, and it needs the addon inside FreeCAD's Mod
+# directory - exactly the way a user installs it.  FreeCAD comes as a Flatpak:
+# it is the same FreeCAD on every distribution, brings CalculiX (ccx) and gmsh
+# with it, and needs no build.  The steps below are the same commands a
+# developer runs on Linux (see Documentation/development.md).
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FreeCAD (Flatpak)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak
+          flatpak remote-add --if-not-exists --user flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.freecad.FreeCAD
+
+      - name: Check the syntax of every Python file
+        run: python3 -m compileall -q freecad tests
+
+      - name: Copy the addon into FreeCAD's Mod directory
+        run: |
+          # FreeCAD decides the folder itself (it is version dependent), so it is asked.
+          MOD="$(flatpak run --command=FreeCADCmd org.freecad.FreeCAD -c \
+                 'import FreeCAD; print(FreeCAD.getUserAppDataDir())' | tail -1)"
+          echo "MOD=$MOD" >> "$GITHUB_ENV"
+          mkdir -p "$MOD/Mod"
+          rm -rf "$MOD/Mod/TopologyOptimization"
+          cp -r "$GITHUB_WORKSPACE" "$MOD/Mod/TopologyOptimization"
+          rm -rf "$MOD/Mod/TopologyOptimization/.git"
+
+      - name: Run the headless test
+        run: |
+          flatpak run --command=FreeCADCmd org.freecad.FreeCAD \
+            "$MOD/Mod/TopologyOptimization/tests/headless_test.py"
+
+  # The bundled beso is upstream plus a few changes.  This job proves that the copy
+  # carries no undocumented difference - a difference without a "TopoOpt:" comment is
+  # one nobody will find later.  It also shows up when upstream changes something.
+  beso-copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the original beso
+        run: git clone --depth 1 https://github.com/calculix/beso.git /tmp/beso-original
+      - name: Check that every difference is documented
+        run: python3 tests/vergleiche_beso_kopie.py /tmp/beso-original
