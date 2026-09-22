@@ -30,8 +30,6 @@ DEUTSCH = {
         "TopoOpt: '%s' wurde der Analyse '%s' hinzugefuegt.\n",
 
     # dialog
-    "Analysis: %s   |   Mesh: %s":
-        "Analyse: %s   |   Netz: %s",
     "Analysis":
         "Analyse",
     "Mesh":
@@ -60,8 +58,6 @@ DEUTSCH = {
         "Dieser Schritt ist noch nicht eingebaut.",
     "Prepare the analysis case: CalculiX input file and element sets":
         "Analysefall vorbereiten: CalculiX-Eingabedatei und Element-Sets",
-    "CalculiX input file (basis of the optimization)":
-        "CalculiX-Eingabedatei (Grundlage der Optimierung)",
     "CalculiX input file (.inp)":
         "CalculiX-Eingabedatei (.inp)",
     "Domains - roles of the elements":
@@ -70,8 +66,6 @@ DEUTSCH = {
         "alle",
     "Cores for the solver; 'all' uses every core of the computer.":
         "Kerne f\u00fcr den Solver; \u201ealle\u201c nutzt jeden Kern des Rechners.",
-    "Domains - which elements are optimized?":
-        "Domains - welche Elemente werden optimiert?",
     "The optimizer writes its iteration files next to this file.":
         "Der Optimierer schreibt seine Iterationsdateien neben diese Datei.",
     "Element set":
@@ -82,8 +76,6 @@ DEUTSCH = {
         "σ (MPa)",
     "Allowable stress (von Mises) in MPa - leave empty to run without a failure index. The model needs real loads for it.":
         "Zulässige Spannung (von Mises) in MPa – leer lassen heißt: ohne Auslastungs-Index. Das Modell braucht dafür echte Lasten.",
-    "TopoOpt: allowable stress taken from the material (MPa): %s\n":
-        "TopoOpt: zulässige Spannung aus dem Material übernommen (MPa): %s\n",
     "TopoOpt: allowable stress for '%s' is %s MPa - the run reports a failure index.\n":
         "TopoOpt: zulässige Spannung für '%s' ist %s MPa – der Lauf gibt einen Auslastungs-Index aus.\n",
     "TopoOpt: no allowable stress for '%s' - the run works without a failure index.\n":
@@ -185,14 +177,10 @@ DEUTSCH = {
         "combine - Mittel aus erode und dilate",
     "Optimization":
         "Optimierung",
-    "Sensitivity filter (smoothing)":
-        "Sensitivit\u00e4tsfilter (Gl\u00e4ttung)",
     "Filter %d":
         "Filter %d",
     "no filter":
         "kein Filter",
-    "simple - smooth, no direction":
-        "simple - gl\u00e4ttet, ohne Richtung",
     "casting - demouldable in one direction":
         "casting - in eine Richtung entformbar",
     "automatic":
@@ -228,8 +216,6 @@ DEUTSCH = {
         "manuell: eigener Wert in Millimetern",
     "Start optimization":
         "Optimierung starten",
-    "Show history":
-        "Verlauf anzeigen",
     "Calculation":
         "Berechnung",
     "Run":
@@ -252,8 +238,6 @@ DEUTSCH = {
         "Stop",
     "Whole log":
         "Vollständiges Log",
-    "Folder":
-        "Ordner",
     "< Back":
         "< Zurück",
     "Next >":
@@ -324,10 +308,6 @@ DEUTSCH = {
         "TopoOpt Iteration",
     "The last lines of the run - 'Whole log' opens the complete file.":
         "Die letzten Zeilen des Laufs – 'Vollständiges Log' öffnet die ganze Datei.",
-    "Open at start":
-        "beim Start öffnen",
-    "Open the history window when the run starts":
-        "Das Verlaufsfenster beim Start des Laufs öffnen",
     "Opens the window with the four charts (mass, stress, overloaded elements, energy)":
         "Öffnet das Fenster mit den vier Diagrammen (Masse, Auslastung, überlastete Elemente, Energiedichte)",
     "0 % = the whole part, 100 % = the target mass":
@@ -336,8 +316,6 @@ DEUTSCH = {
         "Das Plot-Modul von FreeCAD ist nicht verfügbar - die Diagramme brauchen 'Plot' im Modulordner von FreeCAD.",
     "Cancel":
         "Abbrechen",
-    "Mass per iteration":
-        "Masse je Iteration",
     "Details":
         "Details",
     "Writes the beso configuration and starts beso as its own process - FreeCAD stays usable.":
@@ -370,15 +348,8 @@ DEUTSCH = {
         "Es gibt noch keine Eingabedatei - siehe Schritt 1.",
     "No design space is marked - see step 1.":
         "Es ist kein Design-Raum markiert - siehe Schritt 1.",
-    "The last lines of the run - the whole log file belongs to step 4.":
-        "Die letzten Zeilen des Laufs - die vollst\u00e4ndige Logdatei geh\u00f6rt zu Schritt 4.",
-    "For 'robust' press the arrow button once: beso then checks the radius and the value appears next to it.":
-        "Bei \u201erobust\u201c einmal den Pfeil-Knopf dr\u00fccken: beso pr\u00fcft dann den Radius, "
-        "der Wert erscheint daneben.",
     "Check the robust filter radius now":
         "Robusten Filterradius jetzt pr\u00fcfen",
-    "not checked yet - use the arrow button":
-        "noch nicht gepr\u00fcft - Knopf mit dem Pfeil nutzen",
     "%.3f mm = %.1f x mean size, %d without neighbour":
         "%.3f mm = %.1f x mittlere Gr\u00f6\u00dfe, %d ohne Nachbarn",
     "%.3f mm (saved value from the last check)":
@@ -388,18 +359,11 @@ DEUTSCH = {
     "The filter smooths the result. 'simple' averages over all elements in the radius, 'casting' also keeps the part demouldable in one direction.":
         "Der Filter gl\u00e4ttet das Ergebnis. \u201esimple\u201c mittelt \u00fcber alle Elemente im "
         "Radius, \u201ecasting\u201c h\u00e4lt das Bauteil zus\u00e4tzlich in eine Richtung entformbar.",
-    "'automatic' lets beso choose the radius from the element size, 'manual' uses the value in millimetres.":
-        "\u201eautomatisch\u201c l\u00e4sst beso den Radius aus der Elementgr\u00f6\u00dfe w\u00e4hlen, "
-        "\u201emanuell\u201c nutzt den Wert in Millimetern.",
     "Radius in millimetres - a larger radius gives thicker struts and fewer fine details. The filter needs a radius in which every element has a neighbour.":
         "Radius in Millimetern - ein gr\u00f6\u00dferer Radius ergibt dickere Stege und weniger feine "
         "Details. Der Filter braucht einen Radius, in dem jedes Element einen Nachbarn hat.",
     "Only for the casting filter: the direction in which the part has to be demouldable.":
         "Nur f\u00fcr den casting-Filter: die Richtung, in der das Bauteil entformbar sein muss.",
-    "The filter averages the sensitivities over the elements inside the radius and keeps the result smooth. 'automatic' uses beso's own value (2 x mean element size).":
-        "Der Filter mittelt die Sensitivit\u00e4ten \u00fcber die Elemente im Radius und h\u00e4lt das "
-        "Ergebnis glatt. \u201eautomatisch\u201c nutzt besos eigenen Wert (2 x mittlere "
-        "Elementgr\u00f6\u00dfe).",
     "What is optimized":
         "Was wird optimiert",
     "Stiffness - the part becomes as stiff as possible (usual)":
@@ -432,8 +396,6 @@ DEUTSCH = {
         "Wie viel Material beso pro Iteration zuf\u00fcgt oder wegnimmt.",
     "Processor cores":
         "Prozessorkerne",
-    "Cores for the solver; 0 uses all of them.":
-        "Kerne f\u00fcr den Solver; 0 nutzt alle.",
     "Result files":
         "Ergebnisdateien",
     "Save every n-th iteration":
@@ -447,10 +409,6 @@ DEUTSCH = {
         "Analysefall vorbereiten: CalculiX-Eingabedatei und Element-Sets",
     "Set target mass, filters and iteration limits":
         "Zielmasse, Filter und Iterationsgrenzen einstellen",
-    "Run the optimization with CalculiX":
-        "Die Optimierung mit CalculiX rechnen",
-    "Look at the result and compare it with the FEM result":
-        "Ergebnis ansehen und mit dem FEM-Ergebnis vergleichen",
     "Close":
         "Schliessen",
     "Working directory of the solver":
@@ -461,31 +419,12 @@ DEUTSCH = {
         "ein anderer FEM-Arbeitsordner",
     "own working directory (old version)":
         "eigener Arbeitsordner (alte Fassung)",
-    "FEM working directory of FreeCAD":
-        "FEM-Arbeitsordner von FreeCAD",
-    "Working directory of TopoOpt":
-        "Arbeitsordner von TopoOpt",
     "written":
         "neu erzeugt",
 
     # status messages
     "Looking for the analysis, the mesh and an existing CalculiX input file ...":
         "Suche Analyse, Netz und vorhandene CalculiX-Eingabedatei ...",
-    "No FEM analysis found. Please put the object into an analysis (active analysis) "
-    "or restore the analysis.":
-        "Keine FEM-Analyse gefunden. Bitte das Objekt in eine Analyse legen (aktive "
-        "Analyse) oder die Analyse wiederherstellen.",
-    "The analysis needs a mesh and a solver (FEM workbench: create mesh and solver).":
-        "Die Analyse braucht ein Netz und einen Solver (FEM-Arbeitsbereich: Netz und "
-        "Solver anlegen).",
-    "There is no CalculiX input file for the analysis '%s' yet. Click 'Write input file' "
-    "so that the element sets can be read.":
-        "Es gibt noch keine CalculiX-Eingabedatei fuer die Analyse '%s'. Klick auf "
-        "'Eingabedatei erzeugen', damit die Element-Sets gelesen werden koennen.",
-    "Input file used (source: %s). %d element set(s), element type %s. The design space "
-    "is optimized, the non-design space is kept.":
-        "Eingabedatei verwendet (Quelle: %s). %d Element-Set(s), Elementtyp %s. Der "
-        "Design-Raum wird optimiert, der Nicht-Design-Raum bleibt stehen.",
     "Input file written in %.1f s. %d element set(s), element type %s.":
         "Eingabedatei in %.1f s erzeugt. %d Element-Set(s), Elementtyp %s.",
     "Writing the CalculiX input file from the FEM model ... FreeCAD is blocked while "
@@ -510,7 +449,6 @@ DEUTSCH = {
         "CalculiX-Eingabedatei, auf der die Optimierung aufbaut",
 }
 
-
 def sprache():
     """Language FreeCAD uses, as a two letter code ('de', 'en', ...) or ''."""
     try:
@@ -525,7 +463,6 @@ def sprache():
         except Exception:
             einstellung = ""
     return einstellung.split("_")[0].split("-")[0].lower()
-
 
 def uebersetze(text):
     """German text when FreeCAD runs in German, otherwise the English source."""
