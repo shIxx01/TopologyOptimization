@@ -14,6 +14,17 @@ import tempfile
 
 import FreeCAD as App
 
+# Die Meldungen sind deutsch.  Ohne UTF-8-Locale (LANG=C) waere sys.stdout ASCII und ein print()
+# mit Umlaut wuerde den Lauf abbrechen - die restlichen Pruefungen liefen dann nie.  Darum die
+# Ausgabe fest auf UTF-8 stellen, mit "replace" als Notnagel.
+for _strom in (sys.stdout, sys.stderr):
+    _umstellen = getattr(_strom, "reconfigure", None)
+    if _umstellen is not None:
+        try:
+            _umstellen(encoding="utf8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
 fehler = []
 
 
@@ -188,7 +199,12 @@ unbekannt = "a text that is not in the dictionary"
 pruefe(i18n.uebersetze(unbekannt) == unbekannt, "unbekannte Texte bleiben unveraendert")
 pruefe(i18n.uebersetze("Initialize") in ("Initialize", "Initialisieren"),
        "bekannter Text wird uebersetzt oder bleibt englisch: %r" % i18n.uebersetze("Initialize"))
-pruefe(i18n.sprache() in ("", "de", "en", "fr", "es", "it"), "Sprache erkannt: %r" % i18n.sprache())
+# Die Sprache kommt aus den FreeCAD-Einstellungen oder aus dem System - welche Sprache das
+# ist, haengt von der Maschine ab (in einer CI ohne Locale ist es "C").  Geprueft wird darum
+# nur, was die Funktion zusichert: ein leeres Ergebnis oder ein Sprachkuerzel aus Buchstaben.
+erkannt = i18n.sprache()
+pruefe(erkannt == "" or erkannt.isalpha(),
+       "die Sprache wird als Kuerzel erkannt (%r)" % erkannt)
 
 # --- Parameter (Schritt 2) --------------------------------------------------
 from freecad.TopoOpt.core import params as prm  # noqa: E402
