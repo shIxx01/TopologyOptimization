@@ -12,11 +12,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Nur lesen: die Tests brauchen keinen Schreibzugriff auf das Repository
+permissions:
+  contents: read
+
 jobs:
   headless:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install FreeCAD (Flatpak)
         run: |
@@ -51,7 +55,7 @@ jobs:
   beso-copy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Get the original beso
         run: git clone --depth 1 https://github.com/calculix/beso.git /tmp/beso-original
       - name: Check that every difference is documented
