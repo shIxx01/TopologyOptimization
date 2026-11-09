@@ -949,6 +949,17 @@ instead of being silently changed:
 * **Split input write.**  With `SplitInputWriter = True` FreeCAD's writer spreads the model over
   several files (`femsolver/calculix/writer.py`), so there is no complete `.inp`.  Writing the
   input file and starting the run are refused with a message that names the switch.
+  *Measured* on the test model (`tests/make_test_document.py`, 401 tetrahedra), same solver
+  object, only the switch changed:
+
+  | `Split input write` | file | element sets |
+  |---|---|---|
+  | no | 16 916 bytes, `*Element, TYPE=C3D4, ELSET=Evolumes` | `Evolumes` 401, `Eall` 401, `MaterialSolidSolid` 401 |
+  | yes | 2 341 bytes, only `*INCLUDE,INPUT=FEMMeshGmsh_femesh.inp` | `MaterialSolidSolid` **0** |
+
+  Without the refusal the assistant would list no element set at all (and `check_inp` cannot see
+  it: `*STEP` and `*MATERIAL` are reached through the includes), so the run would fail much later
+  with an unrelated message.
 
 *Reason:* both are switches of the solver object, which belongs to the user; turning them off
 behind the user's back would change his analysis.  Refusing with a reason keeps the rule from D26
