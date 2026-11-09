@@ -66,10 +66,13 @@ step right after a run.
 
 ### With the Addon Manager (recommended)
 
-1. *Tools → Addon manager*
-2. *Configuration* (top right) → add the repository URL under *Custom repositories*:
-   `https://github.com/shIxx01/TopologyOptimization`
-3. install *TopoOpt* from the list and restart FreeCAD
+1. *Edit → Preferences → Addon Manager* → section *Custom repositories* → the **+**
+   button.  These settings live in FreeCAD's preferences, not in the Addon Manager
+   window itself.
+    * *Repository URL*: `https://github.com/shIxx01/TopologyOptimization`
+    * *Branch*: leave empty - `main` is the default branch
+2. *Tools → Addon manager* and wait for the list to refresh (or press *Refresh*)
+3. install **`TopoOpt`** from the list (tag *FEM*) and restart FreeCAD
 
 ### Manually
 
