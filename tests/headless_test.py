@@ -353,6 +353,65 @@ except Exception as message:  # noqa: BLE001
 finally:
     conf_module.python_path = _real_python_path
 
+# --- which ccx is used, and what it can do (D45, D46) ------------------------
+# The FEM preference is simulated - the real settings of this machine stay untouched.
+import shutil  # noqa: E402
+
+_real_fem_ccx = conf_module._fem_ccx
+_ccx_dir = tempfile.mkdtemp(prefix="topoopt_ccx_")
+_fake_ccx = os.path.join(_ccx_dir, "ccx_fake")
+open(_fake_ccx, "w", encoding="utf8").close()
+try:
+    conf_module._fem_ccx = lambda: (_fake_ccx, _fake_ccx)
+    path, origin, note = conf_module._resolve_calculix()
+    check(path == os.path.abspath(_fake_ccx) and origin == "FreeCAD preference" and not note,
+          "der Solver aus Preferences > FEM > CalculiX gewinnt (%s, %s)" % (path, origin))
+    check(conf_module.calculix_path() == os.path.abspath(_fake_ccx),
+          "calculix_path() liefert genau diesen Solver")
+    conf_module._fem_ccx = lambda: ("", os.path.join(_ccx_dir, "gibt_es_nicht"))
+    path, origin, note = conf_module._resolve_calculix()
+    check(origin != "FreeCAD preference" and os.path.isfile(path),
+          "eine unbrauchbare FEM-Einstellung faellt auf den mitgelieferten Solver zurueck (%s)"
+          % path)
+    check("gibt_es_nicht" in note,
+          "der Rueckfall wird benannt statt verschwiegen (%r)" % note)
+finally:
+    conf_module._fem_ccx = _real_fem_ccx
+    shutil.rmtree(_ccx_dir, ignore_errors=True)
+path, origin, note = conf_module._resolve_calculix()
+check(os.path.isfile(path) and not note,
+       "nach dem Zuruecksetzen gilt wieder die echte Umgebung (%s, %s)" % (path, origin))
+
+
+class _SolverStub:
+    pass
+
+
+_solver_stub = _SolverStub()
+_solver_stub.PastixMixedPrecision = True
+check(conf_module.solver_environment(_solver_stub) == {"PASTIX_MIXED_PRECISION": "1"},
+       "PastixMixedPrecision wird als PASTIX_MIXED_PRECISION=1 durchgereicht")
+_solver_stub.PastixMixedPrecision = False
+check(conf_module.solver_environment(_solver_stub) == {"PASTIX_MIXED_PRECISION": "0"},
+       "ohne die Option steht PASTIX_MIXED_PRECISION=0")
+check(conf_module.solver_environment(_SolverStub()) == {"PASTIX_MIXED_PRECISION": "0"},
+       "ein Solver ohne die Eigenschaft ergibt trotzdem einen Wert")
+
+# the solver type of the FEM solver lands in the .inp as *STATIC, SOLVER=...
+_inp_dir = tempfile.mkdtemp(prefix="topoopt_solver_")
+_probe = os.path.join(_inp_dir, "probe.inp")
+with open(_probe, "w", encoding="utf8") as fh:
+    fh.write("*NODE\n1, 0., 0., 0.\n*STATIC, SOLVER=PASTIX\n")
+check(elset_reader.solver_keyword(_probe) == "PASTIX",
+       "der Solverwunsch der Eingabedatei wird gelesen (PASTIX)")
+with open(_probe, "w", encoding="utf8") as fh:
+    fh.write("*NODE\n1, 0., 0., 0.\n*STATIC\n")
+check(elset_reader.solver_keyword(_probe) == "",
+       "ohne SOLVER-Attribut wird kein Solver gemeldet")
+check(elset_reader.solver_keyword(os.path.join(_inp_dir, "fehlt.inp")) == "",
+       "ohne Eingabedatei wird kein Solver gemeldet")
+shutil.rmtree(_inp_dir, ignore_errors=True)
+
 doc5 = App.newDocument("TopoOptConfTest")
 analysis5 = doc5.addObject("Fem::FemAnalysis", "Analyse")
 obj5 = create_topology_object(doc5, analysis5, "TopoOpt5")
@@ -475,6 +534,19 @@ _shutil.rmtree(folder4, ignore_errors=True)
 
 # --- step 3: read the protocol of a run -------------------------------------
 from freecad.TopoOpt.core import lauf as run_module  # noqa: E402
+
+# A ccx without PaStiX/PARDISO answers an .inp that asks for it with this line; the
+# assistant then names the library instead of leaving the user with a dead run (D46).
+check(run_module.missing_library(
+        " *ERROR in linstatic: the PASTIX library is not linked\n") == "PASTIX",
+      "eine fehlende PASTIX-Bibliothek wird im Log erkannt")
+check(run_module.missing_library(
+        "*ERROR in linstatic: the PARDISO library is not linked\n") == "PARDISO",
+      "eine fehlende PARDISO-Bibliothek wird im Log erkannt")
+check(run_module.missing_library("Job finished\n\n") == "",
+      "ein normales Log meldet keine fehlende Bibliothek")
+check(run_module.missing_library(None) == "",
+      "ohne Logtext wird nichts gemeldet")
 
 # --- step 3: read beso's iteration table ------------------------------------
 beso_example = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data",

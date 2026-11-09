@@ -61,6 +61,9 @@ step right after a run.
 * the FEM workbench of FreeCAD with its CalculiX solver (`ccx`)
 * Python with `numpy` - both come with FreeCAD.  **numpy 2 is fine**: the one place in the
   bundled beso that still used a numpy 1 sub module is fixed (see below).
+* a `ccx` of its own is optional: the addon runs the solver set under *Edit → Preferences →
+  FEM → CalculiX* if one is configured there (for example a build with PaStiX or PARDISO,
+  which is much faster on big models).  The run log names the binary it used.
 
 ## Installation
 
@@ -115,7 +118,7 @@ missing that comment:
    `np.linalg.linalg.norm` - `numpy.linalg.linalg` was removed in numpy 2.0, so with the numpy
    that ships with FreeCAD today **every 2D model stopped before the first iteration**.
 
-The addon itself adds two things on top:
+The addon itself adds these things on top:
 
 * **robust filter range** - asks beso's own functions for the smallest range in which every
   element of the design space still has a neighbour, instead of always using "two times the
@@ -125,13 +128,22 @@ The addon itself adds two things on top:
   had a thickness field per domain as well (a `ElementGeometry2D` object plus a value whose tooltip
   says it *overwrites the thickness defined in FreeCAD*); the addon does not ask a second time and
   uses what the analysis already contains.
+* **the solver FreeCAD is set to** - the `ccx` from *Edit → Preferences → FEM → CalculiX* is used
+  when one is configured there, and the run log names the binary and where it came from.  If the
+  configured path cannot be used, the run falls back to the shipped `ccx` **and says so** - it
+  never switches quietly.
+* **solver hints instead of dead runs** - the input file carries the *Solver type* of the FEM
+  solver (`*STATIC, SOLVER=PASTIX`).  A `ccx` that was built without that library answers
+  `*ERROR in linstatic: the PASTIX library is not linked`; the assistant then says which library
+  is missing and what to do.  The same goes for *Split input write*: with it there is no complete
+  `.inp`, so step 1 refuses to write one and the run does not start.
 
 ## Tests
 
 | Test | What it covers | Result |
 |---|---|---|
-| `tests/headless_test.py` | core modules, configuration, radius, log/VTK/state readers, the search for Python and `ccx` | 152 checks |
-| `tests/panel_test.py` | the assistant in a real FreeCAD GUI - steps, buttons, error cases, one real mini run | 124 checks (GUI; last measured on Windows) |
+| `tests/headless_test.py` | core modules, configuration, radius, log/VTK/state readers, the search for Python and `ccx` (incl. the FEM preference), the solver hints | 171 checks |
+| `tests/panel_test.py` | the assistant in a real FreeCAD GUI - steps, buttons, error cases, one real mini run | ~149 checks (GUI; the count moves by one or two because the mini run decides whether the VTK player has something to show; last measured on Windows) |
 | `tests/gui_test.py` | the workbench and its command in a running FreeCAD | 15 checks (GUI; last measured on Windows) |
 | `tests/szenario_test.py` | 17 scenarios on purpose-built tiny models (2D shell, 3D solid, all filter types, missing thickness, missing objects) and the same scenarios with the unchanged beso from GitHub | 17 runs, no failed check |
 | `tests/vergleiche_beso_kopie.py` | every difference between the bundled beso and upstream, and whether it is marked and documented | 0 undocumented differences |

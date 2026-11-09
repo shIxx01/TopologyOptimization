@@ -159,3 +159,17 @@ def read_history(log_path, target_ratio=None):
     if "Job finished" in text:
         result["done"] = True
     return result
+
+
+def missing_library(text):
+    """Which CalculiX library the log says is missing ("" when it says none).
+
+    A ccx built without PaStiX/PARDISO answers an input file that asks for them with
+    ``*ERROR in linstatic: the PASTIX library is not linked`` and exits.  That reads
+    like a broken model; naming the library turns it into an instruction.
+    """
+    upper = (text or "").upper()
+    for name in ("PASTIX", "PARDISO"):
+        if "%s LIBRARY IS NOT LINKED" % name in upper:
+            return name
+    return ""

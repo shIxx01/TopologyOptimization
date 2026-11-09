@@ -457,6 +457,35 @@ GERMAN = {
         "Arbeitsordner der Optimierung (ohne Leerzeichen)",
     "CalculiX input file the optimization is based on":
         "CalculiX-Eingabedatei, auf der die Optimierung aufbaut",
+
+    # solver: which ccx, and what it can do (D45, D46)
+    "The solver writes a split input file ('Split input write') - there is no "
+    "complete .inp then. Set it to 'no' in the CalculiX solver and write the "
+    "input file again.":
+        "Der Solver schreibt die Eingabedatei aufgeteilt ('Split input write') – dann gibt "
+        "es keine vollständige .inp. Stelle ihn im CalculiX-Solver auf 'nein' und schreibe "
+        "die Eingabedatei neu.",
+    "The solver writes a split input file ('Split input write') - there is no "
+    "complete .inp then. Set it to 'no' in the CalculiX solver first.":
+        "Der Solver schreibt die Eingabedatei aufgeteilt ('Split input write') – dann gibt "
+        "es keine vollständige .inp. Stelle ihn im CalculiX-Solver zuerst auf 'nein'.",
+    "The solver writes a split input file ('Split input write') - the optimization "
+    "needs the one complete .inp.":
+        "Der Solver schreibt die Eingabedatei aufgeteilt ('Split input write') – die "
+        "Optimierung braucht die eine vollständige .inp.",
+    "The input file asks for the %s solver - if the ccx in use was built without it, "
+    "CalculiX stops with 'library is not linked'. Then set the solver type to "
+    "'default' or set a ccx with %s under Preferences > FEM > CalculiX.":
+        "Die Eingabedatei verlangt den Solver %s – kann das verwendete ccx ihn nicht, "
+        "bricht CalculiX mit 'library is not linked' ab. Dann im FEM-Solver den Solver "
+        "type auf 'default' stellen oder unter Preferences > FEM > CalculiX ein ccx mit "
+        "%s eintragen.",
+    "CalculiX cannot use the %s solver: this ccx was built without it. Set the solver "
+    "type to 'default' in the FEM solver, or set a ccx with %s under Preferences > "
+    "FEM > CalculiX.":
+        "CalculiX kann den Solver %s nicht: dieses ccx wurde ohne ihn gebaut. Stelle im "
+        "FEM-Solver den Solver type auf 'default' oder trage unter Preferences > FEM > "
+        "CalculiX ein ccx mit %s ein.",
 }
 
 def language():

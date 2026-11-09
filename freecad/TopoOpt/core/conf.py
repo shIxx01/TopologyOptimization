@@ -29,6 +29,7 @@ import time
 from . import beso as beso_modul
 from . import domains as dom
 from . import elsets as elset_reader
+from . import fem as fem_modul
 
 SUBFOLDER = "topoopt_beso"
 TEMPLATE = "beso_conf_vorlage.py"
@@ -135,19 +136,77 @@ def conf_text(obj, inp_path, domains, working_dir):
     ])
 
 
-def calculix_path():
-    """The CalculiX solver (ccx): the one set in FreeCAD's FEM preferences,
-    else the one FreeCAD ships, else the first on the system search path."""
-    candidates = []
+def _warn(text):
+    """A warning in FreeCAD's console - and nowhere else (a core module may run
+    without FreeCAD, then there is simply no console to write to)."""
     try:
-        # FEM's own lookup (Preferences > FEM > CalculiX > binary path); it
-        # returns the plain name "ccx" when no path is set
+        import FreeCAD
+        FreeCAD.Console.PrintWarning(text)
+    except Exception:
+        pass
+
+
+def _fem_ccx():
+    """ccx as FreeCAD's FEM workbench resolves it, plus the raw preference text.
+
+    The preference is the one behind *Preferences > FEM > CalculiX*; FreeCAD's own
+    ``femsolver.settings.get_binary("Calculix")`` reads the same key.  Both are
+    asked because only the raw value tells whether the user set something at all -
+    without it ``get_binary`` returns the first ``ccx`` of the search path.
+    """
+    raw = ""
+    try:
+        import FreeCAD
+        group = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Fem/Ccx")
+        raw = group.GetString("ccxBinaryPath", "")
+    except Exception:
+        pass                    # no FreeCAD settings to read
+    found = ""
+    try:
         from femsolver import settings as fem_settings
-        fem_ccx = fem_settings.get_binary("Calculix", silent=True)
-        if fem_ccx and os.path.isabs(fem_ccx):
-            candidates.append(fem_ccx)
-    except ImportError:
-        pass    # FEM workbench not available
+        found = fem_settings.get_binary("Calculix", silent=True) or ""
+    except Exception:
+        pass                    # FEM workbench not available
+    return found, raw
+
+
+def solver_environment(solver):
+    """What CalculiX needs in its environment, taken from the solver object.
+
+    FreeCAD's own run sets ``PASTIX_MIXED_PRECISION`` from the solver
+    (``femtools/calculixtools.py``); without it a PaStiX build ignores the switch.
+    """
+    mixed = bool(getattr(solver, "PastixMixedPrecision", False))
+    return {"PASTIX_MIXED_PRECISION": "1" if mixed else "0"}
+
+
+def _solver_of(obj):
+    """The solver object of the analysis the optimization object belongs to."""
+    try:
+        document = getattr(obj, "Document", None)
+        analysis = document.getObject(getattr(obj, "AnalysisName", "")) if document else None
+        return fem_modul.find_solver(analysis) if analysis is not None else None
+    except Exception:
+        return None
+
+
+def _resolve_calculix():
+    """Find ccx and say where it came from.
+
+    Returns ``(path, origin, note)``.  ``origin`` is "FreeCAD preference",
+    "shipped with FreeCAD" or "system search path".  ``note`` stays empty unless
+    the FEM preference is set but cannot be used: then the shipped ccx is taken
+    and the note says so - the run log shows it instead of leaving the user to
+    wonder which solver was started.
+    """
+    found, preference = _fem_ccx()
+    note = ""
+    if preference:
+        if found and os.path.isfile(found):
+            return os.path.abspath(found), "FreeCAD preference", ""
+        note = ("the solver set in Preferences > FEM > CalculiX cannot be used: %s"
+                % preference)
+    candidates = []
     if sys.executable:
         # ccx sits next to the FreeCAD program - in the Flatpak that is /app/bin
         for name in ("ccx", "ccx.exe"):
@@ -164,8 +223,15 @@ def calculix_path():
     for path in candidates:
         path = os.path.abspath(path)
         if os.path.isfile(path):
-            return path
-    return shutil.which("ccx") or "ccx"     # the system search path last
+            return path, "shipped with FreeCAD", note
+    return shutil.which("ccx") or "ccx", "system search path", note
+
+
+def calculix_path():
+    """The CalculiX solver (ccx): the one set in FreeCAD's FEM preferences,
+    else the one FreeCAD ships, else the first on the system search path."""
+    return _resolve_calculix()[0]
+
 
 
 def python_path():
@@ -247,11 +313,17 @@ def start(obj, inp_path, domains, working_dir):
     target, conf = write_files(obj, inp_path, domains, working_dir)
     _log_aside(inp_path)
     log = log_path(inp_path)
+    ccx, origin, ccx_note = _resolve_calculix()
     with open(log, "w", encoding="utf8") as fh:
         fh.write("TopoOpt run started: %s\n" % time.strftime("%d.%m.%Y %H:%M:%S"))
         fh.write("Input file : %s\n" % inp_path)
         fh.write("Config     : %s\n" % conf)
+        fh.write("CalculiX   : %s (%s)\n" % (ccx, origin))
+        fh.write("Python     : %s\n" % interpreter)
         fh.write("beso log   : %s\n\n" % beso_log_path(inp_path))
+    if ccx_note:
+        # the user has a solver set that does not work - say it, never fall back quietly
+        _warn("TopoOpt: %s - using %s instead.\n" % (ccx_note, ccx))
     # CREATE_NO_WINDOW: otherwise a console window flashes up on Windows
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     # -u / PYTHONUNBUFFERED: without it the child buffers its output in blocks and
@@ -261,6 +333,7 @@ def start(obj, inp_path, domains, working_dir):
     environment = dict(os.environ)
     environment["PYTHONUNBUFFERED"] = "1"
     environment.setdefault("PYTHONUTF8", "1")
+    environment.update(solver_environment(_solver_of(obj)))
     process = subprocess.Popen([interpreter, "-u", os.path.join(target, "beso_main.py")],
                                cwd=working_dir, creationflags=flags, env=environment,
                                stdout=open(log, "a", encoding="utf8"),

@@ -900,3 +900,59 @@ Does the bundled beso compute as fast as the original and does it deliver the sa
 * Result: the addon computes **exactly like the original macro** and just as fast.  The four
   fixes cost no computing time; they only change what happens with a model that cannot be
   computed (see D24).
+
+## D45 - The CalculiX binary comes from the FEM preferences
+
+The run uses the `ccx` that is set under *Preferences → FEM → CalculiX* (parameter
+`User parameter:BaseApp/Preferences/Mod/Fem/Ccx`, key `ccxBinaryPath`).  Order: that binary, then
+the one FreeCAD ships, then the first `ccx` of the search path.
+
+*Reason:* the bundled `ccx` is built with SPOOLES only, which is slow on big models; users with a
+`ccx` built with PaStiX or PARDISO expect FreeCAD to use it.  FreeCAD's own FEM run resolves the
+same key through `femsolver.settings.get_binary("Calculix")`, so the addon asks that function
+instead of guessing.
+
+*Measured* (FreeCAD 26.3 on Windows, `headless_test.py`): with the preference empty
+`get_binary()` returns the shipped `ccx.EXE`; a simulated preference wins, and a preference that
+points to a missing file falls back to the shipped `ccx` with a note naming the bad path.  The run
+log carries the result:
+
+```
+CalculiX   : C:\Program Files\FreeCAD 26.3\bin\ccx.EXE (shipped with FreeCAD)
+Python     : C:\Program Files\FreeCAD 26.3\bin\python.exe
+```
+
+Nothing is switched quietly: a preference that cannot be used produces a console warning and a
+line in the log.  The solver contributed in #9 by *guerdat* was the starting point; the note,
+the origin and `except Exception` were added here.
+
+`PASTIX_MIXED_PRECISION` is set from the solver object as well (`PastixMixedPrecision`), the same
+way FreeCAD's own run does - without it a PaStiX build ignores that switch.
+
+## D46 - The solver's abilities are named, not worked around
+
+Two settings of the FEM solver end up in the input file or break the run, and both are reported
+instead of being silently changed:
+
+* **Solver type.**  FreeCAD writes it into the analysis card (`write_step_equation.py`):
+  `*STATIC, SOLVER=PASTIX`.  A `ccx` without that library cannot help itself, and the error looks
+  like a broken model.  *Measured* with the shipped `ccx` 2.23 on a 27 000 element model:
+
+  | `*STATIC, SOLVER=...` | output |
+  |---|---|
+  | `PASTIX` | `*ERROR in linstatic: the PASTIX library is not linked` |
+  | `PARDISO` | `*ERROR in linstatic: the PARDISO library is not linked` |
+  | `SPOOLES` / no attribute | `Job finished` |
+
+  Step 1 therefore names the requested solver and the two ways out, and when a run dies with
+  `library is not linked` the status line says which library that `ccx` was built without.
+* **Split input write.**  With `SplitInputWriter = True` FreeCAD's writer spreads the model over
+  several files (`femsolver/calculix/writer.py`), so there is no complete `.inp`.  Writing the
+  input file and starting the run are refused with a message that names the switch.
+
+*Reason:* both are switches of the solver object, which belongs to the user; turning them off
+behind the user's back would change his analysis.  Refusing with a reason keeps the rule from D26
+(no controls for what FreeCAD already decides) and costs one click.
+
+*Measured:* `headless_test.py` (solver keyword and library detection), `panel_test.py` (both
+refusals with the German message as it appears in the status line).

@@ -56,7 +56,7 @@ file, the beso configuration, the radius functions, the log reader and the VTK/s
 ```
 
 It prints one line per check (`OK ...`) and a summary.  It must **not** print
-`The graph must be a DAG.`  Reference result: **152 checks, no failures**, exit code 0
+`The graph must be a DAG.`  Reference result: **171 checks, no failures**, exit code 0
 (measured 22.09.2026 in the FreeCAD 26.3 Flatpak).  The two recorded logs the suite reads
 (`tests/data/beso_beispiel.log` and `tests/data/lauf_beispiel.log`) are test **inputs** and
 therefore live in the repository - `.gitignore` excludes `tests/data/*.log` for the output of a
@@ -101,10 +101,13 @@ the element sets are listed with their sizes (collector sets `Eall`/`Evolumes` h
 design space suggested), a change in the table is stored in the object straight away, the
 parameter fields and the filter rows behave, the radius button computes a value, the σ column
 stays empty while the note below the list explains it, and a real mini run is started and
-cancelled.  It also covers the four error cases: without mesh, without solver, without input
-file and without a design space the run must not start and the status must name the reason.
-Reference: **124 checks** (last measured on the maintainer's Windows installation; needs a
-graphical session).
+cancelled.  It also covers the error cases: without mesh, without solver, without input
+file and without a design space the run must not start and the status must name the reason - and a
+solver with *Split input write* may neither write the input file nor start the run, while a solver
+type in the input file is named in the note under the list.
+Reference: **~149 checks** (measured 149 twice in a row; the suite also counts checks that only run
+when the mini run has produced an iteration, so the number can move by one or two - last measured
+on the maintainer's Windows installation; needs a graphical session).
 
 ## Test 4 - scenario matrix and comparison with upstream beso
 

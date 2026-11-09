@@ -692,6 +692,33 @@ try:
     check(subject._run_process is None and "esign" in subject.status.text(),
            "ohne Design-Raum startet kein Lauf (%s)" % subject.status.text())
 
+    # the solver spreads the model over several files: there is no complete .inp, so
+    # writing it and starting the run are refused with a clear reason (D46)
+    new_obj, subject = _subject()
+    subject.solver.SplitInputWriter = True
+    try:
+        subject._write_inp()
+        check("Split input write" in subject.status.text(),
+               "mit 'Split input write' wird keine Eingabedatei geschrieben (%s)"
+               % subject.status.text())
+        subject._start_run()
+        check(subject._run_process is None and "Split input write" in subject.status.text(),
+               "mit 'Split input write' startet kein Lauf (%s)" % subject.status.text())
+    finally:
+        subject.solver.SplitInputWriter = False
+
+    # the .inp asks for PaStiX: step 1 names the risk instead of leaving a dead run
+    new_obj, subject = _subject()
+    probe = os.path.join(os.path.dirname(new_obj.InpFile), "solverprobe.inp")
+    with open(probe, "w", encoding="utf8") as fh:
+        fh.write("*NODE\n1, 0., 0., 0.\n*STATIC, SOLVER=PASTIX\n")
+    new_obj.InpFile = probe
+    subject._check_inp()
+    check("PASTIX" in subject.inp_note.text(),
+           "der Solverwunsch der .inp wird in Schritt 1 gemeldet (%s)"
+           % subject.inp_note.text()[-120:])
+    os.remove(probe)
+
     panel2.reject()
     App.closeDocument(doc.Name)
     os.remove(copy)

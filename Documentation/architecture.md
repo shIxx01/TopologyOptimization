@@ -91,11 +91,13 @@ which it `exec`s.  The addon therefore:
   in `CHANGES-TopoOpt.md`, each marked with a `TopoOpt:` comment in the source and checked by
   `tests/vergleiche_beso_kopie.py`, so nothing has to be downloaded,
 * writes `beso_conf.py` into the run folder,
-* starts `beso_main.py` with FreeCAD's Python and `-u` (unbuffered, D34).  Neither the interpreter
-  nor `ccx` is assumed: both are searched next to the FreeCAD program, in `sys.prefix/bin` and
-  finally in the search path of the system.  In FreeCAD's Flatpak that is `/usr/bin/python3`
-  (with numpy and matplotlib) and `/app/bin/ccx`; when no Python is found the run is refused with
-  a message instead of starting the wrong program (D39),
+* starts `beso_main.py` with FreeCAD's Python and `-u` (unbuffered, D34).  The `ccx` is the one
+  set under *Preferences → FEM → CalculiX* when the user configured one there (D45); otherwise it
+  is searched next to the FreeCAD program, in `sys.prefix/bin` and finally in the search path of
+  the system.  In FreeCAD's Flatpak that is `/usr/bin/python3` (with numpy and matplotlib) and
+  `/app/bin/ccx`; when no Python is found the run is refused with a message instead of starting
+  the wrong program (D39).  The run log names the solver and its origin, and a configured path
+  that does not work is reported instead of being replaced quietly,
 * reads the iteration log for progress and the result files for the final state.
 
 beso is LGPLv3; the copy keeps its license header and its README, and the changes are

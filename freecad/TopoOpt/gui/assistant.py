@@ -1057,6 +1057,14 @@ class AssistantPanel:
             self._show_step(1)
             self._set_status(translate("No design space is marked - see step 1."), "fehler")
             return
+        if getattr(self.solver, "SplitInputWriter", False):
+            # the writer then spreads the model over several files - the optimization
+            # needs the one complete .inp (reported from the field, see D46)
+            self._show_step(1)
+            self._set_status(translate("The solver writes a split input file ('Split input write')"
+                                       " - there is no complete .inp then. Set it to 'no' in the "
+                                       "CalculiX solver and write the input file again."), "fehler")
+            return
         try:
             process, log, conf = conf_module.start(self.obj, self.obj.InpFile, domains,
                                                    self.obj.WorkingDir or
@@ -1151,15 +1159,26 @@ class AssistantPanel:
             self.start_button.setToolTip(translate("Writes the beso configuration and starts beso "
                                                    "as its own process - FreeCAD stays usable."))
             code = self._run_process.returncode if self._run_process else None
-            complete = log_module.read_history(self._run_log)["done"]
+            history = log_module.read_history(self._run_log)
+            complete = history["done"]
             if code == 0 and complete:
                 self._set_status(translate("Optimization finished after %d iteration(s).")
                                  % data["iteration"], "ok")
                 self._update_results()
                 self._show_result()          # show the finished mesh right away
             else:
-                self._set_status(translate("The run ended (code %s) - open the details.")
-                                 % code, "fehler")
+                library = log_module.missing_library(history["text"])
+                if library:
+                    # the .inp asks for a solver this ccx was not built with - that is an
+                    # instruction, not a broken model (see D46)
+                    self._set_status(translate("CalculiX cannot use the %s solver: this ccx was "
+                                               "built without it. Set the solver type to 'default' "
+                                               "in the FEM solver, or set a ccx with %s under "
+                                               "Preferences > FEM > CalculiX.")
+                                     % (library, library), "fehler")
+                else:
+                    self._set_status(translate("The run ended (code %s) - open the details.")
+                                     % code, "fehler")
                 # expand and fill the text ONCE: a call of _toggle_detail() would from
                 # there call _update_run() again and circle endlessly on an error
                 # (RecursionError)
@@ -1247,6 +1266,18 @@ class AssistantPanel:
                                     "complete them in the material editor.")
                          % ", ".join("%s (%s)" % (name, ", ".join(values))
                                      for name, values in sorted(missing.items())))
+        # the solver type of the FEM solver ends up in the .inp; a ccx without that
+        # library stops with "library is not linked" - say it before the run
+        solver_name = elset_reader.solver_keyword(getattr(self.obj, "InpFile", ""))
+        if solver_name in ("PASTIX", "PARDISO"):
+            parts.append(translate("The input file asks for the %s solver - if the ccx in use "
+                                    "was built without it, CalculiX stops with 'library is not "
+                                    "linked'. Then set the solver type to 'default' or set a ccx "
+                                    "with %s under Preferences > FEM > CalculiX.")
+                         % (solver_name, solver_name))
+        if self.solver is not None and getattr(self.solver, "SplitInputWriter", False):
+            parts.append(translate("The solver writes a split input file ('Split input write')"
+                                    " - the optimization needs the one complete .inp."))
         self.inp_note.setText(" ".join(parts))
         self.inp_note.setVisible(bool(parts))
 
@@ -1550,6 +1581,13 @@ class AssistantPanel:
         if self.analysis is None or self.mesh is None or self.solver is None:
             self._set_status(translate("Without analysis, mesh and solver no input file can "
                                          "be written."), "fehler")
+            return
+        if getattr(self.solver, "SplitInputWriter", False):
+            # the writer would spread the model over several files - a .inp that the
+            # optimization can read cannot be produced that way
+            self._set_status(translate("The solver writes a split input file ('Split input write')"
+                                       " - there is no complete .inp then. Set it to 'no' in the "
+                                       "CalculiX solver first."), "fehler")
             return
         self.inp_button.setEnabled(False)
         self._set_status(translate("Writing the CalculiX input file from the FEM model ... "

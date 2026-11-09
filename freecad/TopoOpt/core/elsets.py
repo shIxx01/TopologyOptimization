@@ -252,3 +252,27 @@ def element_types(inp_path):
     except OSError:
         pass
     return types
+
+
+def solver_keyword(inp_path):
+    """The matrix solver the input file asks for ("" when it asks for none).
+
+    FreeCAD writes the *Solver type* of its CalculiX solver as an attribute of the
+    analysis card (``*STATIC, SOLVER=PASTIX``).  A ccx that was built without that
+    library then stops with "*ERROR ... the PASTIX library is not linked", which
+    looks like a broken model.  Knowing the request lets the assistant say it
+    before the run.
+    """
+    if not inp_path or not os.path.isfile(inp_path):
+        return ""
+    try:
+        with open(inp_path, "r", encoding="utf8", errors="ignore") as fh:
+            for line in fh:
+                if not line.startswith("*"):
+                    continue
+                solver = _attribute(line).get("SOLVER", "")
+                if solver:
+                    return solver.upper()
+    except OSError:
+        pass
+    return ""
