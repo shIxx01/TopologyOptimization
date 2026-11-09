@@ -98,6 +98,31 @@ Copy this folder into the `Mod` directory of your FreeCAD user directory, so tha
    failure index.  Fill it in when you want the utilisation - a note under the list tells
    you which value your material would allow.
 
+## A faster solver (optional)
+
+The `ccx` that ships with FreeCAD is built with SPOOLES.  A build with PaStiX or PARDISO often
+solves large models noticeably faster, and the optimization uses whatever binary is set under
+*Edit → Preferences → FEM → CalculiX*.  Two things are needed:
+
+1. **The analysis has to ask for it.**  *Solver type* in the CalculiX solver of the analysis must
+   be `paStix` or `pardiso`; with `default` CalculiX keeps using SPOOLES even when the binary
+   could do better.  FreeCAD then writes `*STATIC, SOLVER=PASTIX` into the input file.
+2. **The binary has to be built with it.**  Both libraries are a compile-time choice, not a
+   switch.  For Windows the official package from <https://www.dhondt.de/> contains
+   `ccx_static.exe`, which is built with PaStiX.
+
+Measured on 27 000 hexahedra, 8 threads (Windows, FreeCAD 26.3):
+
+| binary | time |
+|---|---|
+| the `ccx` shipped with FreeCAD (SPOOLES) | 4.36 s |
+| `ccx_static.exe` from calculix.de (PaStiX) | 2.69 s |
+
+The displacements of the two runs differ by 3e-14 relative - the same result, not an
+approximation.  More than about eight threads brought nothing on that model (2.80 s with 24).
+When a binary cannot do what the input file asks, the assistant says so instead of leaving an
+unexplained dead run (see below).
+
 ## What differs from beso upstream
 
 The bundled copy is upstream [calculix/beso](https://github.com/calculix/beso) plus six
