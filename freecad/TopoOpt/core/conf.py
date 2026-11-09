@@ -136,8 +136,18 @@ def conf_text(obj, inp_path, domains, working_dir):
 
 
 def calculix_path():
-    """The CalculiX solver (ccx) that FreeCAD ships."""
+    """The CalculiX solver (ccx): the one set in FreeCAD's FEM preferences,
+    else the one FreeCAD ships, else the first on the system search path."""
     candidates = []
+    try:
+        # FEM's own lookup (Preferences > FEM > CalculiX > binary path); it
+        # returns the plain name "ccx" when no path is set
+        from femsolver import settings as fem_settings
+        fem_ccx = fem_settings.get_binary("Calculix", silent=True)
+        if fem_ccx and os.path.isabs(fem_ccx):
+            candidates.append(fem_ccx)
+    except ImportError:
+        pass    # FEM workbench not available
     if sys.executable:
         # ccx sits next to the FreeCAD program - in the Flatpak that is /app/bin
         for name in ("ccx", "ccx.exe"):
